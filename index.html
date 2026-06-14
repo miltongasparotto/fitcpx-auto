@@ -722,36 +722,55 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 
               <!-- Composição corporal -->
               <div class="section-label">Composição Corporal <span style="font-size:11px;color:var(--text3);font-weight:400">(dados finais, independente do método)</span></div>
-              <div class="grid-4" style="gap:12px">
-                <div class="field">
-                  <label>Massa gorda (kg)</label>
-                  <input type="number" step="0.1" id="a-mgorda" oninput="onAnamneseChange();calcComp()" placeholder="—">
+
+              <!-- Grid 3 colunas: Gordura | Muscular | Magra -->
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+
+                <!-- Col 1: Gordura -->
+                <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
+                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Gorda</div>
+                  <div class="field" style="margin-bottom:8px">
+                    <label style="font-size:11px">kg</label>
+                    <input type="number" step="0.1" id="a-mgorda" oninput="onAnamneseChange();calcComp()" placeholder="—" style="font-size:15px;font-weight:600">
+                  </div>
+                  <div class="field" style="margin:0">
+                    <label style="font-size:11px">% (calculado)</label>
+                    <input type="text" id="a-gordura" readonly style="color:var(--text2);background:var(--bg3);font-family:var(--mono);font-size:14px" placeholder="—">
+                  </div>
                 </div>
-                <div class="field">
-                  <label>Massa muscular (kg) <span style="font-size:10px;color:var(--text3)">esquelética</span></label>
-                  <input type="number" step="0.1" id="a-mmuscular" oninput="onAnamneseChange();calcComp()" placeholder="—">
+
+                <!-- Col 2: Muscular -->
+                <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
+                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Muscular <span style="font-size:9px;opacity:.7">esquelética</span></div>
+                  <div class="field" style="margin-bottom:8px">
+                    <label style="font-size:11px">kg</label>
+                    <input type="number" step="0.1" id="a-mmuscular" oninput="onAnamneseChange();calcComp()" placeholder="—" style="font-size:15px;font-weight:600">
+                  </div>
+                  <div style="font-size:11px;color:var(--text3);padding:8px 0 0 2px;font-family:var(--mono)">—</div>
                 </div>
-                <div class="field">
-                  <label>Massa magra (kg) <span style="font-size:10px;color:var(--text3)">auto: peso − gordura</span></label>
-                  <input type="text" id="a-magra" readonly style="color:var(--accent);background:var(--bg4);font-family:var(--mono)" placeholder="—">
+
+                <!-- Col 3: Magra -->
+                <div style="background:var(--bg4);border:1px solid rgba(0,229,160,.15);border-radius:var(--radius);padding:10px 12px">
+                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Magra <span style="font-size:9px;opacity:.7">auto: peso−gordura</span></div>
+                  <div class="field" style="margin-bottom:8px">
+                    <label style="font-size:11px">kg</label>
+                    <input type="text" id="a-magra" readonly style="color:var(--accent);background:var(--bg3);font-family:var(--mono);font-size:15px;font-weight:600" placeholder="—">
+                  </div>
+                  <div class="field" style="margin:0">
+                    <label style="font-size:11px">% (calculado)</label>
+                    <input type="text" id="a-magra-pct" readonly style="color:var(--text2);background:var(--bg3);font-family:var(--mono);font-size:14px" placeholder="—">
+                  </div>
                 </div>
-                <div class="field">
-                  <label>% Gordura (calculado)</label>
-                  <input type="text" id="a-gordura" readonly style="color:var(--text2);background:var(--bg4);font-family:var(--mono)" placeholder="—">
-                </div>
-                <div class="field">
-                  <label>% Massa magra (calculado)</label>
-                  <input type="text" id="a-magra-pct" readonly style="color:var(--text2);background:var(--bg4);font-family:var(--mono)" placeholder="—">
-                </div>
+
               </div>
               <div id="antro-comp-alerta" style="display:none;margin-top:6px;padding:6px 12px;background:rgba(255,180,0,.07);border:1px solid rgba(255,180,0,.25);border-radius:var(--radius);font-size:12px;color:#ffb400"></div>
 
               <!-- Circunferências — layout 3 colunas -->
               <div class="section-label" style="margin-top:16px">Circunferências (cm)</div>
 
-              <div style="display:grid;grid-template-columns:1fr 90px 1fr;gap:12px;align-items:start">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
 
-                <!-- COLUNA 1: TRONCO -->
+                <!-- COLUNA ESQUERDA: TRONCO -->
                 <div>
                   <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)">Tronco</div>
                   <div class="field"><label>Cintura (cm)</label>
@@ -764,56 +783,53 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                     <input type="text" id="a-rcq" readonly style="color:var(--text2);background:var(--bg4);font-family:var(--mono)" placeholder="—"></div>
                 </div>
 
-                <!-- COLUNA 2: Δ CENTRAL -->
-                <div style="display:flex;flex-direction:column;gap:8px;padding-top:27px">
-                  <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);text-align:center;margin-bottom:2px;padding-bottom:4px;border-bottom:1px solid var(--border)">Δ D/E</div>
-                  <!-- Braço relaxado -->
-                  <div id="delta-braco-rel" style="font-family:var(--mono);font-size:12px;color:var(--text3);text-align:center;padding:9px 4px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">—</div>
-                  <!-- Braço contraído -->
-                  <div id="delta-braco-cont" style="font-family:var(--mono);font-size:12px;color:var(--text3);text-align:center;padding:9px 4px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">—</div>
-                  <!-- Coxa -->
-                  <div id="delta-coxa" style="font-family:var(--mono);font-size:12px;color:var(--text3);text-align:center;padding:9px 4px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">—</div>
-                  <!-- Panturrilha -->
-                  <div id="delta-pant" style="font-family:var(--mono);font-size:12px;color:var(--text3);text-align:center;padding:9px 4px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">—</div>
-                </div>
-
-                <!-- COLUNA 3: MEMBROS D/E -->
+                <!-- COLUNA DIREITA: MEMBROS D / Δ / E -->
                 <div>
                   <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)">
-                    Membros <span style="font-size:10px;color:var(--text3);font-weight:400">Δ > 1 cm = priorizar unilateral</span>
+                    Membros <span style="font-size:10px;font-weight:400;opacity:.7">Δ > 1 cm = priorizar unilateral</span>
                   </div>
-                  <!-- Sub-cabeçalho D/E -->
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px">
-                    <div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-align:center">Direito (cm)</div>
-                    <div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-align:center">Esquerdo (cm)</div>
+
+                  <!-- Cabeçalho colunas -->
+                  <div style="display:grid;grid-template-columns:1fr 70px 1fr;gap:4px;margin-bottom:4px;text-align:center">
+                    <div style="font-size:10px;color:var(--text3);font-family:var(--mono)">Direito (cm)</div>
+                    <div style="font-size:10px;color:var(--text3);font-family:var(--mono)">Δ</div>
+                    <div style="font-size:10px;color:var(--text3);font-family:var(--mono)">Esquerdo (cm)</div>
                   </div>
+
                   <!-- Braço relaxado -->
                   <div style="font-size:11px;color:var(--text3);margin-bottom:3px">Braço relaxado</div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+                  <div style="display:grid;grid-template-columns:1fr 70px 1fr;gap:4px;margin-bottom:8px;align-items:center">
                     <input type="number" step="0.1" id="a-braco-d" oninput="calcAssimetria('braco-rel')" placeholder="—" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-size:13px">
+                    <div id="delta-braco-rel" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;padding:8px 2px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">—</div>
                     <input type="number" step="0.1" id="a-braco-e" oninput="calcAssimetria('braco-rel')" placeholder="—" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-size:13px">
                   </div>
+
                   <!-- Braço contraído -->
                   <div style="font-size:11px;color:var(--text3);margin-bottom:3px">Braço contraído</div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+                  <div style="display:grid;grid-template-columns:1fr 70px 1fr;gap:4px;margin-bottom:8px;align-items:center">
                     <input type="number" step="0.1" id="a-braco-d-cont" oninput="calcAssimetria('braco-cont')" placeholder="—" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-size:13px">
+                    <div id="delta-braco-cont" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;padding:8px 2px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">—</div>
                     <input type="number" step="0.1" id="a-braco-e-cont" oninput="calcAssimetria('braco-cont')" placeholder="—" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-size:13px">
                   </div>
+
                   <!-- Coxa -->
                   <div style="font-size:11px;color:var(--text3);margin-bottom:3px">Coxa (medial)</div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+                  <div style="display:grid;grid-template-columns:1fr 70px 1fr;gap:4px;margin-bottom:8px;align-items:center">
                     <input type="number" step="0.1" id="a-coxa-d" oninput="calcAssimetria('coxa')" placeholder="—" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-size:13px">
+                    <div id="delta-coxa" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;padding:8px 2px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">—</div>
                     <input type="number" step="0.1" id="a-coxa-e" oninput="calcAssimetria('coxa')" placeholder="—" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-size:13px">
                   </div>
+
                   <!-- Panturrilha -->
                   <div style="font-size:11px;color:var(--text3);margin-bottom:3px">Panturrilha</div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+                  <div style="display:grid;grid-template-columns:1fr 70px 1fr;gap:4px;margin-bottom:8px;align-items:center">
                     <input type="number" step="0.1" id="a-pant-d" oninput="calcAssimetria('pant')" placeholder="—" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-size:13px">
+                    <div id="delta-pant" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;padding:8px 2px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">—</div>
                     <input type="number" step="0.1" id="a-pant-e" oninput="calcAssimetria('pant')" placeholder="—" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-size:13px">
                   </div>
                 </div>
 
-              </div><!-- /grid 3 colunas -->
+              </div><!-- /grid 2 colunas -->
 
               <!-- Flag de assimetrias -->
               <div id="antro-flag-assim" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(255,180,0,.07);border:1px solid rgba(255,180,0,.25);border-radius:var(--radius);font-size:12px;color:#ffb400;line-height:1.7">
@@ -1110,97 +1126,114 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
           <div id="subpanel-anamnese-resist" class="content hidden" style="padding:0">
             <div class="card">
               <div class="card-title">Avaliação de Resistência 🔒</div>
-              <div class="alert alert-blue" style="margin-bottom:12px;font-size:13px">
+              <div class="alert alert-blue" style="margin-bottom:16px;font-size:13px">
                 <span>ℹ</span><div>Ref: Cooper 1968 (VO₂máx); ACSM Guidelines 11th ed. (push-up); Kushnick et al. 2020 (YMCA-BPT); Massy-Westropp et al. 2011 (preensão). VO₂máx estimado não substitui ergoespirometria.</div>
               </div>
 
-              <!-- Resistência Aeróbica -->
-              <div class="section-label">Resistência Aeróbica</div>
-              <div class="grid-4" style="gap:12px">
-                <div class="field">
-                  <label>Teste de Cooper — 12 min (m)</label>
-                  <input type="number" id="a-cooper" oninput="onAnamneseChange();calcVO2()" placeholder="—">
+              <!-- ── BLOCO 1: CARDIORRESPIRATÓRIA ── -->
+              <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px">
+                <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;color:var(--accent);letter-spacing:.08em;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+                  <span>❤️</span> Resistência Cardiorrespiratória
                 </div>
-                <div class="field">
-                  <label>VO₂máx estimado (ml/kg/min)</label>
-                  <input type="text" id="a-vo2max" readonly style="color:var(--accent);background:var(--bg4);font-family:var(--mono)" placeholder="—">
+
+                <!-- Cooper -->
+                <div class="grid-4" style="gap:12px;margin-bottom:10px">
+                  <div class="field">
+                    <label>Teste de Cooper — 12 min (m)</label>
+                    <input type="number" id="a-cooper" oninput="onAnamneseChange();calcVO2()" placeholder="—">
+                  </div>
+                  <div class="field">
+                    <label>VO₂máx estimado (ml/kg/min)</label>
+                    <input type="text" id="a-vo2max" readonly style="color:var(--accent);background:var(--bg3);font-family:var(--mono)" placeholder="—">
+                  </div>
+                  <div class="field">
+                    <label>Classificação VO₂máx</label>
+                    <input type="text" id="a-vo2max-class" readonly style="color:var(--text2);background:var(--bg3);font-size:12px" placeholder="—">
+                  </div>
+                  <div class="field">
+                    <label>FC máxima estimada (220 − idade)</label>
+                    <input type="text" id="a-fcmax" readonly style="color:var(--text2);background:var(--bg3);font-family:var(--mono)" placeholder="—">
+                  </div>
                 </div>
-                <div class="field">
-                  <label>Classificação VO₂máx</label>
-                  <input type="text" id="a-vo2max-class" readonly style="color:var(--text2);background:var(--bg4);font-size:12px" placeholder="—">
-                </div>
-                <div class="field">
-                  <label>FC máxima estimada (220 − idade)</label>
-                  <input type="text" id="a-fcmax" readonly style="color:var(--text2);background:var(--bg4);font-family:var(--mono)" placeholder="—">
+
+                <!-- Step Test -->
+                <div style="font-size:11px;color:var(--text3);margin-bottom:6px;padding-top:8px;border-top:1px solid var(--border)">Step Test — alternativa ao Cooper</div>
+                <div class="grid-4" style="gap:12px">
+                  <div class="field">
+                    <label>FC 1 min pós-teste (bpm)</label>
+                    <input type="number" id="a-step-fc" oninput="onAnamneseChange();calcStepClass();calcVO2Step()" placeholder="—">
+                  </div>
+                  <div class="field">
+                    <label>Classificação Step Test</label>
+                    <input type="text" id="a-step-class" readonly style="color:var(--text2);background:var(--bg3);font-size:12px" placeholder="—">
+                  </div>
+                  <div class="field">
+                    <label>VO₂máx via Step (ml/kg/min)</label>
+                    <input type="text" id="a-vo2max-step" readonly style="color:var(--text2);background:var(--bg3);font-family:var(--mono)" placeholder="—">
+                  </div>
                 </div>
               </div>
 
-              <div class="grid-4" style="gap:12px">
-                <div class="field">
-                  <label>
-                    Flexão de braço (reps até falha técnica)
-                    <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);font-weight:400;margin-left:8px">
-                      <input type="checkbox" id="a-flexao-modificada" onchange="onAnamneseChange();calcPushupClass()"> posição modificada (joelhos)
+              <!-- ── BLOCO 2: RESISTÊNCIA MUSCULAR ── -->
+              <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px">
+                <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;color:#ffb400;letter-spacing:.08em;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+                  <span>💪</span> Resistência Muscular Local
+                </div>
+
+                <!-- MMSS -->
+                <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Membros superiores</div>
+                <div class="grid-4" style="gap:12px;margin-bottom:12px">
+                  <div class="field">
+                    <label>
+                      Flexão de braço (reps até falha)
+                      <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);font-weight:400;margin-left:6px">
+                        <input type="checkbox" id="a-flexao-modificada" onchange="onAnamneseChange();calcPushupClass()"> modificada
+                      </label>
                     </label>
-                  </label>
-                  <input type="number" id="a-flexao" oninput="onAnamneseChange();calcPushupClass()" placeholder="—">
+                    <input type="number" id="a-flexao" oninput="onAnamneseChange();calcPushupClass()" placeholder="—">
+                  </div>
+                  <div class="field">
+                    <label>Classificação push-up</label>
+                    <input type="text" id="a-flexao-class" readonly style="color:var(--text2);background:var(--bg3);font-size:12px" placeholder="—">
+                  </div>
+                  <div class="field">
+                    <label>YMCA — MMSS (reps) <span style="font-size:10px;color:var(--text3)">M=36kg / F=16kg @ 60bpm</span></label>
+                    <input type="number" id="a-abdominal-reps" oninput="onAnamneseChange();calcYMCAClass()" placeholder="—">
+                  </div>
+                  <div class="field">
+                    <label>Classificação YMCA</label>
+                    <input type="text" id="a-ymca-class" readonly style="color:var(--text2);background:var(--bg3);font-size:12px" placeholder="—">
+                  </div>
                 </div>
-                <div class="field">
-                  <label>Classificação push-up</label>
-                  <input type="text" id="a-flexao-class" readonly style="color:var(--text2);background:var(--bg4);font-size:12px" placeholder="—">
-                </div>
-                <div class="field">
-                  <label>YMCA Resistência de MMSS (reps) <span style="font-size:10px;color:var(--text3)">M=36kg / F=16kg @ 60bpm</span></label>
-                  <input type="number" id="a-abdominal-reps" oninput="onAnamneseChange();calcYMCAClass()" placeholder="—">
-                </div>
-                <div class="field">
-                  <label>Classificação YMCA</label>
-                  <input type="text" id="a-ymca-class" readonly style="color:var(--text2);background:var(--bg4);font-size:12px" placeholder="—">
-                </div>
-              </div>
 
-              <!-- Step Test com VO2 estimado via McArdle -->
-              <div class="grid-4" style="gap:12px;margin-top:8px">
-                <div class="field">
-                  <label>Step Test — FC 1 min pós (bpm) <span style="font-size:10px;color:var(--text3)">alternativa ao Cooper</span></label>
-                  <input type="number" id="a-step-fc" oninput="onAnamneseChange();calcStepClass();calcVO2Step()" placeholder="—">
-                </div>
-                <div class="field">
-                  <label>Classificação Step Test</label>
-                  <input type="text" id="a-step-class" readonly style="color:var(--text2);background:var(--bg4);font-size:12px" placeholder="—">
-                </div>
-                <div class="field">
-                  <label>VO₂máx estimado via Step (ml/kg/min)</label>
-                  <input type="text" id="a-vo2max-step" readonly style="color:var(--text2);background:var(--bg4);font-family:var(--mono)" placeholder="—">
-                </div>
-              </div>
-
-              <!-- Membros inferiores e preensão -->
-              <div class="grid-4" style="gap:12px;margin-top:8px">
-                <div class="field">
-                  <label>Agachamento livre (reps em 1 min)</label>
-                  <input type="number" id="a-squat-reps" oninput="onAnamneseChange();calcSquatClass()" placeholder="—">
-                </div>
-                <div class="field">
-                  <label>Classificação agachamento</label>
-                  <input type="text" id="a-squat-class" readonly style="color:var(--text2);background:var(--bg4);font-size:12px" placeholder="—">
-                </div>
-                <div class="field">
-                  <label>Preensão manual D (kg)</label>
-                  <input type="number" step="0.5" id="a-grip-d" oninput="onAnamneseChange();calcGripClass()" placeholder="—">
-                </div>
-                <div class="field">
-                  <label>Preensão manual E (kg)</label>
-                  <input type="number" step="0.5" id="a-grip-e" oninput="onAnamneseChange();calcGripClass()" placeholder="—">
-                </div>
-                <div class="field" style="grid-column:3/-1">
-                  <label>Preensão — Δ D/E e classificação</label>
-                  <input type="text" id="a-grip-class" readonly style="color:var(--text2);background:var(--bg4);font-size:11px" placeholder="—">
+                <!-- MMII + Preensão -->
+                <div style="font-size:11px;color:var(--text3);margin-bottom:6px;padding-top:8px;border-top:1px solid var(--border)">Membros inferiores e preensão manual</div>
+                <div class="grid-4" style="gap:12px">
+                  <div class="field">
+                    <label>Agachamento livre (reps em 1 min)</label>
+                    <input type="number" id="a-squat-reps" oninput="onAnamneseChange();calcSquatClass()" placeholder="—">
+                  </div>
+                  <div class="field">
+                    <label>Classificação agachamento</label>
+                    <input type="text" id="a-squat-class" readonly style="color:var(--text2);background:var(--bg3);font-size:12px" placeholder="—">
+                  </div>
+                  <div class="field">
+                    <label>Preensão manual D (kg)</label>
+                    <input type="number" step="0.5" id="a-grip-d" oninput="onAnamneseChange();calcGripClass()" placeholder="—">
+                  </div>
+                  <div class="field">
+                    <label>Preensão manual E (kg)</label>
+                    <input type="number" step="0.5" id="a-grip-e" oninput="onAnamneseChange();calcGripClass()" placeholder="—">
+                  </div>
+                  <div class="field" style="grid-column:3/-1">
+                    <label>Preensão — Δ D/E e classificação</label>
+                    <input type="text" id="a-grip-class" readonly style="color:var(--text2);background:var(--bg3);font-size:11px" placeholder="—">
+                  </div>
                 </div>
               </div>
 
               <!-- Observações -->
-              <div class="section-label" style="margin-top:12px">Observações</div>
+              <div class="section-label" style="margin-top:14px">Observações</div>
               <div class="field">
                 <textarea id="a-obs-resist" oninput="onAnamneseChange()" placeholder="Limitações de condicionamento, protocolos adaptados, contexto clínico relevante..." style="min-height:55px"></textarea>
               </div>
