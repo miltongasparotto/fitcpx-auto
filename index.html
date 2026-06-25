@@ -13,6 +13,21 @@
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
+/* Remove o spinner nativo do navegador em TODOS os inputs numéricos do sistema
+   — os botões +/− já cobrem essa função, e o spinner nativo duplicava o
+   controle e fazia a caixa mudar de largura ao digitar mais dígitos.
+   Largura mínima fixa pra caber até 4 dígitos sem o layout se mover. */
+input[type=number]{
+  -moz-appearance: textfield;
+  min-width: 3.2em;
+  text-align: center;
+}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 :root {
   /* Tema claro — padrão FitCpx */
   --bg:#f9fafb;
@@ -2479,7 +2494,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <div class="flex-row">
                 <div class="field flex-1">
                   <label>Nível <span id="nivel-origem" style="font-size:11px;color:var(--accent)"></span></label>
-                  <select id="pr-nivel" onchange="checkStep1()">
+                  <select id="pr-nivel" onchange="onNivelOuFrequenciaChange()">
                     <option value="">Selecionar</option>
                     <option value="Inic">Iniciante</option>
                     <option value="Inte">Intermediário</option>
@@ -2488,7 +2503,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 </div>
                 <div class="field flex-1">
                   <label>Frequência <span id="freq-origem" style="font-size:11px;color:var(--accent)"></span></label>
-                  <select id="pr-frequencia" onchange="checkStep1()">
+                  <select id="pr-frequencia" onchange="onNivelOuFrequenciaChange()">
                     <option value="">Selecionar</option>
                     <option value="2x">2x por semana</option>
                     <option value="3x">3x por semana</option>
@@ -2565,7 +2580,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                     <span style="font-size:13px;color:var(--text3)">Sér/exercício (padrão):</span>
                     <div style="display:flex;align-items:center">
                       <button id="btn-series-menos" style="width:22px;height:28px;background:var(--bg2);border:1px solid var(--border);border-radius:3px 0 0 3px;color:var(--text2);font-size:13px;cursor:pointer;line-height:1;padding:0">−</button>
-                      <input type="number" id="vol-series" min="1" max="8" style="width:44px;background:var(--bg3);border-top:1px solid var(--border);border-bottom:1px solid var(--border);border-left:none;border-right:none;padding:4px 6px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;text-align:center" oninput="resetSeriesGlobal()">
+                      <input type="number" id="vol-series" min="1" max="8" style="width:3.2em;background:var(--bg3);border-top:1px solid var(--border);border-bottom:1px solid var(--border);border-left:none;border-right:none;padding:4px 6px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;text-align:center" oninput="resetSeriesGlobal()">
                       <button id="btn-series-mais" style="width:22px;height:28px;background:var(--bg2);border:1px solid var(--border);border-radius:0 3px 3px 0;color:var(--text2);font-size:13px;cursor:pointer;line-height:1;padding:0">+</button>
                     </div>
                     <button class="tbtn" onclick="resetarVolumes()" title="Restaurar volumes para MEV–MRV do perfil">↺ Reset</button>
@@ -2617,15 +2632,15 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
                   <div class="section-label" style="margin-bottom:0;flex:1">Distribuição de Treinos</div>
                   <!-- Limite de séries por sessão -->
-                  <div style="display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px">
+                  <div style="display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;flex-shrink:0">
                     <span style="font-size:13px;color:var(--text3)">Limite séries/sessão:</span>
                     <button id="btn-lim-menos" style="width:20px;height:22px;background:var(--bg2);border:1px solid var(--border);border-radius:3px 0 0 3px;color:var(--text2);font-size:13px;cursor:pointer;padding:0;line-height:1">−</button>
                     <input type="number" id="lim-sessao" min="4" max="60"
-                      style="width:46px;background:var(--bg4);border-top:1px solid var(--border);border-bottom:1px solid var(--border);border-left:none;border-right:none;padding:3px 4px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;text-align:center"
+                      style="width:3.2em;background:var(--bg4);border-top:1px solid var(--border);border-bottom:1px solid var(--border);border-left:none;border-right:none;padding:3px 4px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;text-align:center"
                       oninput="onLimSessaoChange()">
                     <button id="btn-lim-mais" style="width:20px;height:22px;background:var(--bg2);border:1px solid var(--border);border-radius:0 3px 3px 0;color:var(--text2);font-size:13px;cursor:pointer;padding:0;line-height:1">+</button>
                     <span style="font-size:13px;color:var(--text3);margin-left:2px">séries</span>
-                    <span id="lim-badge" style="font-size:13px;font-family:var(--mono);padding:1px 5px;border-radius:3px;margin-left:4px"></span>
+                    <span id="lim-badge" style="font-size:13px;font-family:var(--mono);padding:1px 5px;border-radius:3px;margin-left:4px;display:inline-block;min-width:8.5em;text-align:center;white-space:nowrap;flex-shrink:0"></span>
                   </div>
                 </div>
 
@@ -2634,9 +2649,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   <div id="s3-div-info">O sistema calculou a distribuição mais equilibrada com base no volume definido.</div>
                 </div>
 
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:6px">
                     <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Modelos disponíveis</div>
-                    <button class="btn btn-ghost btn-sm" onclick="abrirNovaDivisaoStep2()" style="font-size:11px">+ Nova Divisão</button>
+                    <div style="display:flex;gap:6px">
+                      <button class="btn btn-ghost btn-sm" onclick="abrirNovaDivisaoRapida()" style="font-size:11px" title="Cria uma divisão com sessões vazias pra você distribuir os grupos manualmente — não salva nada por padrão">⚡ Divisão Rápida</button>
+                      <button class="btn btn-ghost btn-sm" onclick="abrirNovaDivisaoCompleta()" style="font-size:11px" title="Formulário completo pra catalogar um modelo reutilizável, pré-preenchido com o perfil atual">+ Nova Divisão (modelo)</button>
+                    </div>
                   </div>
                   <div id="divisao-opcoes" style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px"></div>
 
@@ -3776,17 +3794,23 @@ const FLAGS_FILTRO = {
     motivo: 'Valgo de joelho — agachamento profundo com barra contraindicado',
   },
   'Ombro Limitado D': {
-    bloqueio: e => e.ovh && (e.g === 'Deltoide') &&
+    // CORREÇÃO DE STRING: e.g==='Deltoide' nunca casava com 'Deltóide' (banco real).
+    // ATENÇÃO — LIMITAÇÃO DE DADOS NÃO RESOLVIDA POR ESTA CORREÇÃO: o campo e.ovh
+    // (marca "exercício overhead") está zerado em 100% dos 691 exercícios do banco
+    // atual. Mesmo com a comparação de grupo corrigida, esta regra continuará sem
+    // bloquear nenhum exercício até que e.ovh seja preenchido na fonte de dados
+    // (vault) para os exercícios de Desenvolvimento/Arnold/overhead.
+    bloqueio: e => e.ovh && textoIgual(e.g, 'Deltoide') &&
                    (e.n.toLowerCase().includes('desenvolvimento') || e.n.toLowerCase().includes('arnold')),
     motivo: 'Ombro D limitado — press vertical contraindicado no lado afetado',
   },
   'Ombro Limitado E': {
-    bloqueio: e => e.ovh && (e.g === 'Deltoide') &&
+    bloqueio: e => e.ovh && textoIgual(e.g, 'Deltoide') &&
                    (e.n.toLowerCase().includes('desenvolvimento') || e.n.toLowerCase().includes('arnold')),
     motivo: 'Ombro E limitado — press vertical contraindicado no lado afetado',
   },
   'Ombro Limitado bilateral': {
-    bloqueio: e => e.ovh && (e.g === 'Deltoide'),
+    bloqueio: e => e.ovh && textoIgual(e.g, 'Deltoide'),
     motivo: 'Ombro limitado bilateral — overhead contraindicado',
   },
 
@@ -3804,12 +3828,20 @@ const FLAGS_FILTRO = {
 };
 
 // Prioridades: flags que sinalizam quais padrões PRIORIZAR
+// Nomes de padrão (e.pad) e grupo (e.g) corrigidos para os valores REAIS do
+// banco de 691 exercícios — os nomes anteriores ('hinge', 'unilateral_mmii',
+// 'pull_h', 'curl', 'core', 'Gluteos' sem acento) não existem nos dados e
+// faziam estas regras de proteção clínica nunca dispararem (ou dispararem
+// só parcialmente). Confirmado por contagem real:
+//   - Assimetria MMII: 3→21 exercícios encontrados após adicionar squat_uni/squat_asym/hip_hinge
+//   - Core Assimétrico: 0→11 exercícios após corrigir 'core' para 'lateral_flex'
+//   - Valgo Corretivo: 0→17 exercícios após corrigir 'Gluteos' para 'Glúteos'
 const FLAGS_PRIORIDADE = {
-  'Assimetria MMII':   e => e.uni && ['squat','hinge','unilateral_mmii'].includes(e.pad),
-  'Assimetria MMSS':   e => e.uni && ['push_h','pull_h','push_v','pull_v','curl'].includes(e.pad),
-  'Core Assimétrico':  e => e.pad === 'core' && e.n.toLowerCase().includes('lateral'),
-  'Isquio Encurtado':  e => e.g === 'Isquiossurais' && (e.r === 'TRM' || e.n.toLowerCase().includes('cadeira flexora') || e.n.toLowerCase().includes('flexão de joelho')),
-  'Valgo Corretivo':   e => e.g === 'Gluteos' && e.n.toLowerCase().includes('abdução'),
+  'Assimetria MMII':   e => e.uni && ['squat','squat_uni','squat_asym','hip_hinge'].includes(e.pad),
+  'Assimetria MMSS':   e => e.uni && (['push_h','push_v','pull_v'].includes(e.pad) || textoIgual(e.g, 'Biceps')),
+  'Core Assimétrico':  e => e.pad === 'lateral_flex',
+  'Isquio Encurtado':  e => textoIgual(e.g, 'Isquiossurais') && (e.r === 'TRM' || e.n.toLowerCase().includes('cadeira flexora') || e.n.toLowerCase().includes('flexão de joelho')),
+  'Valgo Corretivo':   e => textoIgual(e.g, 'Gluteos') && e.n.toLowerCase().includes('abdução'),
 };
 
 function extrairFlagsClinicas(){
@@ -4974,6 +5006,27 @@ function checkStep1(){
   $('btn-step1-next').disabled=!ok;
 }
 
+// Recalcula a tabela de Volume (e, se aplicável, a tela de Divisão) quando o
+// personal troca Nível ou Frequência DEPOIS de já ter passado por essas telas —
+// sem isso, a tabela ficava "presa" nos valores calculados para a seleção anterior.
+function onNivelOuFrequenciaChange(){
+  checkStep1();
+  const jaTemVolume = _s3 && _s3.volPorGrupo && Object.keys(_s3.volPorGrupo).length > 0;
+  if(!jaTemVolume) return;
+  iniciarTelaVolume();
+  // Se a tela de Divisão também já tinha sido aberta, recarrega as opções com o novo volume.
+  // Mudança real de nível/frequência invalida qualquer edição de divisão em andamento
+  // (a estrutura de sessões pode nem ter o mesmo nº de dias mais).
+  if(_s3.divisaoOpcoes && _s3.divisaoOpcoes.length){
+    const freq    = val('pr-frequencia') || '3x';
+    const numDias = parseInt(freq) || 3;
+    _s3.divisaoOpcoes = gerarDivisoesBalanceadas(numDias);
+    _s3._divNumDias   = numDias;
+    _s3.divisaoIdx    = Math.min(_s3.divisaoIdx||0, _s3.divisaoOpcoes.length - 1);
+    _s3._dcEditando   = undefined;
+  }
+}
+
 // ─── STEPS ────────────────────────────────────────────────────────────────────
 
 function goStep(n, silent){
@@ -5110,6 +5163,64 @@ const LOCAL_RESIST = {
 
 function motorRand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
 
+// ── Normalização de texto — ignora acentos e caixa em todas as comparações ──
+// Resolve o descasamento estrutural entre GRUPOS_MAPA (sem acento: 'Latissimo',
+// 'Deltoide', 'Gluteos'...) e DB_EXERCICIOS (com acento: 'Latíssimo', 'Deltóide',
+// 'Glúteos'...). Antes desta correção, 8 dos 12 grupos musculares da tela de
+// Volume retornavam ZERO exercícios sempre, porque e.g!==musculo nunca casava
+// para esses grupos — comparação direta de string é frágil para dados em
+// português com acentuação que vêm de fontes diferentes.
+// Normalização para BUSCA FUZZY — remove acentos e baixa caixa, mas preserva
+// espaços (necessários para o split por palavra em buscaFuzzy).
+function normalizarTexto(str){
+  if(!str) return '';
+  return str
+    .toString()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .toLowerCase()
+    .trim();
+}
+
+// Normalização para COMPARAÇÃO EXATA de identificadores — remove acentos,
+// espaços e caixa. Cobre casos como "RetoAbdominal" (GRUPOS_MAPA) vs.
+// "Reto Abdominal" (DB_EXERCICIOS), além do problema original de acentuação.
+function normalizarIdentificador(str){
+  return normalizarTexto(str).replace(/\s+/g, '');
+}
+
+// Compara dois identificadores ignorando acento/espaço/caixa — usar em vez de
+// === sempre que uma string vier de fonte diferente da outra (ex: GRUPOS_MAPA
+// 'RetoAbdominal' vs DB_EXERCICIOS 'Reto Abdominal').
+function textoIgual(a, b){
+  return normalizarIdentificador(a) === normalizarIdentificador(b);
+}
+
+// Busca fuzzy por fragmento — ignora acentos/caixa e permite que o personal
+// digite abreviações como "sup re" para encontrar "Supino Reto - Barra" ou
+// "sup hal" para encontrar as variações de Supino com Halter. Cada palavra do
+// termo de busca deve aparecer como substring em algum lugar do texto alvo,
+// na ordem em que foi digitada — não precisa ser contígua nem completa.
+function buscaFuzzy(termoBusca, textoAlvo){
+  const termo = normalizarTexto(termoBusca);
+  const alvo  = normalizarTexto(textoAlvo);
+  if(!termo) return true;
+  const palavras = termo.split(/\s+/).filter(Boolean);
+  let posicaoAtual = 0;
+  for(const palavra of palavras){
+    const idx = alvo.indexOf(palavra, posicaoAtual);
+    if(idx === -1) return false;
+    posicaoAtual = idx + palavra.length;
+  }
+  return true;
+}
+
+// Filtra uma lista de exercícios por termo de busca fuzzy no nome (e opcionalmente
+// no equipamento), para uso nos campos de busca de exercício da interface.
+function filtrarExerciciosPorBusca(lista, termoBusca){
+  if(!termoBusca || !termoBusca.trim()) return lista;
+  return lista.filter(e => buscaFuzzy(termoBusca, e.n) || buscaFuzzy(termoBusca, e.eq||''));
+}
+
 function nivelOk(exNivel, alunoNivel){
   const ordem={Iniciante:1,Intermediário:2,Avançado:3};
   return (ordem[exNivel]||1)<=(ordem[alunoNivel]||1);
@@ -5128,8 +5239,11 @@ const _NOM_EXCLUI_PRESCRICAO = [
 function filtrarExerciciosFicha(musculo, porcao, resistPermitida, nivelAluno, contraindicacoes){
   // Filtro base (nível, recurso, ci legacy, porção)
   let pool = DB_EXERCICIOS.filter(e=>{
-    if(e.g!==musculo) return false;
-    if(porcao!==null && e.p!==porcao) return false;
+    if(!textoIgual(e.g, musculo)) return false;
+    // Porção: o banco usa o formato "Grupo (Porção)" (ex: "Peitoral (Superior)"),
+    // enquanto a tela de Volume/PORCOES trabalha apenas com a porção isolada
+    // (ex: "Superior"). Comparação por fragmento (normalizada) cobre os dois formatos.
+    if(porcao!==null && !(e.p && buscaFuzzy(porcao, e.p))) return false;
     if(!resistPermitida.includes(e.r)) return false;
     if(!nivelOk(e.nv, nivelLabel(nivelAluno))) return false;
     // Excluir exercícios de mobilidade, liberação e aeróbio da prescrição
@@ -5980,7 +6094,50 @@ function getDivisoesDisponiveis(numDias){
       {nome:'Upper/Lower × 3',             treinos:['A — Sup. Emp.','B — Inferior','C — Sup. Pux.','D — Inferior+Core','E — Ombros+Core','F — Especialização'], chave:'6b'},
     ],
   };
-  return mapa[numDias] || mapa[3];
+  const base = (mapa[numDias] || mapa[3]).slice();
+
+  // ── Mescla modelos salvos pelo personal (LIBS.distribuicao) compatíveis com numDias ──
+  // Sem isto, um modelo salvo nunca aparecia como opção real na prescrição — só existia
+  // na aba de gestão de biblioteca (renderDistrib), desconectada deste fluxo.
+  (LIBS.distribuicao || []).forEach(d => {
+    if(!d.dias || !d.dias.length) return;
+    if(d.dias.length !== numDias) return; // só oferece modelos com o número certo de sessões
+    const chave = 'lib-' + d.id;
+    const divisao = converterDivisaoLibParaTemplate(d);
+    if(!divisao) return;
+    DIVISOES_TEMPLATES[chave] = divisao;
+    base.push({
+      nome: '★ ' + d.nome,
+      treinos: d.dias.map(dia => (dia.label||'Treino') + (dia.enfase ? ' — '+dia.enfase : '')),
+      chave,
+      _libId: d.id,
+    });
+  });
+
+  return base;
+}
+
+// Converte um item de LIBS.distribuicao (nomes de grupo com acento, ex: "Reto Abdominal")
+// para o formato DIVISOES_TEMPLATES (ids sem acento de GRUPOS_MAPA, ex: "RetoAbdominal").
+// Usa textoIgual/normalizarIdentificador — mesma técnica que corrigiu o mesmo tipo de
+// descasamento entre GRUPOS_MAPA e DB_EXERCICIOS. Grupos sem correspondência em
+// GRUPOS_MAPA (ex: "Adutores", "Transverso do Abdômen") são ignorados silenciosamente,
+// pois não fazem parte dos 12 grupos oficiais de volume do sistema.
+function converterDivisaoLibParaTemplate(d){
+  const def = [];
+  const label = [];
+  d.dias.forEach((dia, i) => {
+    const grupos = (dia.grupos||[])
+      .map(nomeDisplay => {
+        const achado = GRUPOS_MAPA.find(gm => textoIgual(gm.id, nomeDisplay));
+        return achado ? { g: achado.id } : null;
+      })
+      .filter(Boolean);
+    def.push(grupos);
+    label.push(dia.label || ('Treino ' + String.fromCharCode(65+i)));
+  });
+  if(!def.some(s => s.length)) return null; // nenhum grupo reconhecido em nenhuma sessão
+  return { default: def, label };
 }
 
 const DIVISOES_TEMPLATES = {
@@ -6100,6 +6257,33 @@ function onLimSessaoChange(){
   const v = parseInt($('lim-sessao')?.value) || 20;
   _s3.limSessao = v;
   atualizarBadgeLimite();
+  // Recalcula média/desvio do header de cada card — dependem do limite de sessão
+  // através de calcSeriesSessaoComLimite. Preserva chaves de edição em andamento
+  // (op.chave já apontando pra 'edit-i'/'lib-id') recalculando só cargasSessao/media/desvio,
+  // sem regenerar a lista de opções do zero (regenerá-la perderia o ajuste em curso).
+  if(_s3.divisaoOpcoes){
+    const lim = _s3.limSessao;
+    _s3.divisaoOpcoes.forEach((op, opIdx) => {
+      const numDias = parseInt(val('pr-frequencia')||'3') || 3;
+      const divisao = DIVISOES_TEMPLATES[op.chave] || DIVISOES[numDias];
+      op.cargasSessao = divisao.default.map(sessaoGrupos =>
+        calcSeriesSessaoOuZerado(sessaoGrupos, lim, divisao).totalAlvo
+      );
+      const media = op.cargasSessao.reduce((a,b)=>a+b,0) / op.cargasSessao.length;
+      op.media  = Math.round(media);
+      op.desvio = Math.round(Math.sqrt(op.cargasSessao.reduce((s,v)=>s+Math.pow(v-media,2),0) / op.cargasSessao.length) * 10) / 10;
+      // Mudar o limite invalida os valores congelados anteriormente (foram
+      // calculados pro limite antigo) — limpa e re-congela com o novo limite,
+      // só na divisão atualmente selecionada (as outras opções da lista nem
+      // têm overrides, só importa pra quem está sendo de fato editado).
+      if(opIdx === _s3.divisaoIdx && _s3._sessionOverrides && !divisao._naoCalculada){
+        divisao.default.forEach((sessao, ti) => {
+          sessao.forEach(({g}) => { delete _s3._sessionOverrides[String(ti) + '-' + g]; });
+        });
+        dcCongelarValoresAtuais(divisao);
+      }
+    });
+  }
   renderTelaDivisao();
 }
 
@@ -6107,15 +6291,16 @@ function atualizarBadgeLimite(){
   const badge = $('lim-badge'); if(!badge) return;
   const rec = calcLimSessaoRecomendado();
   const lim = _s3.limSessao || rec;
+  const baseCss = 'font-size:13px;font-family:var(--mono);padding:1px 5px;border-radius:3px;margin-left:4px;display:inline-block;min-width:8.5em;text-align:center;white-space:nowrap;flex-shrink:0;';
   if(Math.abs(lim - rec) <= 2){
     badge.textContent = 'Recomendado';
-    badge.style.cssText = 'font-size:9px;font-family:var(--mono);padding:1px 5px;border-radius:3px;margin-left:4px;background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)';
+    badge.style.cssText = baseCss + 'background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)';
   } else if(lim < rec - 2){
     badge.textContent = 'Conservador';
-    badge.style.cssText = 'font-size:9px;font-family:var(--mono);padding:1px 5px;border-radius:3px;margin-left:4px;background:rgba(249,115,22,.15);color:#f97316;border:1px solid rgba(249,115,22,.3)';
+    badge.style.cssText = baseCss + 'background:rgba(249,115,22,.15);color:#f97316;border:1px solid rgba(249,115,22,.3)';
   } else {
     badge.textContent = 'Intenso';
-    badge.style.cssText = 'font-size:9px;font-family:var(--mono);padding:1px 5px;border-radius:3px;margin-left:4px;background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)';
+    badge.style.cssText = baseCss + 'background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)';
   }
 }
 
@@ -6129,110 +6314,222 @@ function calcExPorGrupo(semVol, freq, serEx, minimo){
   return exSessao;
 }
 
-function calcSeriesSessaoComLimite(sessaoGrupos, limSessao){
+// ══════════════════════════════════════════════════════════════════════════
+// MOTOR DE VOLUME — calcula TODA a divisão de uma vez (visão semanal completa),
+// porque a regra de mínimo semanal depende de somar todas as sessões onde um
+// grupo aparece, não pode ser decidida sessão por sessão isoladamente.
+//
+// Regra validada com o personal trainer em 3 exemplos reais:
+// 1. Todo grupo começa em 1 exercício em cada sessão onde aparece.
+// 2. SUBIDA PRO MÍNIMO SEMANAL, em rodadas: cada rodada percorre as sessões em
+//    ordem e, dentro de cada sessão, os grupos em ordem de hierarquia (#1
+//    primeiro). Para cada grupo ainda abaixo do PRÓPRIO mínimo semanal
+//    (somando todas as sessões onde aparece), tenta subir 1 exercício — só
+//    aplica se isso não estourar o limite da sessão onde está essa ocorrência.
+//    Se estourar, pula (tenta de novo na rodada seguinte, caso a situação
+//    mude por outro grupo ter parado de subir). Repete até todos baterem o
+//    mínimo semanal ou nenhuma sessão conseguir mais subir ninguém que precise
+//    (situação travada — fica abaixo da faixa, sistema nunca remove/move nada,
+//    só sinaliza visualmente).
+// 3. DISTRIBUIÇÃO DA SOBRA: sessões com margem restante depois do passo 2
+//    sobem o #1 (e seguintes, em rodada) até bater o limite ou o próprio teto
+//    semanal (exMax) — só entre os grupos que já estão naquela sessão.
+// ══════════════════════════════════════════════════════════════════════════
+const _cacheVolumeDivisao = { chave: null, resultado: null };
+
+function calcVolumeDivisaoCompleta(divisao, limSessao){
+  // Cache simples: evita reprocessar a mesma divisão+limite repetidamente
+  // quando chamada em sequência dentro do mesmo .map()/.forEach() de render.
+  const chaveCache = JSON.stringify({ d: divisao.default, lim: limSessao, vp: _s3.volPorGrupo });
+  if(_cacheVolumeDivisao.chave === chaveCache) return _cacheVolumeDivisao.resultado;
+
   const serExGlobal = _s3.seriesPorEx || 3;
+  const volPorGrupo = _s3.volPorGrupo;
 
-  // 1. Coleta dados — divide volume semanal por freq ANTES de calcular ex/sessão
-  const grupos = sessaoGrupos.map(({g}) => {
-    const vg    = _s3.volPorGrupo[g];
-    const ativo = vg && vg.ativo !== false;
-    if(!ativo) return { g, exMin:0, exMax:0, exAlvo:0, serEx:serExGlobal,
-                        serSessao:0, serSemana:0, exSemana:0, ativo:false };
-    const freq_g = Math.max(1, vg.freq || 1);
-    const serEx  = vg.serEx || serExGlobal;
-    // Ajusta para par se freq > 1, depois divide pela frequência → volume por sessão
-    const semMinRaw = vg.semMin || 0;
-    const semMaxRaw = vg.semMax || 0;
-    const semMinAdj = freq_g > 1 && semMinRaw % 2 !== 0 ? semMinRaw + 1 : semMinRaw;
-    const semMaxAdj = freq_g > 1 && semMaxRaw % 2 !== 0 ? semMaxRaw + 1 : semMaxRaw;
-    // Volume POR SESSÃO (já dividido pela frequência)
-    const serMinSessao = Math.round(semMinAdj / freq_g);
-    const serMaxSessao = Math.round(semMaxAdj / freq_g);
-    // Exercícios por sessão
-    const exMin = Math.max(1, Math.floor(serMinSessao / serEx));
-    const exMax = Math.max(exMin, Math.ceil(serMaxSessao / serEx));
-    return { g, exMin, exMax, exAlvo: exMin, serEx, freq: freq_g,
-             semMin: semMinAdj, semMax: semMaxAdj,
-             serMinSessao, serMaxSessao, ativo: true };
-  }).filter(x => x.ativo);
+  // 1. Monta estrutura por sessão, partindo de 1 exercício.
+  const sessoesProcessadas = divisao.default.map(sessaoGrupos =>
+    sessaoGrupos.map(({g}, idx) => {
+      const vg    = volPorGrupo[g];
+      const ativo = vg && vg.ativo !== false;
+      if(!ativo) return { g, idx, ativo:false };
+      const freq_g = Math.max(1, vg.freq || 1);
+      const serEx  = vg.serEx || serExGlobal;
+      const semMinRaw = vg.semMin || 0;
+      const semMaxRaw = vg.semMax || 0;
+      const semMinAdj = freq_g > 1 && semMinRaw % 2 !== 0 ? semMinRaw + 1 : semMinRaw;
+      const semMaxAdj = freq_g > 1 && semMaxRaw % 2 !== 0 ? semMaxRaw + 1 : semMaxRaw;
+      return { g, idx, serEx, freq: freq_g, semMin: semMinAdj, semMax: semMaxAdj, exAlvo: 1, ativo: true };
+    })
+  );
 
-  if(!grupos.length) return { grupos:[], totalMin:0, totalAlvo:0, limSessao, estourou:false, pct:0 };
+  // 2. Mapa grupo -> todas as ocorrências (pode estar em mais de uma sessão).
+  const porGrupo = {};
+  sessoesProcessadas.forEach(sessao => sessao.forEach(item => {
+    if(!item.ativo) return;
+    if(!porGrupo[item.g]) porGrupo[item.g] = [];
+    porGrupo[item.g].push(item);
+  }));
 
-  // 2. Total com mínimos
-  const totalMin = grupos.reduce((s,x) => s + x.exMin * x.serEx, 0);
+  function serSemanalAtual(g){
+    return (porGrupo[g]||[]).reduce((s,item) => s + item.exAlvo*item.serEx, 0);
+  }
+  function totalSessaoAtual(ti){
+    return sessoesProcessadas[ti].reduce((s,item) => item.ativo ? s + item.exAlvo*item.serEx : s, 0);
+  }
 
-  // 3. Algoritmo: sobe +1 exercício para TODOS simultaneamente, depois remove do último
-  // Clona exercícios atuais
-  grupos.forEach(x => x.exAlvo = x.exMin);
-
-  // Fase de subida: tenta adicionar 1 ex para todos e verifica
-  let podeSeguir = true;
-  while(podeSeguir){
-    // Simula +1 em todos que ainda podem subir
-    const podeSobir = grupos.filter(x => x.exAlvo < x.exMax);
-    if(!podeSobir.length) break;
-    const totalSeTodos = grupos.reduce((s,x) => {
-      const novoEx = x.exAlvo < x.exMax ? x.exAlvo + 1 : x.exAlvo;
-      return s + novoEx * x.serEx;
-    }, 0);
-    if(totalSeTodos <= limSessao){
-      // Cabe — aplica
-      grupos.forEach(x => { if(x.exAlvo < x.exMax) x.exAlvo++; });
-    } else {
-      podeSeguir = false;
+  // 3. SUBIDA PRO MÍNIMO SEMANAL — em rodadas, nunca estoura sessão nenhuma.
+  let mudouAlgumaCoisa = true;
+  while(mudouAlgumaCoisa){
+    mudouAlgumaCoisa = false;
+    for(let ti = 0; ti < sessoesProcessadas.length; ti++){
+      const sessao = sessoesProcessadas[ti];
+      for(let idx = 0; idx < sessao.length; idx++){
+        const item = sessao[idx];
+        if(!item.ativo) continue;
+        if(serSemanalAtual(item.g) >= item.semMin) continue; // já bateu o próprio mínimo
+        if(totalSessaoAtual(ti) + item.serEx > limSessao) continue; // estouraria — pula
+        item.exAlvo++;
+        mudouAlgumaCoisa = true;
+      }
     }
   }
 
-  // Neste ponto temos o máximo que coube sem estourar
-  const totalSemEstouro = grupos.reduce((s,x) => s + x.exAlvo * x.serEx, 0);
-
-  // 4. Tenta +1 em todos (vai estourar) e remove do último em diante
-  const tentativa = grupos.map(x => ({...x, exAlvo: Math.min(x.exMax, x.exAlvo + 1)}));
-  let totalTent = tentativa.reduce((s,x) => s + x.exAlvo * x.serEx, 0);
-
-  // Remove do último grupo em direção ao primeiro
-  for(let i = tentativa.length - 1; i >= 0 && totalTent > limSessao; i--){
-    if(tentativa[i].exAlvo > tentativa[i].exMin){
-      tentativa[i].exAlvo--;
-      totalTent -= tentativa[i].serEx;
+  // 4. DISTRIBUIÇÃO DA SOBRA — agora coordenada GLOBALMENTE entre TODAS as
+  // sessões ao mesmo tempo (não sessão por sessão até esgotar). Cada rodada
+  // percorre TODAS as sessões dando no máximo +1 exercício por ocorrência,
+  // respeitando o teto semanal (semMax) do grupo e o limite de cada sessão.
+  // Sem isso, um grupo repetido em mais de uma sessão (ex: Peitoral 2x/sem)
+  // tinha a PRIMEIRA sessão onde aparece consumindo toda a margem semanal
+  // restante antes das outras sessões do mesmo grupo serem visitadas — bug
+  // real, confirmado: 3 sessões idênticas do mesmo grupo ficavam com
+  // 18s/6s/6s em vez de ~9s/9s/9s.
+  let sobrouMargemGlobal = true;
+  while(sobrouMargemGlobal){
+    sobrouMargemGlobal = false;
+    for(let ti = 0; ti < sessoesProcessadas.length; ti++){
+      const sessao = sessoesProcessadas[ti];
+      for(let idx = 0; idx < sessao.length; idx++){
+        const item = sessao[idx];
+        if(!item.ativo) continue;
+        if(serSemanalAtual(item.g) + item.serEx > item.semMax) continue; // teto semanal
+        if(totalSessaoAtual(ti) + item.serEx > limSessao) continue;
+        item.exAlvo++;
+        sobrouMargemGlobal = true;
+      }
     }
   }
 
-  // 5. Compara: sem estouro vs com estouro — escolhe o mais próximo do limite
-  const diffAbaixo  = limSessao - totalSemEstouro;  // >= 0
-  const diffAcima   = totalTent - limSessao;          // pode ser < 0 (não estourou)
-  let resultado, estourou;
-  if(totalTent <= limSessao){
-    // Tentativa também não estourou — usa a maior
-    resultado = totalTent >= totalSemEstouro ? tentativa : grupos;
-    estourou  = false;
-  } else if(diffAcima <= diffAbaixo){
-    // Estouro menor ou igual à diferença para baixo — usa estouro, informa
-    resultado = tentativa;
-    estourou  = true;
-  } else {
-    resultado = grupos;
-    estourou  = false;
-  }
-
-  // Atualiza exAlvo nos grupos originais
-  grupos.forEach((x,i) => { x.exAlvo = resultado[i].exAlvo; });
-
-  const totalAlvo = grupos.reduce((s,x) => s + x.exAlvo * x.serEx, 0);
-  const pct       = limSessao > 0 ? Math.round((totalAlvo / limSessao) * 100) : 0;
-
-  // Adiciona referências de sessão e semana
-  grupos.forEach(x => {
-    x.serSessao  = x.exAlvo * x.serEx;
-    x.serSemana  = x.serSessao * x.freq;
-    x.exSemana   = x.exAlvo * x.freq;
-    x.exMinSem   = x.exMin * x.freq;
-    x.exMaxSem   = x.exMax * x.freq;
-    x.serMinSem  = x.exMin * x.serEx * x.freq;
-    x.serMaxSem  = x.exMax * x.serEx * x.freq;
+  // 5. Monta resultado por sessão (formato compatível com o uso anterior).
+  // Grupos INATIVOS (desligados na tela de Volume) são EXCLUÍDOS aqui, não
+  // mapeados para uma entrada zerada — uma entrada fantasma zerada consumia
+  // uma posição no array sem nunca ser desenhada na tela, o que desalinhava
+  // o índice usado pelo zebrado (linhas claras/escuras alternadas) de todas
+  // as linhas seguintes, e também acabava sendo congelada como override
+  // fantasma sempre que a divisão era selecionada/recalculada.
+  const resultado = sessoesProcessadas.map(sessao => {
+    const grupos = sessao.filter(item => item.ativo).map(item => {
+      const semAtual = serSemanalAtual(item.g);
+      // forcouAbaixoDoMinimo: travado por falta de margem em TODAS as sessões onde aparece
+      const forcou = semAtual < item.semMin;
+      return {
+        g: item.g, idx: item.idx, exAlvo: item.exAlvo, serEx: item.serEx, freq: item.freq,
+        exMin: Math.max(1, Math.ceil(item.semMin/item.freq/item.serEx)), // referência informativa
+        exMax: Math.max(1, Math.floor(item.semMax/item.freq/item.serEx)),
+        serSessao: item.exAlvo * item.serEx,
+        serSemana: semAtual,
+        exSemana: item.exAlvo * item.freq,
+        exMinSem: item.semMin, exMaxSem: item.semMax,
+        serMinSem: item.semMin, serMaxSem: item.semMax,
+        _forcouAbaixoDoMinimo: forcou,
+      };
+    });
+    const totalAlvo = grupos.reduce((s,g) => s + g.serSessao, 0);
+    const forcouAbaixoDoMinimo = grupos.some(g => g._forcouAbaixoDoMinimo);
+    const estourou = totalAlvo > limSessao;
+    const pct = limSessao > 0 ? Math.round((totalAlvo/limSessao)*100) : 0;
+    const totalMin = grupos.reduce((s,g) => s + g.serSessao, 0); // referência informativa
+    return { grupos, totalMin, totalAlvo, limSessao, estourou, forcouAbaixoDoMinimo, pct };
   });
 
-  return { grupos, totalMin, totalAlvo, limSessao, estourou, pct };
+  _cacheVolumeDivisao.chave = chaveCache;
+  _cacheVolumeDivisao.resultado = resultado;
+  return resultado;
+}
+
+// Mantém a assinatura antiga (por sessão) pra compatibilidade com os pontos de
+// chamada existentes — internamente delega pro motor de divisão completa,
+// já que a regra de mínimo semanal exige ver todas as sessões de uma vez.
+// Mantém a assinatura antiga (por sessão) pra compatibilidade com os pontos de
+// chamada existentes — internamente delega pro motor de divisão completa, já
+// que a regra de mínimo semanal exige ver todas as sessões de uma vez.
+// Aceita um terceiro parâmetro opcional `divisaoForcada`: usado por chamadores
+// que já sabem exatamente qual divisão estão processando (ex: onLimSessaoChange
+// iterando por TODAS as opções, não só a selecionada) — sem isso, o código
+// inferia a divisão via _s3.divisaoIdx, o que processava a divisão ERRADA
+// sempre que o loop estivesse processando uma opção diferente da selecionada.
+function calcSeriesSessaoComLimite(sessaoGrupos, limSessao, divisaoForcada){
+  let divisao = divisaoForcada;
+  if(!divisao){
+    const op = _s3.divisaoOpcoes && _s3.divisaoOpcoes[_s3.divisaoIdx];
+    divisao = op && DIVISOES_TEMPLATES[op.chave];
+  }
+  if(divisao){
+    const ti = divisao.default.indexOf(sessaoGrupos);
+    if(ti >= 0){
+      const resultadoCompleto = calcVolumeDivisaoCompleta(divisao, limSessao);
+      return resultadoCompleto[ti];
+    }
+  }
+  // Fallback: sessaoGrupos não pertence à divisão informada/selecionada (ex:
+  // chamada isolada/teste) — processa como divisão de 1 sessão só, mesma regra.
+  const divisaoIsolada = { default: [sessaoGrupos] };
+  return calcVolumeDivisaoCompleta(divisaoIsolada, limSessao)[0];
+}
+
+// Wrapper usado nos pontos de RENDERIZAÇÃO de uma divisão já selecionada
+// (resumo semanal e acordeão por sessão). Se a divisão de trabalho estiver
+// marcada como _naoCalculada (nasceu de "⚡ Divisão Rápida" e ainda não passou
+// por "Recalcular volume"), devolve tudo zerado em vez de calcular de verdade
+// — o personal monta a composição como quiser, sem o sistema preencher
+// número nenhum, até clicar explicitamente em recalcular. Modelos prontos
+// (templates fixos, LIBS, ou um modelo existente em ajuste via dc*) nunca têm
+// essa flag, então continuam calculando normalmente como sempre fizeram.
+function calcSeriesSessaoOuZerado(sessaoGrupos, limSessao, divisao){
+  if(divisao && divisao._naoCalculada){
+    const grupos = sessaoGrupos.map(({g}, idx) => ({
+      g, idx, exMin:0, exMax:0, exAlvo:0, serEx:0, freq:0,
+      serSessao:0, serSemana:0, exSemana:0, exMinSem:0, exMaxSem:0, serMinSem:0, serMaxSem:0,
+    }));
+    return { grupos, totalMin:0, totalAlvo:0, limSessao, estourou:false, forcouAbaixoDoMinimo:false, pct:0 };
+  }
+  return calcSeriesSessaoComLimite(sessaoGrupos, limSessao, divisao);
+}
+
+// Retorna o resultado de uma sessão usando os valores REALMENTE EXIBIDOS nas
+// linhas — override manual (_sessionOverrides) tem prioridade sobre o cálculo
+// puro da engine, exatamente como cada linha individual já decide o que
+// mostrar. Usado em todo lugar que soma/totaliza uma sessão (badge do header,
+// resumo semanal) — sem isso, reordenar um grupo (que não toca em overrides,
+// só troca posição) fazia o BADGE mostrar o total recalculado do zero,
+// enquanto as linhas continuavam mostrando os valores congelados antigos,
+// gerando uma divergência visual real entre o número grande e a soma das
+// linhas abaixo dele (bug confirmado: badge ia de 16s pra 28s sem nenhuma
+// linha mudar).
+function calcSeriesSessaoExibida(sessaoGrupos, limSessao, divisao, ti){
+  const calc = calcSeriesSessaoOuZerado(sessaoGrupos, limSessao, divisao);
+  const overrides = _s3._sessionOverrides || {};
+  let totalAlvo = 0;
+  const grupos = calc.grupos.map(g => {
+    const ov = overrides[String(ti) + '-' + g.g];
+    const exAlvo = ov ? ov.numEx : g.exAlvo;
+    const serEx  = ov ? ov.serEx : g.serEx;
+    const serSessao = ov ? ov.serSessao : g.serSessao;
+    totalAlvo += serSessao;
+    return { ...g, exAlvo, serEx, serSessao };
+  });
+  const estourou = totalAlvo > limSessao;
+  const pct = limSessao > 0 ? Math.round((totalAlvo/limSessao)*100) : 0;
+  return { ...calc, grupos, totalAlvo, estourou, pct };
 }
 
 function irParaDivisao(){
@@ -6240,8 +6537,15 @@ function irParaDivisao(){
   const freq    = val('pr-frequencia') || s.anamnese?.frequencia || '3x';
   const numDias = parseInt(freq) || 3;
 
-  _s3.divisaoOpcoes = gerarDivisoesBalanceadas(numDias);
-  _s3.divisaoIdx    = Math.min(_s3.divisaoIdx, _s3.divisaoOpcoes.length - 1);
+  // Preserva edições de divisão em andamento (dc*) ao apenas voltar pra esta tela —
+  // só gera opções do zero na primeira visita ou quando o nº de sessões mudou de fato.
+  // Sem isso, qualquer ida-e-volta entre Volume↔Divisão descartava o ajuste feito.
+  const jaTinhaOpcoes = _s3.divisaoOpcoes && _s3.divisaoOpcoes.length && _s3._divNumDias === numDias;
+  if(!jaTinhaOpcoes){
+    _s3.divisaoOpcoes = gerarDivisoesBalanceadas(numDias);
+    _s3._divNumDias   = numDias;
+    _s3.divisaoIdx    = Math.min(_s3.divisaoIdx||0, _s3.divisaoOpcoes.length - 1);
+  }
 
   hide('s3-volume');
   show('s3-divisao');
@@ -6252,22 +6556,270 @@ function irParaDivisao(){
     const chave = (selectedObj||'') + (val('pr-nivel')||'');
     if(_s3._limChave !== chave){ _s3.limSessao = undefined; _s3._limChave = chave; }
     iniciarLimiteSessao();
+    // Congela o card selecionado por padrão com o limite já resolvido e
+    // estável — feito aqui (depois de iniciarLimiteSessao), não antes, pra
+    // não congelar com um limite que está prestes a ser invalidado pela
+    // checagem de objetivo/nível acima.
+    if(!jaTinhaOpcoes){
+      const opInicial = _s3.divisaoOpcoes[_s3.divisaoIdx];
+      const divisaoInicial = opInicial && DIVISOES_TEMPLATES[opInicial.chave];
+      if(divisaoInicial && !divisaoInicial._naoCalculada){
+        sincronizarFreqGrupos(); // limpa grupos inativos fantasmas antes de congelar
+        dcCongelarValoresAtuais(divisaoInicial);
+      }
+    }
     renderTelaDivisao();
   });
 }
 
 function gerarDivisoesBalanceadas(numDias){
   const templates = getDivisoesDisponiveis(numDias);
+  const lim = _s3.limSessao || calcLimSessaoRecomendado();
   return templates.map(op => {
     const divisao = DIVISOES_TEMPLATES[op.chave] || DIVISOES[numDias];
-    const cargasSessao = divisao.default.map(sessao =>
-      sessao.reduce((total, {g}) => total + (_s3.volPorGrupo[g]?.sem || 0), 0)
+    // Usa o cálculo real pós-corte de limite (calcSeriesSessaoComLimite) — o mesmo
+    // que é exibido em cada sessão do acordeão — em vez do volume semanal alvo bruto
+    // por grupo (vg.sem), que ignorava a divisão por frequência e o corte de limite.
+    // Sem isso, o header mostrava média/desvio inconsistentes com o que cada sessão
+    // de fato entrega (ex: 3 sessões a 20/20s reais, mas header dizia 62/54/59s).
+    const cargasSessao = divisao.default.map(sessaoGrupos =>
+      calcSeriesSessaoOuZerado(sessaoGrupos, lim, divisao).totalAlvo
     );
     const media  = cargasSessao.reduce((a,b) => a+b, 0) / cargasSessao.length;
     const desvio = Math.sqrt(cargasSessao.reduce((s,v) => s + Math.pow(v-media,2), 0) / cargasSessao.length);
     return { ...op, cargasSessao, media: Math.round(media), desvio: Math.round(desvio*10)/10 };
   }).sort((a,b) => a.desvio - b.desvio);
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// EDITOR LEVE DE DIVISÃO (dc*) — ajuste rápido de sessões direto no acordeão,
+// sem modal, sem formulário de critérios. Por padrão NÃO salva nada: o ajuste
+// vive só em _s3 (estado da prescrição atual) e é descartado se o personal sair
+// sem usar "Salvar como modelo". Para catalogar formalmente, use o botão ✏
+// (abre o formulário completo, que sempre grava em LIBS.distribuicao).
+// ══════════════════════════════════════════════════════════════════════════
+
+// Liga/desliga o modo de edição leve para o card i. Ao ligar, clona a divisão
+// atual desse card para uma chave de trabalho própria (DIVISOES_TEMPLATES['edit-'+i])
+// e aponta op.chave pra ela — assim TODO o resto do sistema (cálculo de limite,
+// resumo semanal, geração de ficha) lê a versão editada sem precisar de nenhum
+// código especial em nenhuma outra função.
+function dcToggleEdicao(i){
+  const ligando = _s3._dcEditando !== i;
+  _s3._dcEditando = ligando ? i : undefined;
+  if(ligando){
+    const op = _s3.divisaoOpcoes[i]; if(!op) return;
+    const numDias = parseInt(val('pr-frequencia')||'3') || 3;
+    const origem  = DIVISOES_TEMPLATES[op.chave] || DIVISOES[numDias];
+    // Clone profundo — nunca muta o template original (compartilhado/persistido)
+    const chaveEdit = 'edit-' + i;
+    DIVISOES_TEMPLATES[chaveEdit] = {
+      default: origem.default.map(sessao => sessao.map(x => ({...x}))),
+      label:   [...origem.label],
+    };
+    op._chaveOriginal = op._chaveOriginal || op.chave; // guarda a original pra referência/restaurar nome
+    op.chave = chaveEdit;
+  }
+  // Reabre o acordeão deste card automaticamente e re-renderiza
+  setTimeout(() => {
+    const body  = $('acc-body-' + i);
+    const arrow = $('acc-arrow-' + i);
+    if(body)  body.style.display = 'block';
+    if(arrow) arrow.textContent  = '▼';
+  }, 0);
+  renderTelaDivisao();
+}
+
+// Reordena um grupo DENTRO da mesma sessão — sobe (-1) ou desce (+1) na lista.
+// A posição na lista determina a prioridade de corte em calcSeriesSessaoComLimite
+// (remove do último pro primeiro quando o limite aperta): grupo no topo = protegido.
+// NÃO recalcula nada — a chave de override (ti+g) não muda com a reordenação,
+// então o número exibido continua exatamente o mesmo até o personal clicar
+// "Recalcular volume" (cálculo automático só roda ao abrir a tela e nesse clique).
+function dcReordenarGrupo(cardIdx, ti, g, direcao){
+  const op = _s3.divisaoOpcoes[cardIdx]; if(!op) return;
+  const divisao = DIVISOES_TEMPLATES[op.chave]; if(!divisao) return;
+  const sessao = divisao.default[ti]; if(!sessao) return;
+  const idx = sessao.findIndex(x => x.g === g); if(idx < 0) return;
+  const novoIdx = idx + direcao;
+  if(novoIdx < 0 || novoIdx >= sessao.length) return;
+  [sessao[idx], sessao[novoIdx]] = [sessao[novoIdx], sessao[idx]];
+  renderTelaDivisao();
+}
+
+// Move um grupo da sessão ti para outra sessão (tiDestino), mesma divisão de
+// trabalho. NÃO recalcula nada — congela o número que o grupo já tinha
+// (override existente ou valor calculado que estava exibido) e o transfere
+// pra chave da sessão destino, já que a chave de override é "ti-g" e muda
+// quando o grupo muda de sessão. Os demais grupos das duas sessões (origem e
+// destino) mantêm seus próprios valores intactos.
+function dcMoverGrupo(cardIdx, ti, g, tiDestino){
+  const op = _s3.divisaoOpcoes[cardIdx]; if(!op) return;
+  const divisao = DIVISOES_TEMPLATES[op.chave]; if(!divisao) return;
+  tiDestino = parseInt(tiDestino);
+  if(tiDestino === ti || isNaN(tiDestino)) return;
+  const origemArr = divisao.default[ti]; const destinoArr = divisao.default[tiDestino];
+  if(!origemArr || !destinoArr) return;
+  const idx = origemArr.findIndex(x => x.g === g); if(idx < 0) return;
+
+  // Captura o valor ATUAL do grupo (override já existente, senão o calculado
+  // que estava sendo mostrado na sessão de origem) antes de mover.
+  const lim = _s3.limSessao || calcLimSessaoRecomendado();
+  const chaveAntiga = String(ti) + '-' + g;
+  let valorAtual = (_s3._sessionOverrides||{})[chaveAntiga];
+  if(!valorAtual){
+    const calcOrigem = calcSeriesSessaoOuZerado(origemArr, lim, divisao);
+    const grupoCalc = calcOrigem.grupos.find(x => x.g === g);
+    if(grupoCalc) valorAtual = { numEx: grupoCalc.exAlvo, serEx: grupoCalc.serEx, serSessao: grupoCalc.serSessao };
+  }
+
+  const [item] = origemArr.splice(idx, 1);
+  // Evita duplicar se o grupo já existe na sessão destino
+  const novoNaDestino = !destinoArr.some(x => x.g === item.g);
+  if(novoNaDestino) destinoArr.push(item);
+
+  if(!_s3._sessionOverrides) _s3._sessionOverrides = {};
+  delete _s3._sessionOverrides[chaveAntiga];
+  if(novoNaDestino && valorAtual){
+    // Congela o mesmo valor na chave nova — o grupo mantém o número que tinha.
+    _s3._sessionOverrides[String(tiDestino) + '-' + g] = valorAtual;
+  }
+  sincronizarFreqGrupos();
+  renderTelaDivisao();
+}
+
+// Adiciona um grupo a UMA sessão específica. Diferente de dcMoverGrupo: aqui a
+// duplicação ENTRE sessões é o objetivo (ex: Peitoral em A e também em C = 2x/sem),
+// só bloqueia duplicar dentro da MESMA sessão (não faz sentido o mesmo grupo 2x
+// na mesma sessão). O grupo novo entra ZERADO (sem cálculo nenhum) — os outros
+// grupos da sessão mantêm seus próprios valores intactos, sem recálculo.
+function dcAdicionarGrupo(cardIdx, ti, g){
+  const op = _s3.divisaoOpcoes[cardIdx]; if(!op) return;
+  const divisao = DIVISOES_TEMPLATES[op.chave]; if(!divisao) return;
+  const sessao = divisao.default[ti]; if(!sessao) return;
+  if(sessao.some(x => x.g === g)) return; // já está nesta sessão, não duplica
+  sessao.push({ g });
+  if(!_s3._sessionOverrides) _s3._sessionOverrides = {};
+  _s3._sessionOverrides[String(ti) + '-' + g] = { numEx: 0, serEx: 0, serSessao: 0 };
+  sincronizarFreqGrupos();
+  renderTelaDivisao();
+}
+
+// Remove um grupo de uma sessão específica. Se era a última sessão em que esse
+// grupo aparecia na divisão, ele passa a ficar "ausente" — o aviso de cobertura
+// vai sinalizar isso automaticamente no próximo render (via dcVerificarCobertura).
+// Os demais grupos da sessão mantêm seus próprios valores intactos, sem recálculo.
+function dcRemoverGrupo(cardIdx, ti, g){
+  const op = _s3.divisaoOpcoes[cardIdx]; if(!op) return;
+  const divisao = DIVISOES_TEMPLATES[op.chave]; if(!divisao) return;
+  const sessao = divisao.default[ti]; if(!sessao) return;
+  const idx = sessao.findIndex(x => x.g === g); if(idx < 0) return;
+  sessao.splice(idx, 1);
+  if(_s3._sessionOverrides) delete _s3._sessionOverrides[String(ti) + '-' + g];
+  sincronizarFreqGrupos();
+  renderTelaDivisao();
+}
+
+// Verifica cobertura: grupos ativos (selecionados na tela de Volume) que NÃO aparecem
+// em nenhuma sessão da divisão de trabalho atual. Usado para o aviso visual ao vivo
+// durante a edição — o personal vê na hora se "esqueceu" algum grupo selecionado.
+function dcVerificarCobertura(cardIdx){
+  const op = _s3.divisaoOpcoes[cardIdx]; if(!op) return {ausentes:[], extras:[]};
+  const divisao = DIVISOES_TEMPLATES[op.chave]; if(!divisao) return {ausentes:[], extras:[]};
+  const noModelo = new Set();
+  divisao.default.forEach(sessao => sessao.forEach(({g}) => noModelo.add(g)));
+  const ativos = Object.keys(_s3.volPorGrupo).filter(g => _s3.volPorGrupo[g]?.ativo !== false);
+  const ausentes = ativos.filter(g => !noModelo.has(g));
+  const extras   = [...noModelo].filter(g => !ativos.includes(g));
+  return { ausentes, extras };
+}
+
+// Congela os valores ATUALMENTE CALCULADOS de uma divisão inteira em
+// overrides explícitos — usado assim que uma divisão é exibida/selecionada
+// (entrada na tela, ou clique num card), e de novo logo após "Recalcular
+// volume" terminar de calcular. A partir desse momento, qualquer ação
+// (reordenar, mover, adicionar, remover) opera sobre números já congelados,
+// nunca mais cai de volta no cálculo puro da engine — que só deve aparecer
+// nesses dois momentos exatos (abertura do modelo e clique em recalcular),
+// nunca como efeito colateral de reordenar ou qualquer outro ajuste.
+function dcCongelarValoresAtuais(divisao){
+  if(!_s3._sessionOverrides) _s3._sessionOverrides = {};
+  // Não sobrescreve se JÁ existir pelo menos um override desta divisão —
+  // significa que o personal já ajustou algo manualmente, e congelar de novo
+  // jogaria fora esse ajuste. Só congela quando a divisão está "limpa"
+  // (acabou de ser selecionada pela primeira vez, ou acabou de recalcular).
+  const jaTemOverride = divisao.default.some((sessaoGrupos, ti) =>
+    sessaoGrupos.some(({g}) => (String(ti) + '-' + g) in _s3._sessionOverrides)
+  );
+  if(jaTemOverride) return;
+  divisao.default.forEach((sessaoGrupos, ti) => {
+    const calc = calcSeriesSessaoComLimite(sessaoGrupos, _s3.limSessao || calcLimSessaoRecomendado(), divisao);
+    calc.grupos.forEach(({g, exAlvo, serEx, serSessao}) => {
+      _s3._sessionOverrides[String(ti) + '-' + g] = { numEx: exAlvo, serEx, serSessao };
+    });
+  });
+}
+
+// Descarta os ajustes manuais de exercício/série (_sessionOverrides) feitos via
+// input direto nas sessões desta divisão, e deixa calcSeriesSessaoComLimite
+// recalcular tudo do zero — respeitando a ordem de prioridade atual dos grupos
+// (definida pelo reorder dc*) e o limite de séries/sessão. Não afeta os alvos
+// de volume semanal por grupo (_s3.volPorGrupo), só a distribuição por sessão.
+function dcRecalcularVolume(cardIdx){
+  const op = _s3.divisaoOpcoes[cardIdx]; if(!op) return;
+  const divisao = DIVISOES_TEMPLATES[op.chave]; if(!divisao) return;
+  if(_s3._sessionOverrides){
+    divisao.default.forEach((sessao, ti) => {
+      sessao.forEach(({g}) => { delete _s3._sessionOverrides[String(ti) + '-' + g]; });
+    });
+  }
+  // Libera o cálculo real — divisões criadas do zero (⚡ Divisão Rápida) ficam
+  // com exercício/série zerados até este clique explícito.
+  divisao._naoCalculada = false;
+  sincronizarFreqGrupos();
+  // Recalcula puro e imediatamente congela esse resultado — assim o próximo
+  // reorder/mover/adicionar não recai de volta no cálculo puro.
+  dcCongelarValoresAtuais(divisao);
+  renderTelaDivisao();
+}
+
+// Abre o formulário completo da biblioteca (preencherModalDistrib) pré-preenchido
+// com a divisão de trabalho atual — converte o formato interno (ids sem acento)
+// de volta para nomes de display (com acento), pro personal só completar os
+// critérios clínicos/objetivos e salvar permanentemente em LIBS.distribuicao.
+function dcSalvarComoModelo(cardIdx){
+  const op = _s3.divisaoOpcoes[cardIdx]; if(!op) return;
+  const divisao = DIVISOES_TEMPLATES[op.chave]; if(!divisao) return;
+  const s = getActive();
+  const numDias = parseInt(val('pr-frequencia')||'3') || 3;
+  const nivelCodigo = val('pr-nivel') || s?.anamnese?.nivel || '';
+  const NIVEL_LONGO = {Inic:'Iniciante', Inte:'Intermediário', Avan:'Avançado'};
+  const nivelLongo  = NIVEL_LONGO[nivelCodigo] || '';
+  const dias = divisao.default.map((sessao, ti) => ({
+    label: divisao.label[ti] || ('Treino ' + String.fromCharCode(65+ti)),
+    enfase: '',
+    grupos: sessao.map(({g}) => {
+      const gm = GRUPOS_MAPA.find(x => x.id === g);
+      return gm ? gm.label : g; // usa o nome de display correspondente
+    }),
+  }));
+  // Pseudo-objeto no formato esperado por preencherModalDistrib (sem id = "novo")
+  // — importa nível/objetivo do perfil atual, igual abrirNovaDivisaoCompleta,
+  // já que este caminho também nasce de uma prescrição em curso.
+  const draft = {
+    id: '', nome: (op.nome||'').replace(/^[★⚡]\s*/, '').replace(/\s*\(não salva\)$/,'') + ' (ajustado)',
+    tipo_divisao: 'Personalizado', freq: numDias + 'x', freq_musculo: '',
+    ref: '', nivel_min: nivelLongo, nivel_max: '',
+    objetivos_compativeis: selectedObj ? [selectedObj] : [],
+    freq_compativeis: [numDias + 'x'],
+    bloq_nivel: [], bloq_cond: [], bloq_obj: [],
+    dias, uso_itens: [], contra_itens: [], vant: '', desv: '',
+  };
+  preencherModalDistrib(draft);
+  $('modal-distrib').classList.remove('hidden');
+  _pendingDivisaoCallback = true;
+}
+
 
 function renderTelaDivisao(){
   sincronizarFreqGrupos();
@@ -6289,7 +6841,7 @@ function renderTelaDivisao(){
     divisao.default.forEach(s => s.forEach(({g}) => { freqNoModelo[g] = (freqNoModelo[g]||0)+1; }));
 
     // Badge compatibilidade
-    const gruposOff = Object.keys(freqNoModelo).filter(g => _s3.volPorGrupo[g]?.ativo === false);
+    const gruposOff = GRUPOS_MAPA.map(({id}) => id).filter(g => g in freqNoModelo && _s3.volPorGrupo[g]?.ativo === false);
 
     // ── Card ────────────────────────────────────────────────────────────────
     const card = document.createElement('div');
@@ -6321,22 +6873,46 @@ function renderTelaDivisao(){
     const badgeEl = document.createElement('div');
     if(i===0) badgeEl.innerHTML = '<span style="font-size:10px;color:var(--accent);background:var(--accent-dim);padding:2px 7px;border-radius:4px;border:1px solid rgba(0,229,160,.3);font-weight:700">↑ EQUILIBRADO</span>';
 
-    // Edit button for each divisão card
+    // Edit button for each divisão card — abre o formulário completo da biblioteca
+    // (objetivo, nível, bloqueios, critérios). Pensado pra CATALOGAR um modelo formal.
     const editBtn = document.createElement('button');
     editBtn.className='btn btn-ghost btn-sm';
     editBtn.style.cssText='font-size:11px;padding:3px 8px;flex-shrink:0';
     editBtn.textContent='✏';
-    editBtn.title='Editar esta divisão';
+    editBtn.title='Editar critérios desta divisão (formulário completo da biblioteca)';
     editBtn.addEventListener('click', function(e){
       e.stopPropagation();
       const op = _s3.divisaoOpcoes[i];
       if(op) abrirEditarDivisaoStep2(op.chave);
     });
-    header.appendChild(radioEl); header.appendChild(infoEl); header.appendChild(badgeEl); header.appendChild(editBtn);
+
+    // Botão "Ajustar sessões" — editor leve (dc*): reordenar/mover grupo direto no
+    // acordeão, sem formulário, sem salvar nada por padrão. Ver dcToggleEdicao().
+    const dcBtn = document.createElement('button');
+    dcBtn.className='btn btn-ghost btn-sm';
+    dcBtn.style.cssText='font-size:11px;padding:3px 8px;flex-shrink:0';
+    const dcAtivo = _s3._dcEditando === i;
+    dcBtn.textContent = dcAtivo ? '✓ Concluir ajuste' : '⚙ Ajustar sessões';
+    dcBtn.title = 'Reordenar ou mover grupos entre sessões — ajuste rápido, não salva modelo';
+    if(dcAtivo) dcBtn.style.cssText += ';background:var(--accent-dim);color:var(--accent);border-color:var(--accent)';
+    dcBtn.addEventListener('click', function(e){
+      e.stopPropagation();
+      dcToggleEdicao(i);
+    });
+
+    header.appendChild(radioEl); header.appendChild(infoEl); header.appendChild(badgeEl); header.appendChild(dcBtn); header.appendChild(editBtn);
     header.dataset.idx = i;
     header.addEventListener('click', function(){
       _s3.divisaoIdx = parseInt(this.dataset.idx);
-      sincronizarFreqGrupos(); renderTelaDivisao();
+      const opSel = _s3.divisaoOpcoes[_s3.divisaoIdx];
+      const divisaoSel = opSel && DIVISOES_TEMPLATES[opSel.chave];
+      if(divisaoSel && !divisaoSel._naoCalculada){
+        sincronizarFreqGrupos(); // limpa grupos inativos fantasmas antes de congelar
+        dcCongelarValoresAtuais(divisaoSel);
+      } else {
+        sincronizarFreqGrupos();
+      }
+      renderTelaDivisao();
     });
 
     // Mini barras de carga
@@ -6365,7 +6941,7 @@ function renderTelaDivisao(){
       'width:100%;padding:7px 14px;background:transparent;border:none;cursor:pointer;' +
       'text-align:left;display:flex;align-items:center;gap:6px;font-size:11px;' +
       'font-family:var(--mono);color:var(--text3);letter-spacing:.05em;font-weight:600';
-    btnExpand.innerHTML = '<span id="acc-arrow-' + i + '">▶</span> VER DISTRIBUIÇÃO DOS TREINOS';
+    btnExpand.innerHTML = '<span id="acc-arrow-' + i + '">' + (dcAtivo ? '▼' : '▶') + '</span> VER DISTRIBUIÇÃO DOS TREINOS';
     btnExpand.addEventListener('click', function(e){
       e.stopPropagation();
       const body  = $('acc-body-' + this.dataset.accIdx);
@@ -6379,12 +6955,12 @@ function renderTelaDivisao(){
     // Accordion body
     const accBody = document.createElement('div');
     accBody.id = 'acc-body-' + i;
-    accBody.style.cssText = 'display:none;padding:10px 12px;background:var(--bg4);border-top:1px solid var(--border)';
+    accBody.style.cssText = 'display:' + (dcAtivo ? 'block' : 'none') + ';padding:10px 12px;background:var(--bg4);border-top:1px solid var(--border)';
 
     // ── Resumo semanal: soma de todas as sessões ────────────────────────────
     const volAtualPorGrupo = {};
-    divisao.default.forEach(sessaoGrupos => {
-      const calc = calcSeriesSessaoComLimite(sessaoGrupos, lim);
+    divisao.default.forEach((sessaoGrupos, tiResumo) => {
+      const calc = calcSeriesSessaoExibida(sessaoGrupos, lim, divisao, tiResumo);
       calc.grupos.forEach(({g, exAlvo, serEx: sExT}) => {
         if(!volAtualPorGrupo[g]) volAtualPorGrupo[g] = {exSemana:0, serSemana:0};
         volAtualPorGrupo[g].exSemana  += exAlvo;
@@ -6401,7 +6977,8 @@ function renderTelaDivisao(){
 
     const semGrid = document.createElement('div');
     semGrid.style.cssText = 'display:flex;flex-wrap:wrap;gap:5px';
-    Object.keys(freqNoModelo).forEach(g => {
+    GRUPOS_MAPA.forEach(({id: g}) => {
+      if(!(g in freqNoModelo)) return;
       const vg = _s3.volPorGrupo[g]; if(!vg||vg.ativo===false) return;
       const freq_g = freqNoModelo[g]||1;
       const serEx  = vg.serEx || _s3.seriesPorEx;
@@ -6425,12 +7002,88 @@ function renderTelaDivisao(){
     semResumo.appendChild(semGrid);
     accBody.appendChild(semResumo);
 
+    // ── Editor leve (dc*): aviso de cobertura ao vivo + ação salvar como modelo ──
+    if(dcAtivo){
+      const { ausentes, extras } = dcVerificarCobertura(i);
+      if(ausentes.length){
+        const avisoAusentes = document.createElement('div');
+        avisoAusentes.style.cssText =
+          'margin-bottom:8px;padding:8px 10px;border-radius:6px;border:1px solid var(--amber);' +
+          'background:var(--amber-dim)';
+        const titAus = document.createElement('div');
+        titAus.style.cssText = 'font-size:11px;color:var(--amber);margin-bottom:6px';
+        titAus.textContent = '⚠ Selecionados na tela de Volume mas AUSENTES desta divisão — escolha uma sessão e insira:';
+        avisoAusentes.appendChild(titAus);
+        const listaAus = document.createElement('div');
+        listaAus.style.cssText = 'display:flex;flex-direction:column;gap:4px';
+        ausentes.forEach(g => {
+          const linha = document.createElement('div');
+          linha.style.cssText = 'display:flex;align-items:center;gap:6px';
+          const nomeSpan = document.createElement('span');
+          nomeSpan.style.cssText = 'font-size:11px;font-weight:600;color:var(--text);min-width:90px';
+          nomeSpan.textContent = LABEL[g]||g;
+          const selSessao = document.createElement('select');
+          selSessao.style.cssText = 'font-size:10px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;background:var(--bg2);color:var(--text2)';
+          divisao.default.forEach((_, tiOpt) => {
+            const opt = document.createElement('option');
+            opt.value = tiOpt;
+            opt.textContent = (divisao.label[tiOpt]||'Treino '+String.fromCharCode(65+tiOpt));
+            selSessao.appendChild(opt);
+          });
+          const btnInserir = document.createElement('button');
+          btnInserir.className = 'btn btn-ghost btn-sm';
+          btnInserir.style.cssText = 'font-size:10px;padding:2px 8px';
+          btnInserir.textContent = '+ Inserir';
+          btnInserir.addEventListener('click', function(e){
+            e.stopPropagation();
+            dcAdicionarGrupo(i, parseInt(selSessao.value), g);
+          });
+          linha.appendChild(nomeSpan); linha.appendChild(selSessao); linha.appendChild(btnInserir);
+          listaAus.appendChild(linha);
+        });
+        avisoAusentes.appendChild(listaAus);
+        accBody.appendChild(avisoAusentes);
+      }
+      if(extras.length){
+        const avisoExtras = document.createElement('div');
+        avisoExtras.style.cssText =
+          'margin-bottom:8px;padding:6px 10px;border-radius:6px;border:1px solid var(--amber);' +
+          'background:var(--amber-dim);font-size:11px;color:var(--amber)';
+        avisoExtras.textContent = '· Presentes nesta divisão mas desligados na tela de Volume: ' + extras.map(g=>LABEL[g]||g).join(', ') + '.';
+        accBody.appendChild(avisoExtras);
+      }
+      if(!ausentes.length && !extras.length){
+        const okCobertura = document.createElement('div');
+        okCobertura.style.cssText =
+          'margin-bottom:10px;padding:6px 10px;border-radius:6px;border:1px solid var(--accent);' +
+          'background:var(--accent-dim);font-size:11px;color:var(--accent)';
+        okCobertura.textContent = '✓ Todos os grupos selecionados estão cobertos por esta divisão.';
+        accBody.appendChild(okCobertura);
+      }
+
+      const dcAcoes = document.createElement('div');
+      dcAcoes.style.cssText = 'display:flex;gap:8px;margin-bottom:10px';
+      const btnRecalcular = document.createElement('button');
+      btnRecalcular.className = 'btn btn-ghost btn-sm';
+      btnRecalcular.textContent = '↺ Recalcular volume';
+      btnRecalcular.title = 'Descarta ajustes manuais de exercício/série e recalcula tudo automaticamente pelas regras de prioridade e limite';
+      btnRecalcular.addEventListener('click', function(e){ e.stopPropagation(); dcRecalcularVolume(i); });
+      const btnSalvarModelo = document.createElement('button');
+      btnSalvarModelo.className = 'btn btn-ghost btn-sm';
+      btnSalvarModelo.textContent = '💾 Salvar como modelo';
+      btnSalvarModelo.title = 'Abre o formulário completo pra catalogar este ajuste como modelo reutilizável';
+      btnSalvarModelo.addEventListener('click', function(e){ e.stopPropagation(); dcSalvarComoModelo(i); });
+      dcAcoes.appendChild(btnRecalcular);
+      dcAcoes.appendChild(btnSalvarModelo);
+      accBody.appendChild(dcAcoes);
+    }
+
     // ── Treinos ─────────────────────────────────────────────────────────────
     divisao.default.forEach((sessaoGrupos, ti) => {
       const letra    = String.fromCharCode(65+ti);
       const label_d  = (divisao.label[ti]||'Treino '+letra).replace(/^Treino [A-Z] — /,'');
-      const calcSess = calcSeriesSessaoComLimite(sessaoGrupos, lim);
-      const {totalAlvo, estourou, pct: pctLim} = calcSess;
+      const calcSess = calcSeriesSessaoExibida(sessaoGrupos, lim, divisao, ti);
+      const {totalAlvo, estourou, forcouAbaixoDoMinimo, pct: pctLim} = calcSess;
       const corLim   = estourou ? 'var(--red)' : pctLim>=90 ? 'var(--amber)' : 'var(--accent)';
       const diffMsg  = estourou ? '+' + (totalAlvo-lim) + 's' : totalAlvo + '/' + lim + 's';
 
@@ -6457,6 +7110,19 @@ function renderTelaDivisao(){
         '<span id="lim-bar-label-' + i + '-' + ti + '" style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + corLim + ';min-width:60px;text-align:right">' +
           (estourou ? '⚠ ' : '') + diffMsg + ' (' + pctLim + '%)' +
         '</span>';
+
+      // Aviso: volume mínimo definido não cabe no limite de séries/sessão
+      if(forcouAbaixoDoMinimo && !estourou){
+        const avisoMin = document.createElement('div');
+        avisoMin.style.cssText =
+          'padding:5px 12px;background:var(--amber-dim);border-bottom:1px solid var(--border);' +
+          'font-size:11px;color:var(--amber)';
+        avisoMin.textContent = '⚠ O volume mínimo definido não cabe no limite de séries/sessão — alguns grupos foram reduzidos abaixo do mínimo (ou removidos desta sessão) para respeitar o limite.';
+        treinoDiv.appendChild(thd);
+        treinoDiv.appendChild(avisoMin);
+      } else {
+        treinoDiv.appendChild(thd);
+      }
 
       // Linhas de grupo
       const tbody = document.createElement('div');
@@ -6509,9 +7175,9 @@ function renderTelaDivisao(){
         function mkInp(val, id, field, w){
           const inp = document.createElement('input');
           inp.type='number'; inp.value=val; inp.id=id; inp.min=1; inp.max=20;
-          inp.dataset.g=g; inp.dataset.ti=ti; inp.dataset.field=field;
+          inp.dataset.g=g; inp.dataset.ti=ti; inp.dataset.field=field; inp.dataset.cardIdx=i;
           inp.style.cssText =
-            'width:' + w + 'px;background:var(--bg4);border-top:1px solid var(--border);' +
+            'width:3.2em;background:var(--bg4);border-top:1px solid var(--border);' +
             'border-bottom:1px solid var(--border);border-left:none;border-right:none;' +
             'padding:2px 3px;color:var(--text);font-family:var(--mono);font-size:12px;' +
             'text-align:center;outline:none';
@@ -6530,7 +7196,7 @@ function renderTelaDivisao(){
         const serVal = _ov ? _ov.serEx : sEx;
 
         ctrl.appendChild(mkBtn('−', {g, ti, field:'ex', pair: idEx}));
-        ctrl.appendChild(mkInp(exVal, idEx, 'ex', 34));
+        ctrl.appendChild(mkInp(exVal, idEx, 'ex'));
         ctrl.appendChild(mkBtn('+', {g, ti, field:'ex', pair: idEx}));
 
         const x = document.createElement('span');
@@ -6539,7 +7205,7 @@ function renderTelaDivisao(){
         ctrl.appendChild(x);
 
         ctrl.appendChild(mkBtn('−', {g, ti, field:'ser', pair: idSer}));
-        ctrl.appendChild(mkInp(serVal, idSer, 'ser', 28));
+        ctrl.appendChild(mkInp(serVal, idSer, 'ser'));
         ctrl.appendChild(mkBtn('+', {g, ti, field:'ser', pair: idSer}));
 
         const eq = document.createElement('span');
@@ -6549,10 +7215,89 @@ function renderTelaDivisao(){
         ctrl.appendChild(eq);
 
         row.appendChild(dot); row.appendChild(nome); row.appendChild(barWrap); row.appendChild(ctrl);
+
+        // ── Controles do editor leve (dc*): reordenar dentro da sessão + mover entre sessões ──
+        if(dcAtivo){
+          const dcCtrl = document.createElement('div');
+          dcCtrl.style.cssText = 'display:flex;align-items:center;gap:3px;flex-shrink:0;margin-left:6px;padding-left:6px;border-left:1px solid var(--border)';
+
+          const posIdx = sessaoGrupos.findIndex(x => x.g === g);
+          const btnUp = document.createElement('button');
+          btnUp.textContent = '↑';
+          btnUp.title = 'Subir prioridade nesta sessão (protege contra corte de limite)';
+          btnUp.disabled = posIdx <= 0;
+          btnUp.style.cssText = 'width:20px;height:20px;font-size:11px;line-height:1;padding:0;cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:3px;color:var(--text2);opacity:' + (posIdx<=0?'.35':'1');
+          btnUp.addEventListener('click', function(e){ e.stopPropagation(); dcReordenarGrupo(i, ti, g, -1); });
+
+          const btnDown = document.createElement('button');
+          btnDown.textContent = '↓';
+          btnDown.title = 'Baixar prioridade nesta sessão';
+          btnDown.disabled = posIdx >= sessaoGrupos.length - 1;
+          btnDown.style.cssText = 'width:20px;height:20px;font-size:11px;line-height:1;padding:0;cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:3px;color:var(--text2);opacity:' + (posIdx>=sessaoGrupos.length-1?'.35':'1');
+          btnDown.addEventListener('click', function(e){ e.stopPropagation(); dcReordenarGrupo(i, ti, g, 1); });
+
+          const posLabel = document.createElement('span');
+          posLabel.style.cssText = 'font-family:var(--mono);font-size:9px;color:var(--text3);min-width:16px;text-align:center';
+          posLabel.textContent = '#' + (posIdx+1);
+
+          const selMover = document.createElement('select');
+          selMover.style.cssText = 'font-size:10px;padding:2px 3px;border:1px solid var(--border);border-radius:3px;background:var(--bg2);color:var(--text2);max-width:90px';
+          const optPlaceholder = document.createElement('option');
+          optPlaceholder.value = ''; optPlaceholder.textContent = '→ mover p/...';
+          selMover.appendChild(optPlaceholder);
+          divisao.default.forEach((_, tiOutro) => {
+            if(tiOutro === ti) return;
+            const opt = document.createElement('option');
+            opt.value = tiOutro;
+            opt.textContent = (divisao.label[tiOutro]||'Treino '+String.fromCharCode(65+tiOutro)).replace(/^Treino /,'');
+            selMover.appendChild(opt);
+          });
+          selMover.addEventListener('click', function(e){ e.stopPropagation(); });
+          selMover.addEventListener('change', function(e){
+            e.stopPropagation();
+            if(this.value !== '') dcMoverGrupo(i, ti, g, this.value);
+          });
+
+          const btnRemover = document.createElement('button');
+          btnRemover.textContent = '✕';
+          btnRemover.title = 'Remover este grupo desta sessão';
+          btnRemover.style.cssText = 'width:20px;height:20px;font-size:11px;line-height:1;padding:0;cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:3px;color:var(--red)';
+          btnRemover.addEventListener('click', function(e){ e.stopPropagation(); dcRemoverGrupo(i, ti, g); });
+
+          dcCtrl.appendChild(btnUp); dcCtrl.appendChild(posLabel); dcCtrl.appendChild(btnDown); dcCtrl.appendChild(selMover); dcCtrl.appendChild(btnRemover);
+          row.appendChild(dcCtrl);
+        }
+
         tbody.appendChild(row);
       });
 
-      treinoDiv.appendChild(thd);
+      // Adicionar grupo a esta sessão (editor leve) — permite repetir um grupo já
+      // presente em outra sessão (ex: Peitoral em A e também em C = 2x/semana).
+      if(dcAtivo){
+        const addRow = document.createElement('div');
+        addRow.style.cssText = 'display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg4)';
+        const selAdd = document.createElement('select');
+        selAdd.style.cssText = 'flex:1;max-width:200px;font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:3px;background:var(--bg2);color:var(--text2)';
+        const optPh = document.createElement('option');
+        optPh.value=''; optPh.textContent='+ adicionar grupo a esta sessão...';
+        selAdd.appendChild(optPh);
+        GRUPOS_MAPA.forEach(({id,label:lbl}) => {
+          const jaNaSessao = sessaoGrupos.some(x=>x.g===id);
+          const opt = document.createElement('option');
+          opt.value = id;
+          opt.textContent = lbl + (jaNaSessao ? ' (já nesta sessão)' : '');
+          opt.disabled = jaNaSessao;
+          selAdd.appendChild(opt);
+        });
+        selAdd.addEventListener('click', function(e){ e.stopPropagation(); });
+        selAdd.addEventListener('change', function(e){
+          e.stopPropagation();
+          if(this.value !== '') dcAdicionarGrupo(i, ti, this.value);
+        });
+        addRow.appendChild(selAdd);
+        tbody.appendChild(addRow);
+      }
+
       treinoDiv.appendChild(tbody);
       accBody.appendChild(treinoDiv);
     });
@@ -6565,13 +7310,70 @@ function renderTelaDivisao(){
   setTimeout(() => atualizarResumоSemanal(_s3.divisaoIdx), 0);
 }
 
-// ── Abrir modal-distrib a partir do step 2 ──────────────────────────────
-function abrirNovaDivisaoStep2(){
-  // Abrir modal de nova divisão e após salvar, recarregar as opções
+// ── Abrir modal-distrib a partir do step 2, PRÉ-PREENCHIDO com o perfil atual ──
+// Importa nível/frequência/objetivo já selecionados na prescrição em curso, pra
+// não obrigar o personal a redigitar o que já escolheu. Critérios clínicos,
+// vantagens/desvantagens e referência ficam em branco — pra o personal refinar.
+function abrirNovaDivisaoCompleta(){
+  const s = getActive();
+  const nivelCodigo = val('pr-nivel') || s?.anamnese?.nivel || '';
+  const NIVEL_LONGO = {Inic:'Iniciante', Inte:'Intermediário', Avan:'Avançado'};
+  const nivelLongo  = NIVEL_LONGO[nivelCodigo] || '';
+  const freq        = val('pr-frequencia') || s?.anamnese?.frequencia || '3x';
+
+  const draft = {
+    id: '', nome: '',
+    tipo_divisao: 'Full Body', freq, freq_musculo: '2x',
+    ref: '',
+    // Nível mínimo = nível atual do aluno (o modelo nasce pensado pra esse perfil,
+    // mas o personal pode abrir o range depois); máximo fica livre.
+    nivel_min: nivelLongo, nivel_max: '',
+    objetivos_compativeis: selectedObj ? [selectedObj] : [],
+    freq_compativeis: [freq],
+    bloq_nivel: [], bloq_cond: [], bloq_obj: [],
+    dias: [], uso_itens: [], contra_itens: [], vant: '', desv: '',
+  };
+  preencherModalDistrib(draft);
   $('modal-distrib').classList.remove('hidden');
-  preencherModalDistrib(null);
-  // Hook: após salvar, recarregar divisões
   _pendingDivisaoCallback = true;
+}
+
+// ── Divisão rápida (ephemeral): N sessões vazias, sem critérios, sem salvar nada.
+// O personal distribui os grupos manualmente usando os controles do editor leve
+// (dc*) — reorder/mover/adicionar/remover — que já entram ativados. Se quiser
+// guardar o resultado, o botão "💾 Salvar como modelo" (já presente no editor
+// leve) abre abrirNovaDivisaoCompleta-equivalente via dcSalvarComoModelo,
+// pré-preenchido com o que foi montado aqui.
+function abrirNovaDivisaoRapida(){
+  const s       = getActive(); if(!s) return;
+  const freq    = val('pr-frequencia') || s.anamnese?.frequencia || '3x';
+  const numDias = parseInt(freq) || 3;
+
+  const chave = 'rapida-' + Date.now();
+  DIVISOES_TEMPLATES[chave] = {
+    default: Array.from({length: numDias}, () => []),
+    label:   Array.from({length: numDias}, (_, ti) => 'Treino ' + String.fromCharCode(65+ti)),
+    // Divisão criada do zero — fica com exercício/série zerados (mesmo depois
+    // de adicionar grupos) até o personal clicar "Recalcular volume". Diferente
+    // de ajustar um modelo existente, que mantém os números calculados como
+    // estavam durante qualquer mover/reordenar/add/remover.
+    _naoCalculada: true,
+  };
+
+  if(!_s3.divisaoOpcoes) _s3.divisaoOpcoes = [];
+  const novoOp = {
+    nome: '⚡ Divisão rápida (não salva)',
+    treinos: DIVISOES_TEMPLATES[chave].label.slice(),
+    chave,
+    cargasSessao: new Array(numDias).fill(0),
+    media: 0, desvio: 0,
+  };
+  _s3.divisaoOpcoes.push(novoOp);
+  const novoIdx = _s3.divisaoOpcoes.length - 1;
+  _s3.divisaoIdx = novoIdx;
+  _s3._dcEditando = novoIdx; // entra direto no editor leve, sessões vazias prontas pra distribuir
+
+  renderTelaDivisao();
 }
 
 function abrirEditarDivisaoStep2(chave){
@@ -6615,7 +7417,13 @@ function stepGrupoSessao(btn){
 function atualizarTotalSessao(inp){
   const g       = inp.dataset.g;
   const ti      = String(inp.dataset.ti);
-  const cardIdx = _s3.divisaoIdx;
+  // Usa o índice do CARD a que este input pertence (gravado no próprio input),
+  // não _s3.divisaoIdx (que reflete qual card está "selecionado" no momento,
+  // podendo ser outro card diferente do que o personal está de fato editando
+  // dentro do acordeão aberto — bug real: editar a divisão rápida enquanto
+  // outro card estava selecionado fazia a busca por id falhar silenciosamente,
+  // deixando o "=Xs" e o override nunca atualizados, mesmo o input mudando).
+  const cardIdx = inp.dataset.cardIdx !== undefined ? parseInt(inp.dataset.cardIdx) : _s3.divisaoIdx;
   const inpEx   = $('iex-'  + cardIdx + '-' + ti + '-' + g);
   const inpSer  = $('iser-' + cardIdx + '-' + ti + '-' + g);
   const totEl   = $('itot-' + cardIdx + '-' + ti + '-' + g);
@@ -6716,6 +7524,20 @@ function sincronizarFreqGrupos(){
   const freq    = val('pr-frequencia') || '3x';
   const numDias = parseInt(freq) || 3;
   const divisao = DIVISOES_TEMPLATES[op.chave] || DIVISOES[numDias];
+  // Remove fisicamente grupos INATIVOS (desligados na tela de Volume) das
+  // sessões da divisão atual — sem isso, o grupo desativado continuava como
+  // um item "fantasma" no array físico, nunca desenhado na tela mas ainda
+  // ocupando uma posição real. Isso quebrava o zebrado (índice de exibição
+  // desalinhado do índice real) e o reorder (subir/descer um grupo podia
+  // trocar de posição com o fantasma sem nenhum efeito visual, exigindo um
+  // clique extra pra de fato mover além dele, e arrastando o override errado
+  // pra chave de sessão errada).
+  divisao.default.forEach(sessao => {
+    for(let i = sessao.length - 1; i >= 0; i--){
+      const vg = _s3.volPorGrupo[sessao[i].g];
+      if(!vg || vg.ativo === false) sessao.splice(i, 1);
+    }
+  });
   GRUPOS_MAPA.forEach(({id}) => { if(_s3.volPorGrupo[id]) _s3.volPorGrupo[id].freq = 0; });
   divisao.default.forEach(sessao => {
     sessao.forEach(({g}) => { if(_s3.volPorGrupo[g]) _s3.volPorGrupo[g].freq++; });
@@ -6774,7 +7596,7 @@ Eles não serão incluídos na ficha. Continuar assim mesmo?`)) return;
   // Ler inputs do accordion (se aberto), overrides salvos, ou calcular
   const sessionDataByTreino = divisao.default.map((sessaoGrupos, ti) => {
     // 1ª prioridade: DOM (accordion aberto)
-    const fromDOM = lerSessionDataDOM(cardIdx, ti);
+    const fromDOM = lerSessionDataDOM(cardIdx, ti, sessaoGrupos);
     if(fromDOM.length > 0) return fromDOM;
     // 2ª prioridade: overrides salvos pelo usuário ao editar inputs
     const overrides = _s3._sessionOverrides || {};
@@ -6981,7 +7803,7 @@ function renderTreinoAtivo(){
           style="margin-top:6px;max-height:160px;overflow-y:auto;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:4px"></div>
       </td>
       <td><input type="number" value="${ex.series}" min="1" max="10"
-        style="width:46px;background:transparent;border:1px solid transparent;padding:4px 5px;color:var(--text);font-family:var(--mono);font-size:12px;border-radius:3px;outline:none"
+        style="width:3.2em;background:transparent;border:1px solid transparent;padding:4px 5px;color:var(--text);font-family:var(--mono);font-size:12px;border-radius:3px;outline:none"
         onfocus="this.style.borderColor='var(--accent2)';this.style.background='var(--bg4)'"
         onblur="this.style.borderColor='transparent';this.style.background='transparent';atualizarCampo(${_s3.treinoAtivo},${rowIdx},'series',this.value)"></td>
       <td><input type="text" value="${ex.reps}"
@@ -7011,7 +7833,7 @@ function abrirListaExercicios(ti, rowIdx, musculo, porcaoStr){
   // Pool base (nível/recurso/ci)
   let poolBase = filtrarExerciciosFicha(musculo, porcao, resist, nivel, lesoes);
   if(!poolBase.length) poolBase = filtrarExerciciosFicha(musculo, null, resist, nivel, lesoes);
-  if(!poolBase.length) poolBase = DB_EXERCICIOS.filter(e=>e.g===musculo);
+  if(!poolBase.length) poolBase = DB_EXERCICIOS.filter(e=>textoIgual(e.g, musculo));
 
   // Aplicar status Camada 3 para exibição
   const { bloqueios, prioridades } = extrairFlagsClinicas();
@@ -7284,9 +8106,16 @@ const GRUPOS_SECUNDARIOS = new Set(['Reto Abdominal','Oblíquo','Transverso do A
 
 // Lê os valores REAIS dos inputs do DOM para uma sessão específica
 // Retorna array [{g, numEx, serEx}] respeitando o que o usuário editou
-function lerSessionDataDOM(cardIdx, ti){
+// Lê os valores de exercício/série direto do DOM (accordion da tela de
+// Distribuição), respeitando a ORDEM REAL da sessão (sessaoGrupos) — a mesma
+// ordem de prioridade definida pelo personal no editor (dc*). Antes iterava
+// GRUPOS_MAPA (ordem fixa do catálogo: Peitoral, Latíssimo, Deltóide...),
+// o que embaralhava a hierarquia na ficha final mesmo quando a tela de
+// Distribuição mostrava a ordem certa (bug real, confirmado: Quadríceps #1
+// na distribuição virava 2º exercício na ficha, atrás de Peitoral).
+function lerSessionDataDOM(cardIdx, ti, sessaoGrupos){
   const sessionData = [];
-  GRUPOS_MAPA.forEach(({id}) => {
+  sessaoGrupos.forEach(({g: id}) => {
     const inpEx  = $('iex-'  + cardIdx + '-' + ti + '-' + id);
     const inpSer = $('iser-' + cardIdx + '-' + ti + '-' + id);
     if(inpEx && inpSer){
@@ -7383,8 +8212,14 @@ function gerarFichaMotorV2(params){
     if(totalSessao > lim && lim > 0){
       // Cortar de secundários primeiro, depois primários
       const sorted = [...sessaoGrupos].sort((a, b) => {
-        const aPri = gruposPrioritariosFinal.has(a.g) ? 2 : GRUPOS_SECUNDARIOS.has(a.g) ? 0 : 1;
-        const bPri = gruposPrioritariosFinal.has(b.g) ? 2 : GRUPOS_SECUNDARIOS.has(b.g) ? 0 : 1;
+        // .has() comparava string exata — gruposPrioritariosFinal/GRUPOS_SECUNDARIOS
+        // usam nomes com acento ('Latíssimo'), mas a.g/b.g vêm de GRUPOS_MAPA sem
+        // acento ('Latissimo'). Sem normalização, esta priorização nunca encontrava
+        // correspondência para a maioria dos grupos — mesma causa raiz do bug
+        // de filtrarExerciciosFicha corrigido acima.
+        const temPrioridade = (set, g) => [...set].some(item => textoIgual(item, g));
+        const aPri = temPrioridade(gruposPrioritariosFinal, a.g) ? 2 : temPrioridade(GRUPOS_SECUNDARIOS, a.g) ? 0 : 1;
+        const bPri = temPrioridade(gruposPrioritariosFinal, b.g) ? 2 : temPrioridade(GRUPOS_SECUNDARIOS, b.g) ? 0 : 1;
         return aPri - bPri; // secundários primeiro (menores ficam no começo → cortados primeiro)
       });
 
