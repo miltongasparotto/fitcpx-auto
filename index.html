@@ -2830,6 +2830,34 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 </div>
 
 <script>
+// ─── SEED DE TESTE FUNCIONAL (2026-06) ──────────────────────────────────────
+// Gerado rodando a aplicação real (jsdom) ponta a ponta: 3 perfis criados via
+// confirmNewStudent(), levados por goStep(1→3)→irParaDivisao→irParaFicha→
+// aprovarTreinoMotor() de verdade — não são dados forjados, são o resultado
+// genuíno do motor de prescrição (Volume por Grupo, Volume da Sessão por fase,
+// Séries por Exercício por histórico) para 3 públicos diferentes:
+//   • Carlos Mendes  — M, Avançado, Hipertrofia, 2 ciclos aprovados (testa
+//     progressão de fase Volume-da-Sessão baixa→média e moda+1 de séries)
+//   • Juliana Costa  — F, Intermediário, Emagrecimento, 1 ciclo (testa zona
+//     de sexo feminina + herança Emagr→Hip)
+//   • Roberto Alves  — M, Iniciante, Força→Reabilitação (2 ciclos, testa o
+//     reset cruzado de histórico de séries ao entrar em Reab)
+// Para testar o ajuste de volume: abra qualquer um destes 3 alunos, clique em
+// "Nova prescrição" e siga até a tela de Volume — os valores sugeridos vão
+// refletir o histórico real acima (sexo+objetivo+nível no Volume por Grupo,
+// fase no Volume da Sessão, moda+1 nas Séries por Exercício).
+(function(){
+  const novosAlunosTeste = [{"id": 1782477050994, "perfil": {"nome": "Carlos Mendes", "nascimento": "1993-03-14", "sexo": "M", "atividade": "ativo", "profissao": "Engenheiro de software", "tempo_sentado": "6a8h", "whatsapp": "(11) 98123-4567", "modalidade": "presencial", "liberacao": "sim", "condicoes": "Nenhuma", "medicamentos": "Nenhum", "medicamentos_detalhe": "", "lesoes": "Nenhuma", "obs_clinicas": "Sem restrições. Treina há 6 anos.", "menstrual": "", "contraceptivo": "", "gestacao": "", "trimestre": ""}, "anamnese": {"nivel": "Avan", "tempo": "", "consistencia": "alta", "modalidades": "Musculação", "extras": "[]", "sono": "boa", "estresse": "baixo", "alcool": "", "suplementos": "Whey | Creatina", "pretreino": "", "objetivo_ef": "Hipertrofia", "objetivo_sec": "", "frequencia": "5x", "duracao": "75", "horario": "noite", "local": "academia", "gosta": "", "preferencias": "", "peso": "84.0", "altura": "180", "data_avaliacao": "2026-01-10", "gordura": "", "magra": "", "mgorda": "", "mmuscular": "", "cintura": "", "quadril": "", "abdomen": "", "braco_d": "", "braco_e": "", "braco_d_cont": "", "braco_e_cont": "", "coxa_d": "", "coxa_e": "", "pant_d": "", "pant_e": "", "obs_antro": "", "fc": "", "fms_ohsa": "", "fms_ohsa_flag": "", "fms_slsq": "", "fms_slsq_flag": "", "fms_hurdle": "", "fms_hurdle_flag": "", "fms_lunge": "", "fms_lunge_flag": "", "fms_shoulder": "", "fms_shoulder_flag": "", "fms_aslr": "", "fms_aslr_flag": "", "fms_rotary": "", "fms_rotary_flag": "", "fms_push": "", "fms_pull": "", "prancha": "", "prancha_lat_d": "", "prancha_lat_e": "", "equilibrio_d": "", "equilibrio_e": "", "tug": "", "sentar_levantar": "", "obs_func": "", "formula_1rm": "brzycki", "obs_forca": "", "data_forca": "", "forca": [{"ex": "Agachamento livre", "carga": "", "reps": ""}, {"ex": "Levantamento terra", "carga": "", "reps": ""}, {"ex": "Supino plano com barra", "carga": "", "reps": ""}, {"ex": "Remada curvada com barra", "carga": "", "reps": ""}, {"ex": "Puxada pronada", "carga": "", "reps": ""}, {"ex": "Desenvolvimento com barra", "carga": "", "reps": ""}, {"ex": "Avanço com halteres", "carga": "", "reps": ""}, {"ex": "Rosca direta com barra", "carga": "", "reps": ""}, {"ex": "Tríceps testa com barra", "carga": "", "reps": ""}], "cooper": "", "step_fc": "", "flexao": "", "flexao_modificada": false, "abdominal_reps": "", "squat_reps": "", "grip_d": "", "grip_e": "", "obs_resist": "", "sentar_alcancar": "", "sitreach_proto": "YMCA/ACSM", "sitreach_warmup": false, "isquio_d": "", "isquio_e": "", "iliopsoas_d": "", "iliopsoas_e": "", "dorsiflexao_d": "", "dorsiflexao_e": "", "mob_toracica_d": "", "mob_toracica_e": "", "ombro_flex_d": "", "ombro_flex_e": "", "quadril_rot_d": "", "quadril_rot_e": "", "obs_flex": "", "a_gon_ombro_flex_d": "", "a_gon_ombro_flex_e": "", "a_gon_ombro_ext_d": "", "a_gon_ombro_ext_e": "", "a_gon_ombro_abd_d": "", "a_gon_ombro_abd_e": "", "a_gon_ombro_ri_d": "", "a_gon_ombro_ri_e": "", "a_gon_ombro_re_d": "", "a_gon_ombro_re_e": "", "a_gon_quadril_flex_d": "", "a_gon_quadril_flex_e": "", "a_gon_quadril_ext_d": "", "a_gon_quadril_ext_e": "", "a_gon_quadril_abd_d": "", "a_gon_quadril_abd_e": "", "a_gon_quadril_ri_d": "", "a_gon_quadril_ri_e": "", "a_gon_quadril_re_d": "", "a_gon_quadril_re_e": "", "a_gon_joelho_flex_d": "", "a_gon_joelho_flex_e": "", "a_gon_torn_dors_d": "", "a_gon_torn_dors_e": "", "a_gon_torn_plant_d": "", "a_gon_torn_plant_e": "", "a_gon_col_flex_d": "", "a_gon_col_flex_e": "", "a_gon_col_ext_d": "", "a_gon_col_ext_e": "", "a_gon_col_lat_d": "", "a_gon_col_lat_e": "", "a_gon_col_rot_d": "", "a_gon_col_rot_e": ""}, "prescricao": {"objetivo": "Hip", "nivel": "Avan", "frequencia": "5x", "modelo": "CON", "obs": "", "treino": "## CICLO-01 — Carlos Mendes\n```yaml\nobjetivo: Hip\nnivel: Avançado\nfrequencia: 5x/sem\nmodelo: CON\nlocal: academia\ndata: 26/06/2026\n```\n\n### Treino A — Peito (20 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Peitoral | Crucifixo Polia Alta em Pé - Cross | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 2 | Peitoral | Flexão de Braço - Super Band | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 3 | Peitoral | Crucifixo Declinado - Halter | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 4 | Peitoral | Supino Inclinado - Smith | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 5 | Peitoral | Flexão de Braço | 4 | 6–12 | 60–85% 1RM | 60–120s |\n\n### Treino B — Costas·Bíceps (20 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Latissimo | Barra Fixa com Pegada Fechada Supinada | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 2 | Latissimo | Pull Down com Pegada Pronada no Banco Invertido - Cross | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 3 | Latissimo | Remada Baixa com Pegada Fechada Neutra - Tube Band | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 4 | Biceps | Rosca Alternada com Giro Sentado - Halter | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 5 | Biceps | Rosca Direta com Pegada Pronada em Pé  - Cross e Barra | 4 | 6–12 | 60–85% 1RM | 60–120s |\n\n### Treino C — Pernas (20 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Quadriceps | Pistol Alternado | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 2 | Quadriceps | Agachamento Acima da Cabeça | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 3 | Gluteos | Elevação de Quadril no Banco - Barra e Mini Band | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 4 | Panturrilhas | Elevação de Panturrilha Unilateral - Halter | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 5 | Panturrilhas | Elevação de Panturrilha Unilateral - Step e Anilha | 4 | 6–12 | 60–85% 1RM | 60–120s |\n\n### Treino D — Ombros (20 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Deltoide | Elevação Frontal em Pé com Pegada Pronada Alternada - Halter | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 2 | Deltoide | Remada Alta - Cross e Corda | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 3 | Deltoide | Rotação Interna de Ombro Horizontal - Super Band | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 4 | Trapezio | Encolhimento de Ombros - Halter | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 5 | Trapezio | Encolhimento de Ombros - Barra | 4 | 6–12 | 60–85% 1RM | 60–120s |\n\n### Treino E — Post.·Tríceps·Core (20 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Isquiossurais | Flexão de Joelho Deitado - Super Band | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 2 | Isquiossurais | Flexão de Joelho em Pé - Caneleira | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 3 | Triceps | Tríceps Francês Sentado Unilateral - Halter | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 4 | RetoAbdominal | Abdominal Supra Curto no Banco Declinado | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 5 | Obliquo | Abdominal Obliquo Russo com Giro e Pés Suspensos | 4 | 6–12 | 60–85% 1RM | 60–120s |\n\n### PROGRESSÃO SEMANAL\n| Sem | Foco | Ajuste |\n|---|---|---|\n| 1 | Adaptação | Carga conservadora |\n| 2 | Desenvolvimento | +carga ou +reps |\n| 3 | Sobrecarga | RPE 7–8 |\n| 4 | Deload | −40% volume |\n", "aprovado": true, "dataAprovacao": "26/06/2026", "_fichaObj": {"objetivo": "Hip", "nivel": "Avan", "frequencia": "5x", "local": "academia", "seriesPorEx": 4, "treinos": [{"label": "Treino A — Peito", "exercicios": [{"musculo": "Peitoral", "porcao": "Superior", "nome": "Crucifixo Polia Alta em Pé - Cross", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Médio", "nome": "Flexão de Braço - Super Band", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Inferior", "nome": "Crucifixo Declinado - Halter", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Geral", "nome": "Supino Inclinado - Smith", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Geral", "nome": "Flexão de Braço", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}]}, {"label": "Treino B — Costas·Bíceps", "exercicios": [{"musculo": "Latissimo", "porcao": "Geral", "nome": "Barra Fixa com Pegada Fechada Supinada", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Latissimo", "porcao": "Geral", "nome": "Pull Down com Pegada Pronada no Banco Invertido - Cross", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Latissimo", "porcao": "Geral", "nome": "Remada Baixa com Pegada Fechada Neutra - Tube Band", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Biceps", "porcao": "Cabeça Longa", "nome": "Rosca Alternada com Giro Sentado - Halter", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Biceps", "porcao": "Cabeça Curta", "nome": "Rosca Direta com Pegada Pronada em Pé  - Cross e Barra", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}]}, {"label": "Treino C — Pernas", "exercicios": [{"musculo": "Quadriceps", "porcao": "Geral", "nome": "Pistol Alternado", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Quadriceps", "porcao": "Geral", "nome": "Agachamento Acima da Cabeça", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Gluteos", "porcao": "Máximo", "nome": "Elevação de Quadril no Banco - Barra e Mini Band", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Panturrilhas", "porcao": "Geral", "nome": "Elevação de Panturrilha Unilateral - Halter", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Panturrilhas", "porcao": "Geral", "nome": "Elevação de Panturrilha Unilateral - Step e Anilha", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}]}, {"label": "Treino D — Ombros", "exercicios": [{"musculo": "Deltoide", "porcao": "Anterior", "nome": "Elevação Frontal em Pé com Pegada Pronada Alternada - Halter", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Deltoide", "porcao": "Medial", "nome": "Remada Alta - Cross e Corda", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Deltoide", "porcao": "Posterior", "nome": "Rotação Interna de Ombro Horizontal - Super Band", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Trapezio", "porcao": "Geral", "nome": "Encolhimento de Ombros - Halter", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Trapezio", "porcao": "Geral", "nome": "Encolhimento de Ombros - Barra", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}]}, {"label": "Treino E — Post.·Tríceps·Core", "exercicios": [{"musculo": "Isquiossurais", "porcao": "Geral", "nome": "Flexão de Joelho Deitado - Super Band", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Isquiossurais", "porcao": "Geral", "nome": "Flexão de Joelho em Pé - Caneleira", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Triceps", "porcao": "Longa Porção", "nome": "Tríceps Francês Sentado Unilateral - Halter", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "RetoAbdominal", "porcao": "Superior", "nome": "Abdominal Supra Curto no Banco Declinado", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Obliquo", "porcao": "Geral", "nome": "Abdominal Obliquo Russo com Giro e Pés Suspensos", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}]}], "dataGeracao": "26/06/2026"}, "_fichaObjAnterior": null}, "reavaliacao": null, "historicoExercicios": ["Crucifixo Inclinado - Halter", "Supino Reto - Smith", "Crucifixo Declinado - Halter", "Flexão de Braço Fechado", "Supino Inclinado - Smith", "Supino Polia Alta Sentado - Cross", "Remada Baixa na Máquina com Pegada Fechada Supinada Unilateral", "Puxada Alta com Pegada Fechada Neutra Unilateral", "Remada Baixa na Máquina com Pegada Fechada Neutra Unilateral", "Rosca Alternada com Pegada Neutra Sentado - Halter", "Rosca Direta com Pegada Neutra em Pé - Halter", "Rosca Direta com Pegada Supinada no Banco Inclinado - Halter", "Agachamento Frontal + Afundo Alternado - Halter", "Agachamento Frontal - Barra", "Coice em Quatro Apoios com Caneleira", "Abdução de Quadril em Pé - Mini Band", "Elevação de Panturrilha Sentado - Panturrilha Sentado", "Elevação de Panturrilha - Halter", "Anjo em Decúbito Dorsal", "Elevação Lateral Sentado - Halter", "Rotação Interna e Externa de Ombro Deitado Alternado", "Desenvolvimento Pronado Sentado - Barra", "Encolhimento de Ombros - Kettlebell", "Encolhimento de Ombros - Anilha", "Flexão de Joelho Deitado Unilateral - Mesa Flexora", "Stiff Unilateral - Halter Contralateral", "Tríceps Testa - Halter", "Tríceps Francês em Pé Unilateral - Tube Band", "Abdominal Supra Curto Tocando os Pés - Tube Band", "Rotação de Tronco - Cross", "Crucifixo Polia Alta em Pé - Cross", "Flexão de Braço - Super Band", "Flexão de Braço", "Barra Fixa com Pegada Fechada Supinada", "Pull Down com Pegada Pronada no Banco Invertido - Cross", "Remada Baixa com Pegada Fechada Neutra - Tube Band", "Rosca Alternada com Giro Sentado - Halter", "Rosca Direta com Pegada Pronada em Pé  - Cross e Barra", "Pistol Alternado", "Agachamento Acima da Cabeça", "Elevação de Quadril no Banco - Barra e Mini Band", "Elevação de Panturrilha Unilateral - Halter", "Elevação de Panturrilha Unilateral - Step e Anilha", "Elevação Frontal em Pé com Pegada Pronada Alternada - Halter", "Remada Alta - Cross e Corda", "Rotação Interna de Ombro Horizontal - Super Band", "Encolhimento de Ombros - Halter", "Encolhimento de Ombros - Barra", "Flexão de Joelho Deitado - Super Band", "Flexão de Joelho em Pé - Caneleira", "Tríceps Francês Sentado Unilateral - Halter", "Abdominal Supra Curto no Banco Declinado", "Abdominal Obliquo Russo com Giro e Pés Suspensos"], "historicoSeries": {"Hip": 4}, "ultimaFaseVolSessao": {"objetivo": "Hip", "fase": "media"}}, {"id": 1782477053217, "perfil": {"nome": "Juliana Costa", "nascimento": "1990-07-02", "sexo": "F", "atividade": "moderadamente_ativo", "profissao": "Advogada", "tempo_sentado": "8h+", "whatsapp": "(21) 99876-1234", "modalidade": "presencial", "liberacao": "sim", "condicoes": "Nenhuma", "medicamentos": "Nenhum", "medicamentos_detalhe": "", "lesoes": "Nenhuma", "obs_clinicas": "Sem restrições.", "menstrual": "Regular", "contraceptivo": "DIU hormonal", "gestacao": "Não", "trimestre": ""}, "anamnese": {"nivel": "Inte", "tempo": "1–2 anos", "consistencia": "", "modalidades": "Musculação | Pilates", "extras": "[]", "sono": "regular", "estresse": "moderado", "alcool": "ocasional", "suplementos": "Whey", "pretreino": "", "objetivo_ef": "Emagrecimento", "objetivo_sec": "", "frequencia": "4x", "duracao": "60", "horario": "manhã", "local": "academia", "gosta": "Pernas e glúteos", "preferencias": "", "peso": "68.0", "altura": "163", "data_avaliacao": "2026-02-05", "gordura": "", "magra": "", "mgorda": "", "mmuscular": "", "cintura": "", "quadril": "", "abdomen": "", "braco_d": "", "braco_e": "", "braco_d_cont": "", "braco_e_cont": "", "coxa_d": "", "coxa_e": "", "pant_d": "", "pant_e": "", "obs_antro": "", "fc": "", "fms_ohsa": "", "fms_ohsa_flag": "", "fms_slsq": "", "fms_slsq_flag": "", "fms_hurdle": "", "fms_hurdle_flag": "", "fms_lunge": "", "fms_lunge_flag": "", "fms_shoulder": "", "fms_shoulder_flag": "", "fms_aslr": "", "fms_aslr_flag": "", "fms_rotary": "", "fms_rotary_flag": "", "fms_push": "", "fms_pull": "", "prancha": "", "prancha_lat_d": "", "prancha_lat_e": "", "equilibrio_d": "", "equilibrio_e": "", "tug": "", "sentar_levantar": "", "obs_func": "", "formula_1rm": "brzycki", "obs_forca": "", "data_forca": "", "forca": [{"ex": "Agachamento livre", "carga": "", "reps": ""}, {"ex": "Levantamento terra", "carga": "", "reps": ""}, {"ex": "Supino plano com barra", "carga": "", "reps": ""}, {"ex": "Remada curvada com barra", "carga": "", "reps": ""}, {"ex": "Puxada pronada", "carga": "", "reps": ""}, {"ex": "Desenvolvimento com barra", "carga": "", "reps": ""}, {"ex": "Avanço com halteres", "carga": "", "reps": ""}, {"ex": "Rosca direta com barra", "carga": "", "reps": ""}, {"ex": "Tríceps testa com barra", "carga": "", "reps": ""}], "cooper": "", "step_fc": "", "flexao": "", "flexao_modificada": false, "abdominal_reps": "", "squat_reps": "", "grip_d": "", "grip_e": "", "obs_resist": "", "sentar_alcancar": "", "sitreach_proto": "YMCA/ACSM", "sitreach_warmup": false, "isquio_d": "", "isquio_e": "", "iliopsoas_d": "", "iliopsoas_e": "", "dorsiflexao_d": "", "dorsiflexao_e": "", "mob_toracica_d": "", "mob_toracica_e": "", "ombro_flex_d": "", "ombro_flex_e": "", "quadril_rot_d": "", "quadril_rot_e": "", "obs_flex": "", "a_gon_ombro_flex_d": "", "a_gon_ombro_flex_e": "", "a_gon_ombro_ext_d": "", "a_gon_ombro_ext_e": "", "a_gon_ombro_abd_d": "", "a_gon_ombro_abd_e": "", "a_gon_ombro_ri_d": "", "a_gon_ombro_ri_e": "", "a_gon_ombro_re_d": "", "a_gon_ombro_re_e": "", "a_gon_quadril_flex_d": "", "a_gon_quadril_flex_e": "", "a_gon_quadril_ext_d": "", "a_gon_quadril_ext_e": "", "a_gon_quadril_abd_d": "", "a_gon_quadril_abd_e": "", "a_gon_quadril_ri_d": "", "a_gon_quadril_ri_e": "", "a_gon_quadril_re_d": "", "a_gon_quadril_re_e": "", "a_gon_joelho_flex_d": "", "a_gon_joelho_flex_e": "", "a_gon_torn_dors_d": "", "a_gon_torn_dors_e": "", "a_gon_torn_plant_d": "", "a_gon_torn_plant_e": "", "a_gon_col_flex_d": "", "a_gon_col_flex_e": "", "a_gon_col_ext_d": "", "a_gon_col_ext_e": "", "a_gon_col_lat_d": "", "a_gon_col_lat_e": "", "a_gon_col_rot_d": "", "a_gon_col_rot_e": ""}, "prescricao": {"objetivo": "Emagr", "nivel": "Inte", "frequencia": "4x", "modelo": "DUP", "obs": "", "treino": "## CICLO-01 — Juliana Costa\n```yaml\nobjetivo: Emagr\nnivel: Intermediário\nfrequencia: 4x/sem\nmodelo: DUP\nlocal: academia\ndata: 26/06/2026\n```\n\n### Treino A — Superior Emp. (18 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Peitoral | Crucifixo Polia Alta Sentado - Cross | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 2 | Peitoral | Supino Reto - Máquina | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 3 | Triceps | Tríceps Coice - Halter Duplo | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 4 | Triceps | Tríceps Francês Sentado - Halter | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 5 | Deltoide | Anjo na Parede | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 6 | Deltoide | Elevação Lateral em Pé Unilateral- Halter | 3 | 6–12 | 50–75% 1RM | 30–60s |\n\n### Treino B — Inferior (18 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Quadriceps | Agachamento Frontal - Smith | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 2 | Quadriceps | Extensão de Joelho Nórdico Isométrico | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 3 | Isquiossurais | Flexão de Joelho Deitado - Mesa Flexora | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 4 | Isquiossurais | Stiff - Barra | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 5 | Gluteos | Coice na Máquina | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 6 | Panturrilhas | Elevação de Panturrilha Unilateral - Hack | 3 | 6–12 | 50–75% 1RM | 30–60s |\n\n### Treino C — Superior Pux. (18 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Latissimo | Remada Baixa na Polia com Pegada Fechada Supinada Unilateral - Cross | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 2 | Latissimo | Remada Inclinada com Pegada Aberta Neutra - Cross | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 3 | Biceps | Rosca Direta com Giro no Banco Inclinado - Halter | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 4 | Biceps | Rosca Direta com Cotovelo Apoiado na Coxa - Halter | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 5 | Trapezio | Encolhimento de Ombros - Barra | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 6 | Trapezio | Encolhimento de Ombros - Anilha | 3 | 6–12 | 50–75% 1RM | 30–60s |\n\n### Treino D — Inferior+Core (18 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Quadriceps | Afundo Lateral - Kettlebell | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 2 | Quadriceps | Agachamento Frontal - Hack | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 3 | Gluteos | Ponte com Pés no Banco | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 4 | Gluteos | Abdução de Quadril Sentado - Cadeira Abdutora | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 5 | RetoAbdominal | Abdominal Supra Curto | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 6 | Obliquo | Prancha Lateral + Abdução de Quadril com Apoio no Joelho | 3 | 6–12 | 50–75% 1RM | 30–60s |\n\n### PROGRESSÃO SEMANAL\n| Sem | Foco | Ajuste |\n|---|---|---|\n| 1 | Adaptação | Carga conservadora |\n| 2 | Desenvolvimento | +carga ou +reps |\n| 3 | Sobrecarga | RPE 7–8 |\n| 4 | Deload | −40% volume |\n", "aprovado": true, "dataAprovacao": "26/06/2026", "_fichaObj": {"objetivo": "Emagr", "nivel": "Inte", "frequencia": "4x", "local": "academia", "seriesPorEx": 3, "treinos": [{"label": "Treino A — Superior Emp.", "exercicios": [{"musculo": "Peitoral", "porcao": "Superior", "nome": "Crucifixo Polia Alta Sentado - Cross", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Médio", "nome": "Supino Reto - Máquina", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Triceps", "porcao": "Longa Porção", "nome": "Tríceps Coice - Halter Duplo", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Triceps", "porcao": "Lateral", "nome": "Tríceps Francês Sentado - Halter", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Deltoide", "porcao": "Anterior", "nome": "Anjo na Parede", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Deltoide", "porcao": "Medial", "nome": "Elevação Lateral em Pé Unilateral- Halter", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}]}, {"label": "Treino B — Inferior", "exercicios": [{"musculo": "Quadriceps", "porcao": "Geral", "nome": "Agachamento Frontal - Smith", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Quadriceps", "porcao": "Geral", "nome": "Extensão de Joelho Nórdico Isométrico", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Isquiossurais", "porcao": "Geral", "nome": "Flexão de Joelho Deitado - Mesa Flexora", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Isquiossurais", "porcao": "Geral", "nome": "Stiff - Barra", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Gluteos", "porcao": "Máximo", "nome": "Coice na Máquina", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Panturrilhas", "porcao": "Geral", "nome": "Elevação de Panturrilha Unilateral - Hack", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}]}, {"label": "Treino C — Superior Pux.", "exercicios": [{"musculo": "Latissimo", "porcao": "Geral", "nome": "Remada Baixa na Polia com Pegada Fechada Supinada Unilateral - Cross", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Latissimo", "porcao": "Geral", "nome": "Remada Inclinada com Pegada Aberta Neutra - Cross", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Biceps", "porcao": "Cabeça Longa", "nome": "Rosca Direta com Giro no Banco Inclinado - Halter", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Biceps", "porcao": "Cabeça Curta", "nome": "Rosca Direta com Cotovelo Apoiado na Coxa - Halter", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Trapezio", "porcao": "Geral", "nome": "Encolhimento de Ombros - Barra", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Trapezio", "porcao": "Geral", "nome": "Encolhimento de Ombros - Anilha", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}]}, {"label": "Treino D — Inferior+Core", "exercicios": [{"musculo": "Quadriceps", "porcao": "Geral", "nome": "Afundo Lateral - Kettlebell", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Quadriceps", "porcao": "Geral", "nome": "Agachamento Frontal - Hack", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Gluteos", "porcao": "Máximo", "nome": "Ponte com Pés no Banco", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Gluteos", "porcao": "Médio", "nome": "Abdução de Quadril Sentado - Cadeira Abdutora", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "RetoAbdominal", "porcao": "Superior", "nome": "Abdominal Supra Curto", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Obliquo", "porcao": "Geral", "nome": "Prancha Lateral + Abdução de Quadril com Apoio no Joelho", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}]}], "dataGeracao": "26/06/2026"}, "_fichaObjAnterior": null}, "reavaliacao": null, "historicoExercicios": ["Crucifixo Polia Alta Sentado - Cross", "Supino Reto - Máquina", "Tríceps Coice - Halter Duplo", "Tríceps Francês Sentado - Halter", "Anjo na Parede", "Elevação Lateral em Pé Unilateral- Halter", "Agachamento Frontal - Smith", "Extensão de Joelho Nórdico Isométrico", "Flexão de Joelho Deitado - Mesa Flexora", "Stiff - Barra", "Coice na Máquina", "Elevação de Panturrilha Unilateral - Hack", "Remada Baixa na Polia com Pegada Fechada Supinada Unilateral - Cross", "Remada Inclinada com Pegada Aberta Neutra - Cross", "Rosca Direta com Giro no Banco Inclinado - Halter", "Rosca Direta com Cotovelo Apoiado na Coxa - Halter", "Encolhimento de Ombros - Barra", "Encolhimento de Ombros - Anilha", "Afundo Lateral - Kettlebell", "Agachamento Frontal - Hack", "Ponte com Pés no Banco", "Abdução de Quadril Sentado - Cadeira Abdutora", "Abdominal Supra Curto", "Prancha Lateral + Abdução de Quadril com Apoio no Joelho"], "historicoSeries": {"Emagr": 3}, "ultimaFaseVolSessao": {"objetivo": "Emagr", "fase": "baixa"}}, {"id": 1782477053985, "perfil": {"nome": "Roberto Alves", "nascimento": "2001-11-20", "sexo": "M", "atividade": "ativo", "profissao": "Estudante", "tempo_sentado": "4a6h", "whatsapp": "(31) 98765-4321", "modalidade": "presencial", "liberacao": "sim", "condicoes": "Nenhuma", "medicamentos": "Nenhum", "medicamentos_detalhe": "", "lesoes": "Lesão lombar recente (hérnia L4-L5, sem indicação cirúrgica)", "obs_clinicas": "Treinava Força até 3 semanas atrás. Entrou em reabilitação por lesão lombar. Liberado para treino de baixo impacto pelo fisioterapeuta.", "menstrual": "", "contraceptivo": "", "gestacao": "", "trimestre": ""}, "anamnese": {"nivel": "Inic", "tempo": "", "consistencia": "", "modalidades": "Musculação", "extras": "[]", "sono": "regular", "estresse": "moderado", "alcool": "", "suplementos": "Nenhum", "pretreino": "", "objetivo_ef": "Reabilitação", "objetivo_sec": "", "frequencia": "3x", "duracao": "45", "horario": "tarde", "local": "academia", "gosta": "", "preferencias": "", "peso": "78.0", "altura": "176", "data_avaliacao": "2026-03-01", "gordura": "", "magra": "", "mgorda": "", "mmuscular": "", "cintura": "", "quadril": "", "abdomen": "", "braco_d": "", "braco_e": "", "braco_d_cont": "", "braco_e_cont": "", "coxa_d": "", "coxa_e": "", "pant_d": "", "pant_e": "", "obs_antro": "", "fc": "", "fms_ohsa": "", "fms_ohsa_flag": "", "fms_slsq": "", "fms_slsq_flag": "", "fms_hurdle": "", "fms_hurdle_flag": "", "fms_lunge": "", "fms_lunge_flag": "", "fms_shoulder": "", "fms_shoulder_flag": "", "fms_aslr": "", "fms_aslr_flag": "", "fms_rotary": "", "fms_rotary_flag": "", "fms_push": "", "fms_pull": "", "prancha": "", "prancha_lat_d": "", "prancha_lat_e": "", "equilibrio_d": "", "equilibrio_e": "", "tug": "", "sentar_levantar": "", "obs_func": "", "formula_1rm": "brzycki", "obs_forca": "", "data_forca": "", "forca": [{"ex": "Agachamento livre", "carga": "", "reps": ""}, {"ex": "Levantamento terra", "carga": "", "reps": ""}, {"ex": "Supino plano com barra", "carga": "", "reps": ""}, {"ex": "Remada curvada com barra", "carga": "", "reps": ""}, {"ex": "Puxada pronada", "carga": "", "reps": ""}, {"ex": "Desenvolvimento com barra", "carga": "", "reps": ""}, {"ex": "Avanço com halteres", "carga": "", "reps": ""}, {"ex": "Rosca direta com barra", "carga": "", "reps": ""}, {"ex": "Tríceps testa com barra", "carga": "", "reps": ""}], "cooper": "", "step_fc": "", "flexao": "", "flexao_modificada": false, "abdominal_reps": "", "squat_reps": "", "grip_d": "", "grip_e": "", "obs_resist": "", "sentar_alcancar": "", "sitreach_proto": "YMCA/ACSM", "sitreach_warmup": false, "isquio_d": "", "isquio_e": "", "iliopsoas_d": "", "iliopsoas_e": "", "dorsiflexao_d": "", "dorsiflexao_e": "", "mob_toracica_d": "", "mob_toracica_e": "", "ombro_flex_d": "", "ombro_flex_e": "", "quadril_rot_d": "", "quadril_rot_e": "", "obs_flex": "", "a_gon_ombro_flex_d": "", "a_gon_ombro_flex_e": "", "a_gon_ombro_ext_d": "", "a_gon_ombro_ext_e": "", "a_gon_ombro_abd_d": "", "a_gon_ombro_abd_e": "", "a_gon_ombro_ri_d": "", "a_gon_ombro_ri_e": "", "a_gon_ombro_re_d": "", "a_gon_ombro_re_e": "", "a_gon_quadril_flex_d": "", "a_gon_quadril_flex_e": "", "a_gon_quadril_ext_d": "", "a_gon_quadril_ext_e": "", "a_gon_quadril_abd_d": "", "a_gon_quadril_abd_e": "", "a_gon_quadril_ri_d": "", "a_gon_quadril_ri_e": "", "a_gon_quadril_re_d": "", "a_gon_quadril_re_e": "", "a_gon_joelho_flex_d": "", "a_gon_joelho_flex_e": "", "a_gon_torn_dors_d": "", "a_gon_torn_dors_e": "", "a_gon_torn_plant_d": "", "a_gon_torn_plant_e": "", "a_gon_col_flex_d": "", "a_gon_col_flex_e": "", "a_gon_col_ext_d": "", "a_gon_col_ext_e": "", "a_gon_col_lat_d": "", "a_gon_col_lat_e": "", "a_gon_col_rot_d": "", "a_gon_col_rot_e": ""}, "prescricao": {"objetivo": "Reab", "nivel": "Inic", "frequencia": "3x", "modelo": "LP", "obs": "", "treino": "## CICLO-01 — Roberto Alves\n```yaml\nobjetivo: Reab\nnivel: Iniciante\nfrequencia: 3x/sem\nmodelo: LP\nlocal: academia\ndata: 26/06/2026\n```\n\n### Treino A — MMSS Empurrar+Core (4 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Peitoral | Supino Inclinado - Halter | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 2 | Triceps | Tríceps Polia Alta com Pegada Unilateral Supinada - Cross e Pegador D | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 3 | Deltoide | Anjo em Pé - Bastão | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 4 | RetoAbdominal | Abdominal Supra Curto com Perna 90° | 1 | 10–20 | 20–50% 1RM | 90–120s |\n\n### Treino B — Membros Inferiores (4 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Quadriceps | Agachamento Frontal - Tube Band | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 2 | Isquiossurais | Flexão de Joelho Sentado - Cadeira Flexora | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 3 | Gluteos | Elevação de Quadril no Banco | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 4 | Panturrilhas | Elevação de Panturrilha Unilateral - Step | 1 | 10–20 | 20–50% 1RM | 90–120s |\n\n### Treino C — MMSS Puxar+Core (4 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Latissimo | Remada Baixa na Máquina com Pegada Fechada Supinada Unilateral | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 2 | Biceps | Rosca Alternada com Giro Sentado - Halter | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 3 | Trapezio | Encolhimento de Ombros - Anilha | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 4 | Obliquo | Prancha Lateral com Apoio no Joelho | 1 | 10–20 | 20–50% 1RM | 90–120s |\n\n### PROGRESSÃO SEMANAL\n| Sem | Foco | Ajuste |\n|---|---|---|\n| 1 | Adaptação | Carga conservadora |\n| 2 | Desenvolvimento | +carga ou +reps |\n| 3 | Sobrecarga | RPE 7–8 |\n| 4 | Deload | −40% volume |\n", "aprovado": true, "dataAprovacao": "26/06/2026", "_fichaObj": {"objetivo": "Reab", "nivel": "Inic", "frequencia": "3x", "local": "academia", "seriesPorEx": 1, "treinos": [{"label": "Treino A — MMSS Empurrar+Core", "exercicios": [{"musculo": "Peitoral", "porcao": "Superior", "nome": "Supino Inclinado - Halter", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "Triceps", "porcao": "Longa Porção", "nome": "Tríceps Polia Alta com Pegada Unilateral Supinada - Cross e Pegador D", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "Deltoide", "porcao": "Anterior", "nome": "Anjo em Pé - Bastão", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "RetoAbdominal", "porcao": "Superior", "nome": "Abdominal Supra Curto com Perna 90°", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}]}, {"label": "Treino B — Membros Inferiores", "exercicios": [{"musculo": "Quadriceps", "porcao": "Geral", "nome": "Agachamento Frontal - Tube Band", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "Isquiossurais", "porcao": "Geral", "nome": "Flexão de Joelho Sentado - Cadeira Flexora", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "Gluteos", "porcao": "Máximo", "nome": "Elevação de Quadril no Banco", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "Panturrilhas", "porcao": "Geral", "nome": "Elevação de Panturrilha Unilateral - Step", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}]}, {"label": "Treino C — MMSS Puxar+Core", "exercicios": [{"musculo": "Latissimo", "porcao": "Geral", "nome": "Remada Baixa na Máquina com Pegada Fechada Supinada Unilateral", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "Biceps", "porcao": "Cabeça Longa", "nome": "Rosca Alternada com Giro Sentado - Halter", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "Trapezio", "porcao": "Geral", "nome": "Encolhimento de Ombros - Anilha", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "Obliquo", "porcao": "Geral", "nome": "Prancha Lateral com Apoio no Joelho", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}]}], "dataGeracao": "26/06/2026"}, "_fichaObjAnterior": null}, "reavaliacao": null, "historicoExercicios": ["Supino Inclinado - Barra", "Flexão de Braço - Barra Australiana", "Supino Declinado - Halter", "Flexão de Braço com Apoio no Joelho", "Tríceps Polia Alta com Pegada Pronada - Cross e Barra V", "Tríceps Testa Sentado - Cross e Barra", "Tríceps Polia Alta com Pegada Unilateral Pronada - Cross", "Anjo em Decúbito Dorsal", "Elevação Lateral Sentado - Halter", "Flexão de Ombro em I Sentado - Super Band", "Avanço Alternado", "Agachamento Frontal - Smith", "Agachamento Isométrico com Flexão Alternada de Braços", "Flexão de Joelho Deitado Unilateral - Mini Band", "Flexão de Joelho em Pé - Caneleira", "Flexão de Joelho Deitado Unilateral - Mesa Flexora", "Abdução de Quadril em Ponte - Mini Band", "Abdução de Quadril em Pé - Tube Band", "Elevação de Panturrilha Unilateral - Step e Anilha", "Elevação de Panturrilha Unilateral - Step", "Remada Baixa na Máquina com Pegada Fechada Neutra Unilateral", "Remada com Pegada Fechada Neutra - Fita de Suspensão", "Pull Down Deitado - Super Band", "Rosca Alternada com Pegada Neutra Sentado - Halter", "Rosca Direta com Giro em Pé - Halter", "Rosca Alternada com Pegada Neutra em Pé - Halter", "Abdominal Supra Curto", "Abdominal Tesoura no Banco", "Anti-Rotação de Tronco Dinâmico - Super Band", "Flexão Lateral de Tronco Deitado com Toque no Pé", "Supino Inclinado - Halter", "Tríceps Polia Alta com Pegada Unilateral Supinada - Cross e Pegador D", "Anjo em Pé - Bastão", "Abdominal Supra Curto com Perna 90°", "Agachamento Frontal - Tube Band", "Flexão de Joelho Sentado - Cadeira Flexora", "Elevação de Quadril no Banco", "Remada Baixa na Máquina com Pegada Fechada Supinada Unilateral", "Rosca Alternada com Giro Sentado - Halter", "Encolhimento de Ombros - Anilha", "Prancha Lateral com Apoio no Joelho"], "historicoSeries": {"Reab": 1}, "ultimaFaseVolSessao": {"objetivo": "Reab", "fase": "baixa"}}];
+  try {
+    const existentes = JSON.parse(localStorage.getItem('acm-students') || '[]');
+    const idsNovos = new Set(novosAlunosTeste.map(s => s.id));
+    const mantidos = Array.isArray(existentes) ? existentes.filter(s => !idsNovos.has(s.id)) : [];
+    localStorage.setItem('acm-students', JSON.stringify([...mantidos, ...novosAlunosTeste]));
+  } catch(e) { console.warn('Seed de teste funcional falhou:', e); }
+})();
+</script>
+
+<script>
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
@@ -5051,27 +5079,84 @@ const DB_EXERCICIOS = [{"n":"Adução de Quadril Sentado - Cadeira Adutora","g":
 // MOTOR DE PRESCRIÇÃO FitCPX Auto — Constantes e utilitários
 // ══════════════════════════════════════════════════════
 
-const VOL_REF = {
-  Hip:    {Inic:[10,14], Inte:[14,18], Avan:[16,20]},
-  Forca:  {Inic:[10,12], Inte:[12,16], Avan:[14,18]},
-  Emagr:  {Inic:[10,14], Inte:[14,18], Avan:[16,20]},
-  Comp:   {Inic:[10,14], Inte:[14,18], Avan:[16,20]},
-  Resist: {Inic:[12,16], Inte:[14,18], Avan:[16,20]},
-  CardioR:{Inic:[8,12],  Inte:[10,14], Avan:[12,16]},
-  Func:   {Inic:[8,12],  Inte:[10,14], Avan:[12,16]},
-  Saude:  {Inic:[8,12],  Inte:[10,14], Avan:[12,14]},
-  Esport: {Inic:[10,14], Inte:[14,18], Avan:[16,20]},
-  Reab:   {Inic:[6,10],  Inte:[8,12],  Avan:[10,14]},
-  Envelhec:{Inic:[8,12], Inte:[10,14], Avan:[12,16]},
-  Gestacao:{Inic:[6,10], Inte:[8,12],  Avan:[8,12]},
+// VOL_REF removida (2026-06) — era tabela órfã, redundante com LIM_SESSAO_REF
+// (linha ~6057), que já é a fonte única de verdade para Volume Total da Sessão
+// (vault REF-Volume-Derivado-MAV §9). O único uso real era um fallback dentro
+// de gerarFichaMotorV2 — substituído para usar LIM_SESSAO_REF diretamente.
+
+// Séries por Exercício — faixas por Família × Nível (vault REF-Volume-Derivado-MAV §6).
+// Reab usa a mesma faixa de Resist (vault §6: "Reabilitação (→ Resistência)").
+const SERIES_POR_EX = {
+  Hip:      {Inic:[1,3], Inte:[3,4], Avan:[3,6]},
+  Forca:    {Inic:[1,3], Inte:[3,4], Avan:[3,6]},
+  Resist:   {Inic:[1,2], Inte:[2,3], Avan:[2,4]},
+  Reab:     {Inic:[1,2], Inte:[2,3], Avan:[2,4]},
+  Gestacao: {Inic:[1,2], Inte:[2,3], Avan:[2,4]},
 };
 
-const SERIES_POR_EX = {Inic:3, Inte:4, Avan:4};
+// ── Progressão de Séries por Exercício (vault §10.2) ──────────────────────────
+// Passo 1: moda das séries dos exercícios de um treino; empate → menor valor (conservador).
+function calcularSerieRegistrada(exerciciosDoTreino){
+  if(!exerciciosDoTreino || !exerciciosDoTreino.length) return null;
+  const contagem = {};
+  exerciciosDoTreino.forEach(ex => {
+    const serie = parseInt(ex.series);
+    if(!serie) return;
+    contagem[serie] = (contagem[serie] || 0) + 1;
+  });
+  let modaValor = null, modaFreq = 0;
+  Object.keys(contagem).forEach(serie => {
+    const freq = contagem[serie];
+    const serieNum = Number(serie);
+    if(freq > modaFreq || (freq === modaFreq && (modaValor === null || serieNum < modaValor))){
+      modaFreq = freq;
+      modaValor = serieNum;
+    }
+  });
+  return modaValor;
+}
+
+// Passo 2: sugestão do próximo treino — moda+1, travado entre piso e teto da faixa atual.
+// Sem histórico nesse objetivo → piso da faixa.
+function getSeriesPorEx(objetivo, nivel, ultimaSerieRegistrada){
+  const familia = FAMILIA_OBJETIVO[objetivo] || 'Resist';
+  const faixa = (SERIES_POR_EX[familia] || SERIES_POR_EX['Resist'])[nivel] || [1,3];
+  if(ultimaSerieRegistrada == null) return faixa[0];
+  const proximo = ultimaSerieRegistrada + 1;
+  return Math.max(faixa[0], Math.min(proximo, faixa[1]));
+}
+
+// Busca a "última série registrada" para um objetivo — lê direto do campo dedicado
+// s.historicoSeries (vault §10.2: histórico sobrevive a qualquer número de trocas de
+// objetivo no meio, não só 1-2 ciclos). Gravação/reset ficam em registrarHistoricoSeries.
+function buscarUltimaSerieRegistrada(s, objetivoAtual){
+  if(!s || !s.historicoSeries) return null;
+  const v = s.historicoSeries[objetivoAtual];
+  return (v == null) ? null : v;
+}
+
+// Grava a moda do ciclo recém-aprovado no histórico do próprio objetivo (vault §10.2,
+// independência por objetivo — sobrevive indefinidamente a trocas no meio).
+// Exceção Reab (vault §10.2): ENTRAR em Reab (veio de outro objetivo, não estava já em
+// Reab) zera tanto o histórico do próprio Reab quanto o do objetivo principal que estava
+// em andamento antes dela — ambos retomam do piso depois.
+function registrarHistoricoSeries(s, objetivoAprovado, exerciciosDoTreino, objetivoAnterior){
+  if(!s) return;
+  if(!s.historicoSeries) s.historicoSeries = {};
+
+  if(objetivoAprovado === 'Reab' && objetivoAnterior && objetivoAnterior !== 'Reab'){
+    delete s.historicoSeries['Reab'];
+    delete s.historicoSeries[objetivoAnterior];
+  }
+
+  const moda = calcularSerieRegistrada(exerciciosDoTreino);
+  if(moda != null) s.historicoSeries[objetivoAprovado] = moda;
+}
 
 const REPS_REF = {
-  Hip:'6–20',    Forca:'1–5',  Emagr:'10–20', Comp:'8–15',
-  Resist:'15–30+', CardioR:'15–25', Func:'8–15', Saude:'10–15',
-  Esport:'3–10', Reab:'10–20', Envelhec:'8–15', Gestacao:'12–15',
+  Hip:'6–12',     Forca:'1–5',   Emagr:'6–12',  Comp:'6–12',
+  Resist:'15+',   CardioR:'15+', Func:'15+',    Saude:'15+',
+  Esport:'1–5',   Reab:'10–20',  Envelhec:'15+', Gestacao:'12–15',
 };
 
 const INT_REF = {
@@ -5453,8 +5538,92 @@ const GRUPOS_MAPA = [
 
 // visualização de volume via tabela (vol-tbody)
 
+// ── Mapeamento de família por objetivo (vault REF-Volume-Derivado-MAV §3/§6) ──
+const FAMILIA_OBJETIVO = {
+  Hip:'Hip', Emagr:'Hip', Comp:'Hip',
+  Forca:'Forca', Esport:'Forca',
+  Resist:'Resist', Envelhec:'Resist', Saude:'Resist', Func:'Resist', CardioR:'Resist',
+  Reab:'Reab', Gestacao:'Gestacao',
+};
+
+// ── Fator de escala por Objetivo sobre Volume por Grupo (vault §3, base 2026-06) ──
+// Base de referência = Resistência (1.00). Nenhum fator > 1.00 (regra: sempre reduzir do teto).
+// Reab/Gestacao não usam este fator — fonte clínica própria, fora deste pacote de variável.
+const FATOR_OBJETIVO_VOLGRUPO = {
+  Resist:   {Inic:1.00, Inte:1.00, Avan:1.00},
+  Hip:      {Inic:0.88, Inte:0.84, Avan:0.80},
+  Forca:    {Inic:0.62, Inte:0.60, Avan:0.58},
+  Saude:    {Inic:1.00, Inte:1.00, Avan:1.00}, // provisório, sem fonte própria — vault §3/§5
+  Envelhec: {Inic:1.00, Inte:1.00, Avan:1.00},
+  Func:     {Inic:1.00, Inte:1.00, Avan:1.00},
+  CardioR:  {Inic:1.00, Inte:1.00, Avan:1.00},
+};
+
+// ── Zonas de Volume por Grupo × Sexo (vault §8) — valores já escalados para Avançado ──
+// Inte/Inic aplicam 0.80/0.60 sobre estes valores (vault §8.1/§8.2), com piso no MEV do grupo.
+// Vale para QUALQUER objetivo (correção 2026-06) — fator de Objetivo aplica-se POR CIMA do resultado.
+const ZONAS_VOLUME_SEXO = {
+  M: {
+    Latissimo:     [24,28], Peitoral:      [24,28], Deltoide:      [24,28],
+    Quadriceps:    [18,22],
+    Isquiossurais: [12,16], Biceps:        [12,16], Triceps:       [12,16],
+    Gluteos:       [4,8],   RetoAbdominal: [4,8],   Trapezio:      [4,8],
+    Panturrilhas:  [8,12],
+  },
+  F: {
+    Quadriceps:    [18,22], Gluteos:       [18,22], Isquiossurais: [18,22],
+    Latissimo:     [14,17], Deltoide:      [14,17],
+    Panturrilhas:  [8,12],  Triceps:       [8,12],  Biceps:        [8,12],
+    RetoAbdominal: [4,8],   Trapezio:      [4,8],
+    Peitoral:      [8,12],
+  },
+};
+
+function getZonaVolumeGrupo(grupoId, sexo, nivel){
+  // Oblíquo herda de RetoAbdominal (vault §8.1/§8.2, sem fonte própria)
+  const idEfetivo = (grupoId === 'Obliquo') ? 'RetoAbdominal' : grupoId;
+  const s = (sexo === 'F') ? 'F' : 'M';
+  const base = (ZONAS_VOLUME_SEXO[s] || ZONAS_VOLUME_SEXO.M)[idEfetivo];
+  if(!base) return null; // sem zona definida para este grupo — caller usa fallback do MAV puro
+  const fatorNivel = nivel === 'Avan' ? 1.00 : nivel === 'Inte' ? 0.80 : 0.60;
+  return [Math.round(base[0]*fatorNivel), Math.round(base[1]*fatorNivel)];
+}
+
+// ── Volume por Grupo — fórmula final (vault §1: Grupo → Sexo → Nível → Objetivo → piso MEV) ──
+function getVolumePorGrupo(grupoId, sexo, nivel, objetivo){
+  const grupo = GRUPOS_MAPA.find(g => g.id === grupoId);
+  if(!grupo) return [0,0];
+  const { mev, mav_min, mav_max, mrv } = grupo;
+
+  const familia = FAMILIA_OBJETIVO[objetivo] || 'Resist';
+
+  // Reab/Gestacao: fora de escopo deste fator — fonte clínica própria (vault §3, §9), não tratada aqui
+  if(familia === 'Reab' || familia === 'Gestacao'){
+    return [mav_min || mev, mav_max || mrv];
+  }
+
+  const zona = getZonaVolumeGrupo(grupoId, sexo, nivel);
+  const fatorObjetivo = (FATOR_OBJETIVO_VOLGRUPO[familia] || FATOR_OBJETIVO_VOLGRUPO['Resist'])[nivel] ?? 1.00;
+
+  let semMin, semMax;
+  if(zona){
+    semMin = Math.round(zona[0] * fatorObjetivo);
+    semMax = Math.round(zona[1] * fatorObjetivo);
+  } else {
+    // Sem zona de sexo definida para o grupo (ex.: Trapézio em algumas combinações) →
+    // cai direto no MAV puro do grupo (vault §2), ainda escalado pelo fator de Objetivo.
+    semMin = Math.round((mav_min || mev) * fatorObjetivo);
+    semMax = Math.round((mav_max || mrv) * fatorObjetivo);
+  }
+
+  // Piso de segurança — nunca abaixo do MEV do próprio grupo (vault §1, passo 5)
+  semMin = Math.max(semMin, mev);
+  semMax = Math.max(semMax, mev);
+
+  return [semMin, semMax];
+}
+
 let _s3 = {
-  volMin: 10, volMax: 14,
   seriesPorEx: 3,
   volPorGrupo: {},      // {id: {sem, sessao, freq}}
   divisaoIdx: 0,
@@ -5608,9 +5777,6 @@ function fillStep3(){
 function calcModificadoresPerfil(){
   const s = getActive();
   const mods = {
-    // Volume
-    volumeBase: 'mav',    // 'mev' | 'mav' — ponto de partida das séries semanais
-    volumeMsg:  '',        // mensagem explicativa para exibir na tela
     // Intervalos
     intervaloFator: 1.0,  // multiplicador: 1.0 = padrão, 1.2 = +20% (limit upper)
     intervaloMsg: '',
@@ -5628,21 +5794,20 @@ function calcModificadoresPerfil(){
   const p = s.perfil, a = s.anamnese;
 
   // ── Idade ─────────────────────────────────────────────────────────────────
+  // Idade não influencia mais Volume por Grupo (vault REF-Volume-Derivado-MAV §1,
+  // revisão 2026-06 — ACSM 2026). A proteção do aluno 50+/65+ continua aqui, mas
+  // só nas variáveis de intervalo, progressão de carga e métodos avançados.
   const idade = p.nascimento
     ? new Date().getFullYear() - new Date(p.nascimento).getFullYear()
     : 0;
 
   if(idade >= 65){
-    mods.volumeBase = 'mev';
-    mods.volumeMsg  = `⚠ 65+ anos — volume iniciando no MEV por grupo. Progressão conservadora.`;
     mods.intervaloFator = 1.2;
     mods.intervaloMsg   = `⚠ 65+ anos — intervalos de descanso no limite superior da faixa.`;
     mods.progressaoMsg  = `⚠ 65+ anos — progressão de carga ≤ 5% por semana. Priorizar técnica e controle.`;
     mods.bloquearMetodosAvancados = true;
     mods.metodosMsg = `⚠ 65+ anos — métodos avançados (drop set, rest-pause, série gigante) não recomendados neste nível. Usar pirâmide crescente e circuito.`;
   } else if(idade >= 50){
-    mods.volumeBase = 'mev';
-    mods.volumeMsg  = `⚠ 50+ anos — volume iniciando no MEV por grupo. Ajuste manual disponível.`;
     mods.intervaloFator = 1.1;
     mods.intervaloMsg   = `⚠ 50+ anos — preferir intervalos no limite superior da faixa prescrita.`;
     mods.progressaoMsg  = `⚠ 50+ anos — progressão de carga conservadora (< 5%/semana). Atenção à recuperação.`;
@@ -5673,20 +5838,24 @@ function iniciarTelaVolume(){
   const nivel   = val('pr-nivel') || s.anamnese?.nivel || 'Inic';
   const freq    = val('pr-frequencia') || s.anamnese?.frequencia || '3x';
   const obj     = selectedObj || 'Saude';
+  const sexo    = s.perfil?.sexo || 'M';
   const numDias = parseInt(freq) || 3;
 
   // ── Calcular modificadores de perfil (Camada 2) ──────────────────────────
+  // Idade não influencia mais Volume por Grupo (vault REF-Volume-Derivado-MAV §1,
+  // revisão 2026-06 — ACSM 2026 não sustenta corte de volume por idade; proteção
+  // do idoso passa a viver em intensidade/RIR/frequência, fora desta tela).
   const mods = calcModificadoresPerfil();
 
   // Renderizar avisos de modificadores acima da tabela
   renderAvisosVolume(mods);
 
-  _s3.seriesPorEx = SERIES_POR_EX[nivel] || 3;
+  // Séries por Exercício — progressão por histórico (vault §10.2): consulta a moda
+  // do último treino deste aluno no mesmo objetivo (com reset cruzado por Reab) e
+  // sugere um degrau acima, travado na faixa do objetivo×nível atual.
+  const ultimaSerie = buscarUltimaSerieRegistrada(s, obj);
+  _s3.seriesPorEx = getSeriesPorEx(obj, nivel, ultimaSerie);
   $('vol-series').value = _s3.seriesPorEx;
-
-  const volR = (VOL_REF[obj] || VOL_REF['Saude'])[nivel] || [10,14];
-  _s3.volMin = volR[0];
-  _s3.volMax = volR[1];
 
   // Frequência estimada por grupo
   const freqEst = {
@@ -5697,25 +5866,15 @@ function iniciarTelaVolume(){
   if(numDias >= 4){ freqEst.Quadriceps=2; freqEst.Gluteos=2; }
   if(numDias >= 5){ freqEst.Peitoral=2; freqEst.Latissimo=2; }
 
-  GRUPOS_MAPA.forEach(({id, mev, mav_min, mav_max, mrv}) => {
-    const chave = obj + nivel;
+  GRUPOS_MAPA.forEach(({id}) => {
+    // chave inclui sexo — recalcula sempre que objetivo/nível/sexo mudar (vault §1: Grupo→Sexo→Nível→Objetivo)
+    const chave = obj + nivel + sexo;
     if(!_s3.volPorGrupo[id] || _s3.volPorGrupo[id]._chave !== chave){
       const freq_g = freqEst[id] || 1;
-      const serEx  = SERIES_POR_EX[nivel] || 3;
+      const serEx  = _s3.seriesPorEx;
 
-      // ── Aplicar modificador de volume base ──────────────────────────────
-      let semMin, semMax, semMid;
-      if(mods.volumeBase === 'mev'){
-        // 50+/65+: inicia no MEV, máx = limite inferior do MAV
-        semMin = mev;
-        semMax = mav_min || mev;
-        semMid = mev;
-      } else {
-        // Padrão: inicia na MAV
-        semMin = mav_min || mev;
-        semMax = mav_max || mrv;
-        semMid = Math.round((semMin + semMax) / 2);
-      }
+      const [semMin, semMax] = getVolumePorGrupo(id, sexo, nivel, obj);
+      const semMid = Math.round((semMin + semMax) / 2);
 
       _s3.volPorGrupo[id] = {
         semMin, semMax,
@@ -5747,7 +5906,7 @@ function renderAvisosVolume(mods){
   }
 
   const avisos = [
-    mods.volumeMsg, mods.intervaloMsg,
+    mods.intervaloMsg,
     mods.progressaoMsg, mods.impactoMsg, mods.metodosMsg,
   ].filter(Boolean);
 
@@ -5961,8 +6120,13 @@ function resetSeriesGlobal(){
 function resetarLinhaGrupo(id){
   const grupo = GRUPOS_MAPA.find(g => g.id === id); if(!grupo) return;
   const vg = _s3.volPorGrupo[id]; if(!vg) return;
-  vg.semMin  = grupo.mav_min || grupo.mev;
-  vg.semMax  = grupo.mav_max || grupo.mrv;
+  const s     = getActive();
+  const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
+  const obj   = selectedObj || 'Saude';
+  const sexo  = s?.perfil?.sexo || 'M';
+  const [semMin, semMax] = getVolumePorGrupo(id, sexo, nivel, obj);
+  vg.semMin  = semMin;
+  vg.semMax  = semMax;
   vg.serEx   = _s3.seriesPorEx;
   vg.sem     = Math.round((vg.semMin + vg.semMax) / 2);
   vg.ativo   = true;
@@ -5971,8 +6135,8 @@ function resetarLinhaGrupo(id){
   const inpMin = $('inp-' + id + '-semMin');
   const inpMax = $('inp-' + id + '-semMax');
   const inpEx  = $('inp-' + id + '-serEx');
-  if(inpMin) inpMin.value = grupo.mev;
-  if(inpMax) inpMax.value = grupo.mrv;
+  if(inpMin) inpMin.value = vg.semMin;
+  if(inpMax) inpMax.value = vg.semMax;
   if(inpEx)  inpEx.value  = _s3.seriesPorEx;
   atualizarLinhaTabela(id);
 }
@@ -6054,21 +6218,45 @@ function renderMapaMuscular(){
 // ── TELA B: DIVISÃO ────────────────────────────────────────────────────────────
 
 
+// Volume Total da Sessão — faixas oficiais (vault REF-Volume-Derivado-MAV §9, 2026-06)
+// Substitui a tabela antiga de valor único. Família segue FAMILIA_OBJETIVO (Hip/Forca/Resist/Reab/Gestacao).
 const LIM_SESSAO_REF = {
-  //          Inic  Inte  Avan
-  Hip:      { Inic:16, Inte:20, Avan:24 },
-  Forca:    { Inic:12, Inte:16, Avan:20 },
-  Emagr:    { Inic:16, Inte:22, Avan:26 },
-  Comp:     { Inic:16, Inte:20, Avan:24 },
-  Resist:   { Inic:18, Inte:24, Avan:28 },
-  CardioR:  { Inic:12, Inte:16, Avan:20 },
-  Func:     { Inic:14, Inte:18, Avan:22 },
-  Saude:    { Inic:12, Inte:16, Avan:20 },
-  Esport:   { Inic:14, Inte:18, Avan:24 },
-  Reab:     { Inic:10, Inte:12, Avan:16 },
-  Envelhec: { Inic:10, Inte:14, Avan:18 },
-  Gestacao: { Inic:10, Inte:12, Avan:14 },
+  //          Inic     Inte     Avan
+  Hip:      { Inic:[15,20], Inte:[18,24], Avan:[20,28] },
+  Forca:    { Inic:[10,15], Inte:[12,18], Avan:[15,20] },
+  Emagr:    { Inic:[15,20], Inte:[18,24], Avan:[20,28] },
+  Comp:     { Inic:[15,20], Inte:[18,24], Avan:[20,28] },
+  Resist:   { Inic:[16,24], Inte:[20,30], Avan:[24,36] },
+  CardioR:  { Inic:[16,24], Inte:[20,30], Avan:[24,36] },
+  Func:     { Inic:[16,24], Inte:[20,30], Avan:[24,36] },
+  Saude:    { Inic:[16,24], Inte:[20,30], Avan:[24,36] },
+  Esport:   { Inic:[10,15], Inte:[12,18], Avan:[15,20] },
+  Reab:     { Inic:[2,4],   Inte:[4,8],   Avan:[6,12] },
+  Envelhec: { Inic:[16,24], Inte:[20,30], Avan:[24,36] },
+  Gestacao: { Inic:[10,10], Inte:[20,20], Avan:[20,30] },
 };
+
+// 3 fases fixas dentro da faixa de Volume da Sessão (vault §10.2-bis)
+// Progride só se a ficha IMEDIATAMENTE anterior foi do mesmo objetivo — qualquer
+// quebra de sequência (inclusive Reabilitação) reseta para 'baixa'.
+function getFaseVolumeSessao(objetivoAtual, objetivoUltimaFicha, faseUltimaFicha){
+  if(objetivoUltimaFicha == null || objetivoUltimaFicha !== objetivoAtual){
+    return 'baixa'; // sem histórico ou sequência quebrada → reinicia
+  }
+  if(faseUltimaFicha === 'baixa') return 'media';
+  return 'alta'; // já estava em média ou alta → avança/trava em alta
+}
+
+function getVolumeSessaoPorFase(faixaMin, faixaMax, fase){
+  const largura = faixaMax - faixaMin;
+  const terco = largura / 3;
+  switch(fase){
+    case 'baixa': return Math.round(faixaMin);
+    case 'media': return Math.round(faixaMin + terco);
+    case 'alta':  return Math.round(faixaMin + 2 * terco);
+    default: return Math.round(faixaMin);
+  }
+}
 
 function getDivisoesDisponiveis(numDias){
   const mapa = {
@@ -6219,7 +6407,15 @@ function calcLimSessaoRecomendado(){
   const s     = getActive(); if(!s) return 20;
   const nivel = val('pr-nivel') || s.anamnese?.nivel || 'Inic';
   const obj   = selectedObj || 'Saude';
-  return (LIM_SESSAO_REF[obj] || LIM_SESSAO_REF['Saude'])[nivel] || 20;
+  const faixa = (LIM_SESSAO_REF[obj] || LIM_SESSAO_REF['Saude'])[nivel] || [16,24];
+
+  // Progressão por 3 fases (vault §10.2-bis) — consulta apenas a última ficha
+  // criada para este aluno (objetivo + fase), não um histórico completo.
+  const ultima = s.ultimaFaseVolSessao || null;
+  const fase = getFaseVolumeSessao(obj, ultima?.objetivo ?? null, ultima?.fase ?? null);
+  _s3._faseVolSessaoAtual = fase; // lido por aprovarTreinoMotor para persistir junto da ficha aprovada
+
+  return getVolumeSessaoPorFase(faixa[0], faixa[1], fase);
 }
 
 function iniciarLimiteSessao(){
@@ -7627,7 +7823,6 @@ Eles não serão incluídos na ficha. Continuar assim mesmo?`)) return;
     local:        s.anamnese?.local || 'academia',
     lesoes:       s.perfil?.lesoes || '',
     preferencias: s.anamnese?.preferencias || '',
-    volMin:      _s3.volMin, volMax: _s3.volMax,
     seriesPorEx: _s3.seriesPorEx,
     divisaoChave: op.chave,
     volPorGrupo: _s3.volPorGrupo,
@@ -7930,7 +8125,7 @@ function novaPrescricao(){
   s.prescricao={};
   selectedObj=''; _modeloSelecionado='';
   setVal('pr-nivel',''); setVal('pr-frequencia',''); setVal('pr-obs','');
-  _s3={volMin:10,volMax:14,seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:null,treinoAtivo:0};
+  _s3={seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:null,treinoAtivo:0};
   renderObjGrid(); goStep(1); updateHeader(s); renderStudentList();
 }
 
@@ -7981,12 +8176,32 @@ function aprovarTreinoMotor(){
   const usadosNesteCiclo = _s3.fichaObj.treinos.flatMap(t => t.exercicios.map(e => e.nome));
   s.historicoExercicios = [...new Set([...s.historicoExercicios, ...usadosNesteCiclo])].slice(-200);
 
+  // Persistência da progressão de Séries por Exercício (vault §10.2) — histórico
+  // dedicado por objetivo, sobrevive a qualquer número de trocas no meio (não só ao
+  // ciclo imediatamente anterior). Lê os exercícios já com qualquer ajuste manual do
+  // personal (atualizarCampo), captando o que foi de fato aprovado, não o sugerido.
+  // NOTA: o objetivo anterior é lido de s.ultimaFaseVolSessao (não de anterior?.objetivo)
+  // porque novaPrescricao() zera s.prescricao={} no INÍCIO de cada novo ciclo, antes
+  // deste aprovar rodar — anterior?.objetivo seria sempre null a partir do 2º ciclo.
+  // s.ultimaFaseVolSessao sobrevive a esse reset (novaPrescricao não a toca).
+  const objetivoAnteriorReal = s.ultimaFaseVolSessao?.objetivo || null;
+  const exerciciosDoCiclo = _s3.fichaObj.treinos.flatMap(t => t.exercicios);
+  registrarHistoricoSeries(s, selectedObj, exerciciosDoCiclo, objetivoAnteriorReal);
+
   s.prescricao = {
     objetivo:selectedObj, nivel:val('pr-nivel'), frequencia:val('pr-frequencia'),
     modelo:_modeloSelecionado, obs:val('pr-obs')||'',
     treino, aprovado:true, dataAprovacao:data, _fichaObj:_s3.fichaObj,
     _fichaObjAnterior: anterior,
   };
+
+  // Persistência da progressão por 3 fases de Volume da Sessão (vault §10.2-bis) —
+  // guarda apenas o registro mais recente (objetivo + fase), não um histórico completo.
+  s.ultimaFaseVolSessao = {
+    objetivo: selectedObj,
+    fase: _s3._faseVolSessaoAtual || 'baixa',
+  };
+
   saveStudent();
   $('ficha-aprovada').textContent = treino;
   $('aprovado-data').textContent  = data;
@@ -8132,7 +8347,7 @@ function lerSessionDataDOM(cardIdx, ti, sessaoGrupos){
 
 function gerarFichaMotorV2(params){
   const {objetivo, nivel, frequencia, local, lesoes, preferencias,
-         volMin, volMax, seriesPorEx, volPorGrupo, divisaoChave,
+         seriesPorEx, volPorGrupo, divisaoChave,
          sessionDataByTreino} = params;  // ← sessionDataByTreino: [{g,numEx,serEx}][] por sessão
 
   const numDias = parseInt(frequencia)||3;
@@ -8190,7 +8405,12 @@ function gerarFichaMotorV2(params){
         return vg && vg.ativo !== false;
       });
     } else {
-      // Fallback: calcular a partir do template
+      // Fallback: calcular a partir do template, usando o teto de Volume da Sessão
+      // (LIM_SESSAO_REF — vault REF-Volume-Derivado-MAV §9) como referência, já que
+      // VOL_REF (tabela órfã antiga) foi removida. LIM_SESSAO_REF agora é faixa
+      // [min,max]; usa o ponto médio como proxy de referência neste fallback.
+      const faixaRef = (LIM_SESSAO_REF[objetivo] || LIM_SESSAO_REF['Saude'])[nivel] || [16,24];
+      const limRef = Math.round((faixaRef[0] + faixaRef[1]) / 2);
       sessaoGrupos = treinoGruposTemplate
         .filter(({g}) => {
           const vg = volPorGrupo?.[g];
@@ -8199,7 +8419,7 @@ function gerarFichaMotorV2(params){
         .map(({g}) => {
           const vg = volPorGrupo?.[g];
           const sEx = (vg?.serEx) || seriesPorEx;
-          const serSessao = vg?.sessao > 0 ? vg.sessao : Math.max(sEx, Math.round((motorRand(volMin,volMax)) / Math.max(1, divisao.default.filter(t=>t.some(m=>m.g===g)).length)));
+          const serSessao = vg?.sessao > 0 ? vg.sessao : Math.max(sEx, Math.round(limRef / Math.max(1, divisao.default.filter(t=>t.some(m=>m.g===g)).length)));
           const numEx = Math.max(1, Math.ceil(serSessao / sEx));
           return { g, numEx, serEx: sEx, serSessao: numEx * sEx };
         });
@@ -8274,7 +8494,7 @@ function gerarFichaMotorV2(params){
     });
   });
 
-  return { objetivo, nivel, frequencia, local, volMin, volMax, seriesPorEx,
+  return { objetivo, nivel, frequencia, local, seriesPorEx,
            treinos, dataGeracao: new Date().toLocaleDateString('pt-BR') };
 }
 
