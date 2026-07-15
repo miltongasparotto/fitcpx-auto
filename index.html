@@ -29,44 +29,44 @@ input[type=number]::-webkit-inner-spin-button{
 }
 
 :root {
-  /* Tema claro — padrão FitCpx */
-  --bg:#f9fafb;
+  /* Tema claro — tokens Dashboard FitCpx */
+  --bg:#f6f6f5;
   --bg2:#ffffff;
   --bg3:#ffffff;
-  --bg4:#f3f4f6;
-  --border:#e5e7eb;
-  --border2:#d1d5db;
-  --accent:#16a34a;
-  --accent2:#15803d;
-  --accent-dim:#f0fdf4;
-  --accent-dim2:#dcfce7;
-  --text:#111827;
-  --text2:#6b7280;
-  --text3:#9ca3af;
+  --bg4:#f6f7f6;
+  --border:#ececec;
+  --border2:#d8dad8;
+  --accent:#22c55e;
+  --accent2:#16a34a;
+  --accent-dim:rgba(34,197,94,.10);
+  --accent-dim2:rgba(34,197,94,.12);
+  --text:#1f2328;
+  --text2:#5a615d;
+  --text3:#aeb3b0;
   --red:#dc2626;
   --red-dim:#fef2f2;
   --amber:#d97706;
   --amber-dim:#fffbeb;
   --blue:#2563eb;
   --blue-dim:#eff6ff;
-  --radius:6px;
-  --radius2:8px;
-  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
-  --shadow2:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.05);
+  --radius:8px;
+  --radius2:14px;
+  --shadow:0 4px 16px rgba(20,40,30,.04);
+  --shadow2:0 18px 40px rgba(0,0,0,.18);
   --mono:'IBM Plex Mono',monospace;
   --sans:'Inter',sans-serif;
   --fs-base:14px;--fs-sm:13px;--fs-xs:12px;--fs-xxs:11px;
 }
 :root.dark {
-  --bg:#0f1117;--bg2:#1a1d27;--bg3:#1e2235;--bg4:#242840;
-  --border:#2a2f45;--border2:#343a55;
-  --accent:#16a34a;--accent2:#15803d;
-  --accent-dim:rgba(22,163,74,.1);--accent-dim2:rgba(22,163,74,.18);
-  --text:#f1f5f9;--text2:#94a3b8;--text3:#64748b;
+  --bg:#13161a;--bg2:#1c2024;--bg3:#1c2024;--bg4:rgba(255,255,255,.04);
+  --border:#2b3137;--border2:#343a55;
+  --accent:#22c55e;--accent2:#16a34a;
+  --accent-dim:rgba(34,197,94,.10);--accent-dim2:rgba(34,197,94,.18);
+  --text:#f1f4f2;--text2:#9aa39e;--text3:#6c736d;
   --red:#ef4444;--red-dim:rgba(239,68,68,.1);
   --amber:#f59e0b;--amber-dim:rgba(245,158,11,.1);
   --blue:#3b82f6;--blue-dim:rgba(59,130,246,.1);
-  --shadow:0 1px 3px rgba(0,0,0,.3);--shadow2:0 4px 6px rgba(0,0,0,.4);
+  --shadow:0 1px 3px rgba(0,0,0,.3);--shadow2:0 18px 40px rgba(0,0,0,.4);
 }
 
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:var(--fs-base);overflow:hidden;-webkit-font-smoothing:antialiased}
@@ -261,6 +261,23 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 </head>
 <body>
 
+<!-- LOGIN GATE — cobre o app inteiro até o login com Google ser confirmado.
+     Visível por padrão; só é escondida por gauthAtualizarUI(true) quando o
+     token é validado (login novo, restaurado ou renovado em segundo plano). -->
+<div id="login-gate" class="modal-overlay" style="z-index:2000;background:var(--bg)">
+  <div class="modal" style="width:360px;text-align:center;padding:36px 28px">
+    <div style="font-size:34px;margin-bottom:6px">🏋️</div>
+    <div class="modal-title" style="margin-bottom:4px">FitCPX Auto</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:24px">Entre com sua conta Google para acessar e sincronizar seus dados.</div>
+    <button onclick="iniciarLoginGoogle()"
+      style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:11px 14px;cursor:pointer;font-size:14px;color:var(--text);font-weight:600;font-family:var(--sans);transition:all .2s">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Entrar com Google
+    </button>
+    <div id="login-gate-status" style="margin-top:14px;font-size:12px;color:var(--text3);font-family:var(--mono);min-height:16px">Verificando sessão salva...</div>
+  </div>
+</div>
+
 <div class="app">
 
   <!-- TOPBAR -->
@@ -347,7 +364,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <div class="sidebar-item" id="nav-biblioteca"   onclick="navGo('biblioteca')"  style="font-size:12px;padding:6px 8px"><span>📚</span><span>Biblioteca de Treinos</span></div>
         <div class="sidebar-item" id="nav-distribuicao" onclick="navGo('distribuicao')" style="font-size:12px;padding:6px 8px"><span>📋</span><span>Distribuição</span></div>
         <div class="sidebar-item" id="nav-periodizacao" onclick="navGo('periodizacao')" style="font-size:12px;padding:6px 8px"><span>📈</span><span>Periodização</span></div>
-        <div class="sidebar-item" id="nav-exercicios" onclick="navGo('exercicios')" style="font-size:12px;padding:6px 8px"><span>💪</span><span>Exercícios</span><span style="margin-left:auto;font-size:10px;color:var(--text3);font-family:var(--mono)">693</span></div>
+        <div class="sidebar-item" id="nav-exercicios" onclick="navGo('exercicios')" style="font-size:12px;padding:6px 8px"><span>💪</span><span>Exercícios</span><span id="nav-exercicios-count" style="margin-left:auto;font-size:10px;color:var(--text3);font-family:var(--mono)">—</span></div>
       </div>
     </div>
 
@@ -668,7 +685,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <option value="10–16">10–16 séries — Força Máxima</option>
               <option value="10–20">10–20 séries — Hipertrofia (MEV→MAV)</option>
               <option value="12–20">12–20 séries — Emagrecimento / Resistência / Composição</option>
-              <option value="10–20">10–20 séries — Performance Esportiva</option>
+              <option value="10–20 (Esportiva)">10–20 séries — Performance Esportiva</option>
             </select>
             <div class="field-sub">Vault: MEV→MAV (Israetel 2019)</div>
           </div>
@@ -1104,7 +1121,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       <div class="page-header">
         <div>
           <div class="page-title">💪 Banco de Exercícios</div>
-          <div class="page-subtitle"><span class="badge badge-green">693 exercícios</span><span class="badge badge-gray">Vault ACM v1.1</span><span class="badge badge-blue">19 grupos musculares</span></div>
+          <div class="page-subtitle"><span class="badge badge-green" id="ex-badge-total">— exercícios</span><span class="badge badge-gray">Vault ACM v1.1</span><span class="badge badge-blue">19 grupos musculares</span></div>
         </div>
         <div class="page-header-actions">
           <span id="ex-count-label" style="font-size:12px;color:var(--text3);font-family:var(--mono)"></span>
@@ -3510,17 +3527,26 @@ function calcSitReach(){
   const v=parseFloat(val('a-sentar-alcançar'));
   const el=$('a-sitreach-class'); if(!el) return;
   if(isNaN(v)){ el.value=''; return; }
+  const warmup=document.getElementById('a-sitreach-warmup')?.checked;
+  const nota=warmup?' (c/ aquecimento)':'';
+  const proto=val('a-sitreach-proto')||'YMCA/ACSM';
+  // As normas abaixo são ACSM/YMCA (zero = ponta dos pés). Protocolo Canadense usa
+  // zero = 26cm (tocar a ponta dos pés) — converte para o equivalente ACSM antes de
+  // classificar. V-sit não tem referência de conversão confiável, então não classifica.
+  if(proto==='V-sit'){
+    el.value='Sem tabela normativa para V-sit'+nota+' — usar só para acompanhamento evolutivo';
+    return;
+  }
+  const vAcsm = proto==='Canadense' ? (v-26) : v;
   const sexo=val('p-sexo')||'M';
   const nasc=val('p-nascimento');
-  const idade=nasc?(new Date().getFullYear()-new Date(nasc).getFullYear()):30;
+  const idade=_calcIdadeNum(nasc) ?? 30;
   const normsM=[[18,25,24,16,9,1],[26,35,23,15,7,0],[36,45,21,13,5,-1],[46,55,19,11,3,-2],[56,65,17,9,2,-3],[66,99,16,8,1,-3]];
   const normsF=[[18,25,30,22,15,7],[26,35,29,21,13,5],[36,45,27,18,10,2],[46,55,25,16,8,0],[56,65,23,14,7,-1],[66,99,22,13,6,-2]];
   const norms=sexo==='F'?normsF:normsM;
   const row=norms.find(n=>idade>=n[0]&&idade<=n[1])||norms[0];
   const labels=['Excelente','Bom','Médio','Abaixo da média','Fraco'];
-  const warmup=document.getElementById('a-sitreach-warmup')?.checked;
-  const nota=warmup?' (c/ aquecimento)':'';
-  for(let i=0;i<4;i++){ if(v>=row[i+2]){ el.value=labels[i]+nota; return; } }
+  for(let i=0;i<4;i++){ if(vAcsm>=row[i+2]){ el.value=labels[i]+nota; return; } }
   el.value='Fraco'+nota;
 }
 
@@ -4332,7 +4358,7 @@ function calcTMB_TDEE(gastoExtraSemanal){
   const nascimento=val('p-nascimento');
   const sexo=val('p-sexo');
   if(!peso||!alt) return null;
-  const idade = nascimento ? (new Date().getFullYear()-new Date(nascimento).getFullYear()) : 30;
+  const idade = _calcIdadeNum(nascimento) ?? 30;
   let tmb = sexo==='F'
     ? (10*peso)+(6.25*alt)-(5*idade)-161
     : (10*peso)+(6.25*alt)-(5*idade)+5;
@@ -4500,7 +4526,7 @@ function calcIdade(){
   const nasc=val('p-nascimento');
   const el=$('p-idade-label'); if(!el) return;
   if(!nasc){ el.textContent=''; return; }
-  const idade=new Date().getFullYear()-new Date(nasc).getFullYear();
+  const idade=_calcIdadeNum(nasc);
   el.textContent=idade>0?idade+' anos':'';
 }
 
@@ -4754,7 +4780,7 @@ function atualizarFlagAssimetria(){
 function calcFCMax(){
   const nasc=val('p-nascimento');
   const el=$('a-fcmax'); if(!el||!nasc) return;
-  const idade=new Date().getFullYear()-new Date(nasc).getFullYear();
+  const idade=_calcIdadeNum(nasc);
   if(idade>0) el.value=(220-idade)+' bpm';
 }
 
@@ -4818,7 +4844,7 @@ function calcVO2(){
   if(cls){
     const sexo=val('p-sexo')||'M';
     const nasc=val('p-nascimento');
-    const idade=nasc?(new Date().getFullYear()-new Date(nasc).getFullYear()):30;
+    const idade=_calcIdadeNum(nasc) ?? 30;
     cls.value=classVO2(vo2,sexo,idade);
   }
 }
@@ -4884,7 +4910,7 @@ function calcPushupClass(){
   const modificada=document.getElementById('a-flexao-modificada')?.checked;
   const sexo=val('p-sexo')||'M';
   const nasc=val('p-nascimento');
-  const idade=nasc?(new Date().getFullYear()-new Date(nasc).getFullYear()):30;
+  const idade=_calcIdadeNum(nasc) ?? 30;
   // Se posição modificada, usar normas femininas independente do sexo (menor exigência)
   const usarF = sexo==='F' || modificada;
   const normsM=[[18,25,36,29,22,17],[26,35,35,22,17,12],[36,45,30,22,15,10],[46,55,25,17,13,8],[56,65,21,13,10,6],[66,99,18,11,8,5]];
@@ -9064,8 +9090,9 @@ function gauthTentarAutoLogin(){
       GAUTH.user = user;
       GAUTH.driveFileId = fileId || null;
       if(GAUTH.gapiReady) gapi.client.setToken({ access_token: token });
-      gauthAtualizarUI(true);
-      // Tentar carregar dados do Drive silenciosamente
+      // Não libera a tela de login ainda — o token salvo pode ter expirado (~1h).
+      // carregarDoDrive() só esconde o gate depois de confirmar que o token
+      // ainda é válido (ou, se não for, tenta renovar sozinho antes de desistir).
       carregarDoDrive(true);
     }
   } catch(e){}
@@ -9086,8 +9113,18 @@ function iniciarLoginGoogle(){
   GAUTH.tokenClient.requestAccessToken({ prompt: 'consent' });
 }
 
+// Resolve de uma tentativa de renovação silenciosa em andamento (ver
+// tentarRenovarTokenSilencioso). null quando não há nenhuma pendente.
+let _resolveRenovacaoSilenciosa = null;
+
 async function gauthTokenCallback(resp){
-  if(resp.error){ setSyncStatus('Erro no login: '+resp.error, true); return; }
+  if(resp.error){
+    if(_resolveRenovacaoSilenciosa){ const r=_resolveRenovacaoSilenciosa; _resolveRenovacaoSilenciosa=null; r(false); }
+    else setSyncStatus('Erro no login: '+resp.error, true);
+    return;
+  }
+
+  if(_resolveRenovacaoSilenciosa){ const r=_resolveRenovacaoSilenciosa; _resolveRenovacaoSilenciosa=null; r(true); }
 
   GAUTH.token = resp.access_token;
   gapi.client.setToken({ access_token: resp.access_token });
@@ -9112,6 +9149,20 @@ async function gauthTokenCallback(resp){
   await carregarDoDrive(false);
 }
 
+// Pede um token novo sem popup (prompt:''). Só funciona se o navegador ainda tiver
+// uma sessão Google ativa e o usuário já tiver consentido antes — caso contrário o
+// Google recusa silenciosamente e resolvemos false após um tempo limite.
+function tentarRenovarTokenSilencioso(){
+  return new Promise((resolve)=>{
+    if(!GAUTH.tokenClient){ resolve(false); return; }
+    _resolveRenovacaoSilenciosa = resolve;
+    GAUTH.tokenClient.requestAccessToken({ prompt: '' });
+    setTimeout(()=>{
+      if(_resolveRenovacaoSilenciosa){ const r=_resolveRenovacaoSilenciosa; _resolveRenovacaoSilenciosa=null; r(false); }
+    }, 6000);
+  });
+}
+
 function deslogarGoogle(){
   if(GAUTH.token) google.accounts.oauth2.revoke(GAUTH.token);
   GAUTH.token = null;
@@ -9122,10 +9173,27 @@ function deslogarGoogle(){
   setSyncStatus('', false);
 }
 
+// Token de acesso expirou/foi revogado do lado do Google. Antes de derrubar a
+// sessão, tenta renovar em segundo plano (sem popup) — só pede login de novo
+// (mostrando o gate) se essa tentativa silenciosa também falhar.
+async function expirarSessaoDrive(msg){
+  const renovou = await tentarRenovarTokenSilencioso();
+  if(renovou) return true; // gauthTokenCallback já cuidou de tudo (token novo, UI, reload)
+  GAUTH.token = null;
+  GAUTH.user = null;
+  GAUTH.driveFileId = null;
+  localStorage.removeItem('fitcpx_gauth');
+  gauthAtualizarUI(false);
+  setSyncStatus(msg || 'Sessão do Google expirada — faça login novamente.', true);
+  setTimeout(()=>setSyncStatus('',false), 6000);
+  return false;
+}
+
 function gauthAtualizarUI(logado){
   const btnLogin    = $('btn-google-login');
   const userInfo    = $('google-user-info');
   const cloudActs   = $('cloud-actions');
+  const gate        = $('login-gate');
 
   if(logado && GAUTH.user){
     if(btnLogin)  btnLogin.style.display  = 'none';
@@ -9137,10 +9205,12 @@ function gauthAtualizarUI(logado){
       if(nm) nm.textContent = GAUTH.user.given_name || GAUTH.user.name || 'Usuário';
     }
     if(cloudActs) cloudActs.style.display = 'flex';
+    if(gate) gate.classList.add('hidden');
   } else {
     if(btnLogin)  btnLogin.style.display  = 'flex';
     if(userInfo)  userInfo.style.display  = 'none';
     if(cloudActs) cloudActs.style.display = 'none';
+    if(gate) gate.classList.remove('hidden');
   }
 }
 
@@ -9148,11 +9218,13 @@ function gauthAtualizarUI(logado){
 
 function setSyncStatus(msg, erro){
   const el = $('sync-status');
-  if(!el) return;
-  if(!msg){ el.style.display='none'; el.textContent=''; return; }
-  el.style.display = 'block';
-  el.style.color = erro ? '#ff5050' : 'var(--text3)';
-  el.textContent = msg;
+  if(el){
+    if(!msg){ el.style.display='none'; el.textContent=''; }
+    else { el.style.display='block'; el.style.color = erro ? '#ff5050' : 'var(--text3)'; el.textContent = msg; }
+  }
+  // Espelha a mensagem na tela de login — a topbar fica coberta pelo gate enquanto deslogado
+  const gateEl = $('login-gate-status');
+  if(gateEl){ gateEl.style.color = erro ? 'var(--red)' : 'var(--text3)'; gateEl.textContent = msg || ''; }
 }
 
 async function buscarFileIdNoDrive(){
@@ -9161,6 +9233,8 @@ async function buscarFileIdNoDrive(){
     `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${GAUTH.DRIVE_FILE_NAME}'&fields=files(id,name,modifiedTime)`,
     { headers: { Authorization: 'Bearer ' + GAUTH.token } }
   );
+  if(resp.status === 401){ const err=new Error('Sessão do Google expirada'); err.authExpired=true; throw err; }
+  if(!resp.ok) throw new Error('Drive respondeu '+resp.status+' ao buscar o arquivo');
   const data = await resp.json();
   if(data.files && data.files.length > 0){
     return data.files[0].id;
@@ -9177,6 +9251,9 @@ async function carregarDoDrive(silencioso){
     let fileId = GAUTH.driveFileId || await buscarFileIdNoDrive();
 
     if(!fileId){
+      // Chegar aqui só é possível se buscarFileIdNoDrive() respondeu com sucesso
+      // (não achou arquivo, mas o token é válido) — libera a tela de login.
+      gauthAtualizarUI(true);
       if(!silencioso) setSyncStatus('Nenhum dado no Drive ainda. Salve para criar.', false);
       setTimeout(()=>setSyncStatus('',false), 3000);
       return;
@@ -9190,10 +9267,27 @@ async function carregarDoDrive(silencioso){
       `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
       { headers: { Authorization: 'Bearer ' + GAUTH.token } }
     );
+    if(resp.status === 401){ const err=new Error('Sessão do Google expirada'); err.authExpired=true; throw err; }
+    if(!resp.ok) throw new Error('Drive respondeu '+resp.status+' ao baixar o arquivo');
+    // Token confirmado válido — libera a tela de login (se ainda estiver visível)
+    gauthAtualizarUI(true);
     const dados = await resp.json();
 
     // Merge: carregar alunos do Drive
     if(dados.students && Array.isArray(dados.students)){
+      // Se já existem alunos reais na tela (além da aluna de demonstração), confirma
+      // antes de substituir — evita apagar dados locais não sincronizados sem aviso.
+      const localTemDadosReais = students.some(s=>s.id!==9999999999);
+      if(localTemDadosReais){
+        const seguir = confirm(
+          `O Drive tem ${dados.students.length} aluno(s) salvo(s). Isso vai substituir os ${students.length} aluno(s) atualmente na tela. Continuar?`
+        );
+        if(!seguir){
+          setSyncStatus('Carregamento cancelado — dados locais mantidos.', false);
+          setTimeout(()=>setSyncStatus('',false), 3000);
+          return;
+        }
+      }
       students = dados.students;
       activeId = dados.activeId || (students[0]?.id ?? null);
       renderStudentList();
@@ -9204,7 +9298,11 @@ async function carregarDoDrive(silencioso){
       if(!silencioso){ setSyncStatus('Arquivo encontrado mas sem dados válidos.', false); setTimeout(()=>setSyncStatus('',false),3000); }
     }
   } catch(e){
-    if(!silencioso){ setSyncStatus('Erro ao carregar: '+e.message, true); setTimeout(()=>setSyncStatus('',false),5000); }
+    if(e.authExpired){
+      await expirarSessaoDrive('Sessão do Google expirada — faça login novamente para sincronizar.');
+    } else if(!silencioso){
+      setSyncStatus('Erro ao carregar: '+e.message, true); setTimeout(()=>setSyncStatus('',false),5000);
+    }
   }
 }
 
@@ -9227,7 +9325,7 @@ async function salvarNoDrive(){
 
     if(fileId){
       // Atualizar arquivo existente (PATCH)
-      await fetch(
+      const resp = await fetch(
         `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
         {
           method: 'PATCH',
@@ -9238,6 +9336,8 @@ async function salvarNoDrive(){
           body: payload,
         }
       );
+      if(resp.status === 401){ const err=new Error('Sessão do Google expirada'); err.authExpired=true; throw err; }
+      if(!resp.ok) throw new Error('Drive respondeu '+resp.status+' ao atualizar o arquivo');
     } else {
       // Criar arquivo novo no appDataFolder
       const meta = JSON.stringify({
@@ -9251,7 +9351,10 @@ async function salvarNoDrive(){
         'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
         { method: 'POST', headers: { Authorization: 'Bearer ' + GAUTH.token }, body: form }
       );
+      if(resp.status === 401){ const err=new Error('Sessão do Google expirada'); err.authExpired=true; throw err; }
+      if(!resp.ok) throw new Error('Drive respondeu '+resp.status+' ao criar o arquivo');
       const data = await resp.json();
+      if(!data.id) throw new Error('Drive não retornou um ID de arquivo válido');
       fileId = data.id;
       GAUTH.driveFileId = fileId;
       salvarSessaoLocal();
@@ -9261,7 +9364,14 @@ async function salvarNoDrive(){
     setSyncStatus(`✓ Salvo no Drive às ${agora}`, false);
     setTimeout(()=>setSyncStatus('',false), 4000);
   } catch(e){
-    setSyncStatus('Erro ao salvar: '+e.message, true);
+    if(e.authExpired){
+      const renovou = await expirarSessaoDrive('Sessão do Google expirada — faça login novamente para salvar.');
+      // Token renovado sozinho — este salvamento se perdeu, mas agenda um novo
+      // automaticamente em vez de deixar o usuário achar que já salvou.
+      if(renovou){ setSyncStatus('Sessão renovada — tentando salvar de novo...', false); driveAutoSave(); }
+    } else {
+      setSyncStatus('Erro ao salvar: '+e.message, true);
+    }
   } finally {
     if(btnDrive) btnDrive.textContent = '☁ Drive';
   }
@@ -11064,9 +11174,17 @@ try{
     prescricao: {},
     reavaliacao: null,
   };
-  students.push(amanda);
+  // Só insere a aluna de demonstração se ela ainda não existir — sem essa checagem,
+  // toda vez que a página é recarregada uma cópia extra era empilhada em cima da
+  // já salva em localStorage/Drive, duplicando o registro a cada sessão.
+  if(!students.some(s=>s.id===amanda.id)) students.push(amanda);
   renderStudentList();
   navGo('alunos');
+
+  const navExCount = document.getElementById('nav-exercicios-count');
+  if(navExCount) navExCount.textContent = VAULT_EX.length;
+  const exBadgeTotal = document.getElementById('ex-badge-total');
+  if(exBadgeTotal) exBadgeTotal.textContent = VAULT_EX.length+' exercícios';
 })();
 </script>
 
