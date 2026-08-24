@@ -285,6 +285,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
     <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:8px" onclick="authEntrar()">Entrar</button>
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="authCadastrar()">Criar conta</button>
 
+    <div style="border-top:1px dashed var(--border);margin:14px 0 10px;padding-top:10px">
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px;color:var(--text3)" onclick="authModoTeste()">🧪 Modo teste (pular login)</button>
+      <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:4px">Sem conta, sem sincronização — dados ficam só neste navegador</div>
+    </div>
+
     <div id="auth-status" style="text-align:center;font-size:12px;color:var(--text3);margin-top:14px"></div>
   </div>
 </div>
@@ -1571,7 +1576,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 </div>
                 <div class="field" style="grid-column:1/-1">
                   <label>Modalidade(s) praticada(s)</label>
-                  <div id="a-modalidades-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 16px">
+                  <div id="a-modalidades-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px 12px">
                     <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="modal-check" value="Musculação" onchange="onModalChange()"> Musculação</label>
                     <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="modal-check" value="CrossFit / Funcional" onchange="onModalChange()"> CrossFit / Funcional</label>
                     <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="modal-check" value="Calistenia" onchange="onModalChange()"> Calistenia</label>
@@ -1586,9 +1591,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   <input type="hidden" id="a-modalidades">
                 </div>
                 <div class="field" style="grid-column:1/-1">
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                  <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px">
                     <label style="margin:0">Atividades físicas extra-treino</label>
-                    <button type="button" onclick="addExtraAtividade()" style="font-size:11px;padding:3px 10px;background:var(--accent-dim);border:1px solid rgba(0,229,160,.3);color:var(--accent);border-radius:4px;cursor:pointer;font-family:var(--mono)">+ Adicionar atividade</button>
+                    <button type="button" onclick="addExtraAtividade()" style="align-self:flex-start;font-size:11px;padding:3px 10px;background:var(--accent-dim);border:1px solid rgba(0,229,160,.3);color:var(--accent);border-radius:4px;cursor:pointer;font-family:var(--mono)">+ Adicionar atividade</button>
                   </div>
                   <div id="extras-lista" style="display:flex;flex-direction:column;gap:8px"></div>
                   <div style="font-size:11px;color:var(--text3);margin-top:6px;font-family:var(--mono)">O gasto calórico estimado (MET × peso × tempo) é calculado no Relatório e integrado à demanda energética pelo módulo NUT.</div>
@@ -1702,12 +1707,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               </div>
               <div class="grid-4" style="gap:12px">
                 <div class="field">
-                  <label>Peso (kg)</label>
-                  <input type="number" step="0.1" id="a-peso" oninput="onAnamneseChange();calcIMC();calcComp()" placeholder="—">
+                  <label>Altura (cm) <span style="color:var(--red)">*</span></label>
+                  <input type="number" id="a-altura" oninput="onAnamneseChange();calcIMC();calcComp()" placeholder="—" required>
                 </div>
                 <div class="field">
-                  <label>Altura (cm)</label>
-                  <input type="number" id="a-altura" oninput="onAnamneseChange();calcIMC()" placeholder="—">
+                  <label>Peso (kg) <span style="color:var(--red)">*</span></label>
+                  <input type="number" step="0.1" id="a-peso" oninput="onAnamneseChange();calcIMC();calcComp()" placeholder="—" required>
                 </div>
                 <div class="field">
                   <label>IMC (calculado)</label>
@@ -1717,71 +1722,88 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   <label>Classificação IMC (OMS)</label>
                   <input type="text" id="a-imc-class" readonly style="color:var(--text2);background:var(--bg4);font-size:12px">
                 </div>
-                <div class="field">
-                  <label>FC repouso (bpm)</label>
-                  <input type="number" id="a-fc" oninput="onAnamneseChange()" placeholder="—">
-                </div>
               </div>
 
               <!-- Composição corporal -->
-              <div class="section-label">Composição Corporal <span style="font-size:11px;color:var(--text3);font-weight:400">(dados finais, independente do método)</span></div>
+              <div class="section-label">Composição Corporal <span style="font-size:11px;color:var(--text3);font-weight:400">(kg ou % — preencha um, o outro calcula sozinho)</span></div>
 
-              <!-- Grid 3 colunas: Gordura | Muscular | Magra -->
+              <!-- Linha 1: Gordura | Muscular | Óssea -->
               <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
 
-                <!-- Col 1: Gordura -->
+                <!-- Col 1: Gordura (obrigatório) -->
                 <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
-                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Gorda</div>
-                  <div class="field" style="margin-bottom:8px">
-                    <label style="font-size:11px">kg</label>
-                    <input type="number" step="0.1" id="a-mgorda" oninput="onAnamneseChange();calcComp()" placeholder="—" style="font-size:15px;font-weight:600">
-                  </div>
-                  <div class="field" style="margin:0">
-                    <label style="font-size:11px">% (calculado)</label>
-                    <input type="text" id="a-gordura" readonly style="color:var(--text2);background:var(--bg3);font-family:var(--mono);font-size:14px" placeholder="—">
+                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Gorda <span style="color:var(--red)">*</span></div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <div class="field" style="margin:0">
+                      <label style="font-size:11px">kg</label>
+                      <input type="number" step="0.1" id="a-mgorda" oninput="onMassaInput('mgorda','kg')" placeholder="—" style="font-size:15px;font-weight:600" required>
+                    </div>
+                    <div class="field" style="margin:0">
+                      <label style="font-size:11px">%</label>
+                      <input type="number" step="0.1" id="a-gordura" oninput="onMassaInput('mgorda','pct')" placeholder="—" style="font-size:15px;font-weight:600">
+                    </div>
                   </div>
                 </div>
 
-                <!-- Col 2: Muscular -->
+                <!-- Col 2: Muscular (obrigatório) -->
                 <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
-                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Muscular <span style="font-size:9px;opacity:.7">esquelética</span></div>
-                  <div class="field" style="margin-bottom:8px">
-                    <label style="font-size:11px">kg</label>
-                    <input type="number" step="0.1" id="a-mmuscular" oninput="onAnamneseChange();calcComp()" placeholder="—" style="font-size:15px;font-weight:600">
+                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Muscular <span style="font-size:9px;opacity:.7">esquelética</span> <span style="color:var(--red)">*</span></div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <div class="field" style="margin:0">
+                      <label style="font-size:11px">kg</label>
+                      <input type="number" step="0.1" id="a-mmuscular" oninput="onMassaInput('mmuscular','kg')" placeholder="—" style="font-size:15px;font-weight:600" required>
+                    </div>
+                    <div class="field" style="margin:0">
+                      <label style="font-size:11px">%</label>
+                      <input type="number" step="0.1" id="a-mmuscular-pct" oninput="onMassaInput('mmuscular','pct')" placeholder="—" style="font-size:15px;font-weight:600">
+                    </div>
                   </div>
-                  <div style="font-size:11px;color:var(--text3);padding:8px 0 0 2px;font-family:var(--mono)">—</div>
                 </div>
 
-                <!-- Col 3: Magra -->
-                <div style="background:var(--bg4);border:1px solid rgba(0,229,160,.15);border-radius:var(--radius);padding:10px 12px">
-                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Magra <span style="font-size:9px;opacity:.7">auto: peso−gordura</span></div>
-                  <div class="field" style="margin-bottom:8px">
-                    <label style="font-size:11px">kg</label>
-                    <input type="text" id="a-magra" readonly style="color:var(--accent);background:var(--bg3);font-family:var(--mono);font-size:15px;font-weight:600" placeholder="—">
-                  </div>
-                  <div class="field" style="margin:0">
-                    <label style="font-size:11px">% (calculado)</label>
-                    <input type="text" id="a-magra-pct" readonly style="color:var(--text2);background:var(--bg3);font-family:var(--mono);font-size:14px" placeholder="—">
+                <!-- Col 3: Óssea (opcional) -->
+                <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
+                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Óssea <span style="font-size:9px;opacity:.7">opcional — bioimpedância</span></div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <div class="field" style="margin:0">
+                      <label style="font-size:11px">kg</label>
+                      <input type="number" step="0.1" id="a-osso" oninput="onMassaInput('osso','kg')" placeholder="—" style="font-size:15px;font-weight:600">
+                    </div>
+                    <div class="field" style="margin:0">
+                      <label style="font-size:11px">%</label>
+                      <input type="number" step="0.1" id="a-osso-pct" oninput="onMassaInput('osso','pct')" placeholder="—" style="font-size:15px;font-weight:600">
+                    </div>
                   </div>
                 </div>
 
               </div>
               <div id="antro-comp-alerta" style="display:none;margin-top:6px;padding:6px 12px;background:rgba(255,180,0,.07);border:1px solid rgba(255,180,0,.25);border-radius:var(--radius);font-size:12px;color:#ffb400"></div>
 
-              <!-- Óssea + Residual — opcional, geralmente vem de bioimpedância -->
+              <!-- Linha 2: Magra | Residual (calculados, aparecem depois dos anteriores) -->
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
-                <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
-                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Óssea <span style="font-size:9px;opacity:.7">opcional — bioimpedância</span></div>
-                  <div class="field" style="margin:0">
-                    <label style="font-size:11px">kg</label>
-                    <input type="number" step="0.1" id="a-osso" oninput="onAnamneseChange()" placeholder="—" style="font-size:15px;font-weight:600">
+                <div style="background:var(--bg4);border:1px solid rgba(0,229,160,.15);border-radius:var(--radius);padding:10px 12px">
+                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Magra <span style="font-size:9px;opacity:.7">auto: peso−gordura</span></div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <div class="field" style="margin:0">
+                      <label style="font-size:11px">kg</label>
+                      <input type="text" id="a-magra" readonly style="color:var(--accent);background:var(--bg3);font-family:var(--mono);font-size:15px;font-weight:600" placeholder="—">
+                    </div>
+                    <div class="field" style="margin:0">
+                      <label style="font-size:11px">%</label>
+                      <input type="text" id="a-magra-pct" readonly style="color:var(--text2);background:var(--bg3);font-family:var(--mono);font-size:14px" placeholder="—">
+                    </div>
                   </div>
                 </div>
-                <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
-                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Residual <span style="font-size:9px;opacity:.7">opcional — bioimpedância</span></div>
-                  <div class="field" style="margin:0">
-                    <label style="font-size:11px">%</label>
-                    <input type="number" step="0.1" id="a-residual" oninput="onAnamneseChange()" placeholder="—" style="font-size:15px;font-weight:600">
+                <div style="background:var(--bg4);border:1px solid rgba(0,229,160,.15);border-radius:var(--radius);padding:10px 12px">
+                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px"><span id="a-residual-label">Massa Residual</span> <span style="font-size:9px;opacity:.7">auto: depende da Óssea informada</span></div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <div class="field" style="margin:0">
+                      <label style="font-size:11px">kg</label>
+                      <input type="text" id="a-residual" readonly style="color:var(--accent);background:var(--bg3);font-family:var(--mono);font-size:15px;font-weight:600" placeholder="—">
+                    </div>
+                    <div class="field" style="margin:0">
+                      <label style="font-size:11px">%</label>
+                      <input type="text" id="a-residual-pct" readonly style="color:var(--text2);background:var(--bg3);font-family:var(--mono);font-size:14px" placeholder="—">
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1794,6 +1816,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 <!-- COLUNA ESQUERDA: TRONCO -->
                 <div>
                   <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)">Tronco</div>
+                  <div class="field"><label>Ombros (cm)</label>
+                    <input type="number" step="0.1" id="a-ombro" oninput="onAnamneseChange()" placeholder="—"></div>
                   <div class="field"><label>Cintura (cm)</label>
                     <input type="number" step="0.1" id="a-cintura" oninput="onAnamneseChange();calcRCQ()" placeholder="—"></div>
                   <div class="field"><label>Abdômen / umbigo (cm)</label>
@@ -1802,6 +1826,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                     <input type="number" step="0.1" id="a-quadril" oninput="onAnamneseChange();calcRCQ()" placeholder="—"></div>
                   <div class="field"><label>RCQ (calculado)</label>
                     <input type="text" id="a-rcq" readonly style="color:var(--text2);background:var(--bg4);font-family:var(--mono)" placeholder="—"></div>
+                  <div class="field"><label>Classificação RCQ</label>
+                    <input type="text" id="a-rcq-class" readonly style="color:var(--text2);background:var(--bg4);font-family:var(--mono);font-size:12px" placeholder="—"></div>
                 </div>
 
                 <!-- COLUNA DIREITA: MEMBROS D / Δ / E -->
@@ -1820,33 +1846,33 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   <!-- Braço relaxado -->
                   <div style="font-size:11px;color:var(--text3);margin-bottom:3px">Braço relaxado</div>
                   <div style="display:grid;grid-template-columns:1fr 70px 1fr;gap:4px;margin-bottom:8px;align-items:center">
-                    <input type="number" step="0.1" id="a-braco-d" oninput="calcAssimetria('braco-rel')" placeholder="—" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-size:13px">
+                    <input type="number" step="0.1" id="a-braco-d" oninput="calcAssimetria('braco-rel')" placeholder="—" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-family:var(--sans);font-size:13px">
                     <div id="delta-braco-rel" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;padding:8px 2px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">—</div>
-                    <input type="number" step="0.1" id="a-braco-e" oninput="calcAssimetria('braco-rel')" placeholder="—" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-size:13px">
+                    <input type="number" step="0.1" id="a-braco-e" oninput="calcAssimetria('braco-rel')" placeholder="—" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-family:var(--sans);font-size:13px">
                   </div>
 
                   <!-- Braço contraído -->
                   <div style="font-size:11px;color:var(--text3);margin-bottom:3px">Braço contraído</div>
                   <div style="display:grid;grid-template-columns:1fr 70px 1fr;gap:4px;margin-bottom:8px;align-items:center">
-                    <input type="number" step="0.1" id="a-braco-d-cont" oninput="calcAssimetria('braco-cont')" placeholder="—" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-size:13px">
+                    <input type="number" step="0.1" id="a-braco-d-cont" oninput="calcAssimetria('braco-cont')" placeholder="—" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-family:var(--sans);font-size:13px">
                     <div id="delta-braco-cont" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;padding:8px 2px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">—</div>
-                    <input type="number" step="0.1" id="a-braco-e-cont" oninput="calcAssimetria('braco-cont')" placeholder="—" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-size:13px">
+                    <input type="number" step="0.1" id="a-braco-e-cont" oninput="calcAssimetria('braco-cont')" placeholder="—" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-family:var(--sans);font-size:13px">
                   </div>
 
                   <!-- Coxa -->
                   <div style="font-size:11px;color:var(--text3);margin-bottom:3px">Coxa (medial)</div>
                   <div style="display:grid;grid-template-columns:1fr 70px 1fr;gap:4px;margin-bottom:8px;align-items:center">
-                    <input type="number" step="0.1" id="a-coxa-d" oninput="calcAssimetria('coxa')" placeholder="—" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-size:13px">
+                    <input type="number" step="0.1" id="a-coxa-d" oninput="calcAssimetria('coxa')" placeholder="—" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-family:var(--sans);font-size:13px">
                     <div id="delta-coxa" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;padding:8px 2px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">—</div>
-                    <input type="number" step="0.1" id="a-coxa-e" oninput="calcAssimetria('coxa')" placeholder="—" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-size:13px">
+                    <input type="number" step="0.1" id="a-coxa-e" oninput="calcAssimetria('coxa')" placeholder="—" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-family:var(--sans);font-size:13px">
                   </div>
 
                   <!-- Panturrilha -->
                   <div style="font-size:11px;color:var(--text3);margin-bottom:3px">Panturrilha</div>
                   <div style="display:grid;grid-template-columns:1fr 70px 1fr;gap:4px;margin-bottom:8px;align-items:center">
-                    <input type="number" step="0.1" id="a-pant-d" oninput="calcAssimetria('pant')" placeholder="—" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-size:13px">
+                    <input type="number" step="0.1" id="a-pant-d" oninput="calcAssimetria('pant')" placeholder="—" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-family:var(--sans);font-size:13px">
                     <div id="delta-pant" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;padding:8px 2px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">—</div>
-                    <input type="number" step="0.1" id="a-pant-e" oninput="calcAssimetria('pant')" placeholder="—" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-size:13px">
+                    <input type="number" step="0.1" id="a-pant-e" oninput="calcAssimetria('pant')" placeholder="—" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-family:var(--sans);font-size:13px">
                   </div>
                 </div>
 
