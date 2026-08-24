@@ -1737,11 +1737,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                     <div class="field" style="margin:0">
                       <label style="font-size:11px">kg</label>
-                      <input type="number" step="0.1" id="a-mgorda" oninput="onMassaInput('mgorda','kg')" placeholder="—" style="font-size:15px;font-weight:600" required disabled>
+                      <input type="number" step="0.1" id="a-mgorda" oninput="onAnamneseChange()" onblur="onMassaInput('mgorda','kg')" onkeydown="if(event.key==='Enter'){this.blur()}" placeholder="—" style="font-size:15px;font-weight:600" required disabled>
                     </div>
                     <div class="field" style="margin:0">
                       <label style="font-size:11px">%</label>
-                      <input type="number" step="0.1" id="a-gordura" oninput="onMassaInput('mgorda','pct')" placeholder="—" style="font-size:15px;font-weight:600" disabled>
+                      <input type="number" step="0.1" id="a-gordura" oninput="onAnamneseChange()" onblur="onMassaInput('mgorda','pct')" onkeydown="if(event.key==='Enter'){this.blur()}" placeholder="—" style="font-size:15px;font-weight:600" disabled>
                     </div>
                   </div>
                 </div>
@@ -1752,11 +1752,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                     <div class="field" style="margin:0">
                       <label style="font-size:11px">kg</label>
-                      <input type="number" step="0.1" id="a-mmuscular" oninput="onMassaInput('mmuscular','kg')" placeholder="—" style="font-size:15px;font-weight:600" required disabled>
+                      <input type="number" step="0.1" id="a-mmuscular" oninput="onAnamneseChange()" onblur="onMassaInput('mmuscular','kg')" onkeydown="if(event.key==='Enter'){this.blur()}" placeholder="—" style="font-size:15px;font-weight:600" required disabled>
                     </div>
                     <div class="field" style="margin:0">
                       <label style="font-size:11px">%</label>
-                      <input type="number" step="0.1" id="a-mmuscular-pct" oninput="onMassaInput('mmuscular','pct')" placeholder="—" style="font-size:15px;font-weight:600" disabled>
+                      <input type="number" step="0.1" id="a-mmuscular-pct" oninput="onAnamneseChange()" onblur="onMassaInput('mmuscular','pct')" onkeydown="if(event.key==='Enter'){this.blur()}" placeholder="—" style="font-size:15px;font-weight:600" disabled>
                     </div>
                   </div>
                 </div>
@@ -1767,11 +1767,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                     <div class="field" style="margin:0">
                       <label style="font-size:11px">kg</label>
-                      <input type="number" step="0.1" id="a-osso" oninput="onMassaInput('osso','kg')" placeholder="—" style="font-size:15px;font-weight:600" disabled>
+                      <input type="number" step="0.1" id="a-osso" oninput="onAnamneseChange()" onblur="onMassaInput('osso','kg')" onkeydown="if(event.key==='Enter'){this.blur()}" placeholder="—" style="font-size:15px;font-weight:600" disabled>
                     </div>
                     <div class="field" style="margin:0">
                       <label style="font-size:11px">%</label>
-                      <input type="number" step="0.1" id="a-osso-pct" oninput="onMassaInput('osso','pct')" placeholder="—" style="font-size:15px;font-weight:600" disabled>
+                      <input type="number" step="0.1" id="a-osso-pct" oninput="onAnamneseChange()" onblur="onMassaInput('osso','pct')" onkeydown="if(event.key==='Enter'){this.blur()}" placeholder="—" style="font-size:15px;font-weight:600" disabled>
                     </div>
                   </div>
                 </div>
@@ -1846,7 +1846,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   </div>
 
                   <!-- Braço relaxado -->
-                  <div style="font-size:11px;color:var(--text3);margin-bottom:3px">Braço relaxado</div>
+                  <div style="font-size:13px;color:var(--text);font-weight:500;margin-bottom:4px">Braço relaxado</div>
                   <div style="display:grid;grid-template-columns:1fr 70px 1fr;gap:4px;margin-bottom:8px;align-items:center">
                     <input type="number" step="0.1" id="a-braco-d" oninput="calcAssimetria('braco-rel')" placeholder="—" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-family:var(--sans);font-size:13px">
                     <div id="delta-braco-rel" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;padding:8px 2px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">—</div>
@@ -1854,7 +1854,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   </div>
 
                   <!-- Braço contraído -->
-                  <div style="font-size:11px;color:var(--text3);margin-bottom:3px">Braço contraído</div>
+                  <div style="font-size:13px;color:var(--text);font-weight:500;margin-bottom:4px">Braço contraído</div>
                   <div style="display:grid;grid-template-columns:1fr 70px 1fr;gap:4px;margin-bottom:8px;align-items:center">
                     <input type="number" step="0.1" id="a-braco-d-cont" oninput="calcAssimetria('braco-cont')" placeholder="—" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-family:var(--sans);font-size:13px">
                     <div id="delta-braco-cont" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;padding:8px 2px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">—</div>
@@ -1862,7 +1862,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   </div>
 
                   <!-- Coxa -->
-                  <div style="font-size:11px;color:var(--text3);margin-bottom:3px">Coxa (medial)</div>
+                  <div style="font-size:13px;color:var(--text);font-weight:500;margin-bottom:4px">Coxa (medial)</div>
                   <div style="display:grid;grid-template-columns:1fr 70px 1fr;gap:4px;margin-bottom:8px;align-items:center">
                     <input type="number" step="0.1" id="a-coxa-d" oninput="calcAssimetria('coxa')" placeholder="—" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-family:var(--sans);font-size:13px">
                     <div id="delta-coxa" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;padding:8px 2px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">—</div>
@@ -1870,7 +1870,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   </div>
 
                   <!-- Panturrilha -->
-                  <div style="font-size:11px;color:var(--text3);margin-bottom:3px">Panturrilha</div>
+                  <div style="font-size:13px;color:var(--text);font-weight:500;margin-bottom:4px">Panturrilha</div>
                   <div style="display:grid;grid-template-columns:1fr 70px 1fr;gap:4px;margin-bottom:8px;align-items:center">
                     <input type="number" step="0.1" id="a-pant-d" oninput="calcAssimetria('pant')" placeholder="—" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);padding:8px 10px;font-family:var(--sans);font-size:13px">
                     <div id="delta-pant" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;padding:8px 2px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">—</div>
