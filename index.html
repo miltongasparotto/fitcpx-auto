@@ -155,6 +155,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(22,163,74,.1)}
 .field input[readonly]{background:var(--bg4);color:var(--text2);cursor:default}
 .field input[readonly]:focus{border-color:var(--border2);box-shadow:none}
+.field input:disabled{background:var(--bg4);color:var(--text3);cursor:not-allowed;opacity:.55}
 .field textarea{resize:vertical;min-height:72px}
 .field select{cursor:pointer}
 .span2{grid-column:1/-1}
@@ -1576,17 +1577,17 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 </div>
                 <div class="field" style="grid-column:1/-1">
                   <label>Modalidade(s) praticada(s)</label>
-                  <div id="a-modalidades-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px 12px">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="modal-check" value="Musculação" onchange="onModalChange()"> Musculação</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="modal-check" value="CrossFit / Funcional" onchange="onModalChange()"> CrossFit / Funcional</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="modal-check" value="Calistenia" onchange="onModalChange()"> Calistenia</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="modal-check" value="Corrida" onchange="onModalChange()"> Corrida</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="modal-check" value="Ciclismo" onchange="onModalChange()"> Ciclismo</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="modal-check" value="Natação" onchange="onModalChange()"> Natação</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="modal-check" value="Esportes coletivos" onchange="onModalChange()"> Esportes coletivos</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="modal-check" value="Artes marciais" onchange="onModalChange()"> Artes marciais / luta</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="modal-check" value="Yoga / Pilates" onchange="onModalChange()"> Yoga / Pilates</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="modal-check" value="Nenhuma" onchange="onModalChange()"> Nunca treinou</label>
+                  <div id="a-modalidades-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 12px">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Musculação" onchange="onModalChange()"> Musculação</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="CrossFit / Funcional" onchange="onModalChange()"> CrossFit / Funcional</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Calistenia" onchange="onModalChange()"> Calistenia</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Corrida" onchange="onModalChange()"> Corrida</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Ciclismo" onchange="onModalChange()"> Ciclismo</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Natação" onchange="onModalChange()"> Natação</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Esportes coletivos" onchange="onModalChange()"> Esportes coletivos</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Artes marciais" onchange="onModalChange()"> Artes marciais / luta</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Yoga / Pilates" onchange="onModalChange()"> Yoga / Pilates</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Nenhuma" onchange="onModalChange()"> Nunca treinou</label>
                   </div>
                   <input type="hidden" id="a-modalidades">
                 </div>
@@ -1736,11 +1737,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                     <div class="field" style="margin:0">
                       <label style="font-size:11px">kg</label>
-                      <input type="number" step="0.1" id="a-mgorda" oninput="onMassaInput('mgorda','kg')" placeholder="—" style="font-size:15px;font-weight:600" required>
+                      <input type="number" step="0.1" id="a-mgorda" oninput="onMassaInput('mgorda','kg')" placeholder="—" style="font-size:15px;font-weight:600" required disabled>
                     </div>
                     <div class="field" style="margin:0">
                       <label style="font-size:11px">%</label>
-                      <input type="number" step="0.1" id="a-gordura" oninput="onMassaInput('mgorda','pct')" placeholder="—" style="font-size:15px;font-weight:600">
+                      <input type="number" step="0.1" id="a-gordura" oninput="onMassaInput('mgorda','pct')" placeholder="—" style="font-size:15px;font-weight:600" disabled>
                     </div>
                   </div>
                 </div>
@@ -1751,11 +1752,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                     <div class="field" style="margin:0">
                       <label style="font-size:11px">kg</label>
-                      <input type="number" step="0.1" id="a-mmuscular" oninput="onMassaInput('mmuscular','kg')" placeholder="—" style="font-size:15px;font-weight:600" required>
+                      <input type="number" step="0.1" id="a-mmuscular" oninput="onMassaInput('mmuscular','kg')" placeholder="—" style="font-size:15px;font-weight:600" required disabled>
                     </div>
                     <div class="field" style="margin:0">
                       <label style="font-size:11px">%</label>
-                      <input type="number" step="0.1" id="a-mmuscular-pct" oninput="onMassaInput('mmuscular','pct')" placeholder="—" style="font-size:15px;font-weight:600">
+                      <input type="number" step="0.1" id="a-mmuscular-pct" oninput="onMassaInput('mmuscular','pct')" placeholder="—" style="font-size:15px;font-weight:600" disabled>
                     </div>
                   </div>
                 </div>
@@ -1766,16 +1767,17 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                     <div class="field" style="margin:0">
                       <label style="font-size:11px">kg</label>
-                      <input type="number" step="0.1" id="a-osso" oninput="onMassaInput('osso','kg')" placeholder="—" style="font-size:15px;font-weight:600">
+                      <input type="number" step="0.1" id="a-osso" oninput="onMassaInput('osso','kg')" placeholder="—" style="font-size:15px;font-weight:600" disabled>
                     </div>
                     <div class="field" style="margin:0">
                       <label style="font-size:11px">%</label>
-                      <input type="number" step="0.1" id="a-osso-pct" oninput="onMassaInput('osso','pct')" placeholder="—" style="font-size:15px;font-weight:600">
+                      <input type="number" step="0.1" id="a-osso-pct" oninput="onMassaInput('osso','pct')" placeholder="—" style="font-size:15px;font-weight:600" disabled>
                     </div>
                   </div>
                 </div>
 
               </div>
+              <div id="antro-comp-bloqueio" style="display:none;margin-top:6px;padding:6px 12px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);font-size:12px;color:var(--text3)">🔒 Informe o Peso em Medidas Básicas para liberar estes campos.</div>
               <div id="antro-comp-alerta" style="display:none;margin-top:6px;padding:6px 12px;background:rgba(255,180,0,.07);border:1px solid rgba(255,180,0,.25);border-radius:var(--radius);font-size:12px;color:#ffb400"></div>
 
               <!-- Linha 2: Magra | Residual (calculados, aparecem depois dos anteriores) -->
@@ -1815,14 +1817,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 
                 <!-- COLUNA ESQUERDA: TRONCO -->
                 <div>
-                  <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)">Tronco</div>
-                  <div class="field"><label>Ombros (cm)</label>
+                  <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)">Tronco (cm)</div>
+                  <div class="field"><label>Ombros</label>
                     <input type="number" step="0.1" id="a-ombro" oninput="onAnamneseChange()" placeholder="—"></div>
-                  <div class="field"><label>Cintura (cm)</label>
+                  <div class="field"><label>Cintura</label>
                     <input type="number" step="0.1" id="a-cintura" oninput="onAnamneseChange();calcRCQ()" placeholder="—"></div>
-                  <div class="field"><label>Abdômen / umbigo (cm)</label>
+                  <div class="field"><label>Abdômen / umbigo</label>
                     <input type="number" step="0.1" id="a-abdomen" oninput="onAnamneseChange()" placeholder="—"></div>
-                  <div class="field"><label>Quadril (cm)</label>
+                  <div class="field"><label>Quadril</label>
                     <input type="number" step="0.1" id="a-quadril" oninput="onAnamneseChange();calcRCQ()" placeholder="—"></div>
                   <div class="field"><label>RCQ (calculado)</label>
                     <input type="text" id="a-rcq" readonly style="color:var(--text2);background:var(--bg4);font-family:var(--mono)" placeholder="—"></div>
@@ -1833,14 +1835,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 <!-- COLUNA DIREITA: MEMBROS D / Δ / E -->
                 <div>
                   <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)">
-                    Membros <span style="font-size:10px;font-weight:400;opacity:.7">Δ > 1 cm = priorizar unilateral</span>
+                    Membros (cm) <span style="font-size:10px;font-weight:400;opacity:.7">Δ > 1 cm = priorizar unilateral</span>
                   </div>
 
                   <!-- Cabeçalho colunas -->
                   <div style="display:grid;grid-template-columns:1fr 70px 1fr;gap:4px;margin-bottom:4px;text-align:center">
-                    <div style="font-size:10px;color:var(--text3);font-family:var(--mono)">Direito (cm)</div>
+                    <div style="font-size:10px;color:var(--text3);font-family:var(--mono)">Direito</div>
                     <div style="font-size:10px;color:var(--text3);font-family:var(--mono)">Δ</div>
-                    <div style="font-size:10px;color:var(--text3);font-family:var(--mono)">Esquerdo (cm)</div>
+                    <div style="font-size:10px;color:var(--text3);font-family:var(--mono)">Esquerdo</div>
                   </div>
 
                   <!-- Braço relaxado -->
