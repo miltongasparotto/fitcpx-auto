@@ -11171,7 +11171,7 @@ async function authSair(){
 async function onLoginSucesso(user){
   _supaUser = user;
   document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('app-root').style.display = 'block';
+  document.getElementById('app-root').style.display = 'grid';
   document.getElementById('supa-user-info').style.display = 'flex';
   document.getElementById('supa-user-email').textContent = user.email;
   await supaCarregarDados();
