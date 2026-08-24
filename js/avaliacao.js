@@ -1,5 +1,3 @@
-
-
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
 const OBJETIVOS = [
@@ -442,6 +440,10 @@ function loadStudentData(s){
   calcIMC(); calcRCQ(); calcComp();
   renderMeta();
   Object.keys(PARES_ASSIM).forEach(par=>calcAssimetria(par));
+  // Avaliações antropométricas salvas (histórico) — garante array e volta pra tela de lista
+  if(!s.avaliacoesAntro) s.avaliacoesAntro = [];
+  _antroEditId = null;
+  antroMostrarLista();
 
   // Funcional — FMS
   renderFMSRows();
@@ -1788,7 +1790,161 @@ function switchSubtab(name){
   });
   if(name==='anamnese-func' && !$('fms-rows')?.children?.length) renderFMSRows();
   if(name==='anamnese-flex' && !$('gonio-grid')?.children?.length) renderGoniometria();
+  if(name==='anamnese-antro'){ _antroEditId=null; antroMostrarLista(); }
 }
+
+// ─── HISTÓRICO DE AVALIAÇÕES ANTROPOMÉTRICAS ───────────────────────────────────
+// Cada avaliação salva vira um snapshot independente em s.avaliacoesAntro, além de
+// continuar espelhando os valores mais recentes em s.anamnese (compatibilidade com
+// os motores de cálculo — Meta, RCQ, prescrição — que sempre leem s.anamnese).
+let _antroEditId = null;
+
+const ANTRO_SNAPSHOT_IDS = ['a-data-avaliacao','a-peso','a-altura','a-mgorda','a-gordura',
+  'a-mmuscular','a-mmuscular-pct','a-osso','a-osso-pct','a-ombro','a-cintura','a-abdomen','a-quadril',
+  'a-braco-d','a-braco-e','a-braco-d-cont','a-braco-e-cont','a-coxa-d','a-coxa-e','a-pant-d','a-pant-e',
+  'a-obs-antro','a-imc','a-imc-class','a-magra','a-magra-pct','a-residual','a-residual-pct','a-rcq','a-rcq-class'];
+
+const ANTRO_CALCULADOS = ['a-imc','a-imc-class','a-magra','a-magra-pct','a-residual','a-residual-pct','a-rcq','a-rcq-class'];
+
+function antroChaveDoId(id){ return id.replace(/^a-/,'').replace(/-/g,'_'); }
+
+function antroSnapshotAtual(){
+  const obj = {};
+  ANTRO_SNAPSHOT_IDS.forEach(id => { obj[antroChaveDoId(id)] = val(id); });
+  return obj;
+}
+
+function antroCarregarSnapshot(rec){
+  ANTRO_SNAPSHOT_IDS.forEach(id => { setVal(id, rec[antroChaveDoId(id)] || ''); });
+}
+
+function antroLimparForm(){
+  ANTRO_SNAPSHOT_IDS.forEach(id => {
+    if(ANTRO_CALCULADOS.includes(id)) return; // calculados, não zera manualmente
+    setVal(id,'');
+  });
+}
+
+function formatarDataBR(iso){
+  if(!iso) return '—';
+  const partes = iso.split('-');
+  if(partes.length!==3) return iso;
+  const [y,m,d] = partes;
+  return `${d}/${m}/${y}`;
+}
+
+function antroMostrarLista(){
+  const lv=$('antro-lista-view'), fv=$('antro-form-view');
+  if(lv) lv.style.display='block';
+  if(fv) fv.style.display='none';
+  renderAntroLista();
+}
+
+function antroMostrarForm(){
+  const lv=$('antro-lista-view'), fv=$('antro-form-view');
+  if(lv) lv.style.display='none';
+  if(fv) fv.style.display='block';
+}
+
+function antroNovaAvaliacao(){
+  const s=getActive(); if(!s) return;
+  _antroEditId = null;
+  antroLimparForm();
+  setVal('a-data-avaliacao', new Date().toISOString().slice(0,10));
+  calcIMC(); calcRCQ(); calcComp();
+  Object.keys(PARES_ASSIM).forEach(par=>calcAssimetria(par));
+  const titulo=$('antro-form-titulo'); if(titulo) titulo.textContent='Nova avaliação';
+  antroMostrarForm();
+}
+
+function antroEditarAvaliacao(id){
+  const s=getActive(); if(!s) return;
+  const rec = (s.avaliacoesAntro||[]).find(r=>r.id===id);
+  if(!rec) return;
+  _antroEditId = id;
+  antroCarregarSnapshot(rec);
+  calcIMC(); calcRCQ(); calcComp();
+  Object.keys(PARES_ASSIM).forEach(par=>calcAssimetria(par));
+  const titulo=$('antro-form-titulo'); if(titulo) titulo.textContent='Editando avaliação de '+formatarDataBR(rec.data_avaliacao);
+  antroMostrarForm();
+}
+
+function antroVoltarLista(){
+  _antroEditId = null;
+  antroMostrarLista();
+}
+
+function antroSalvarAvaliacao(){
+  const s=getActive(); if(!s) return;
+  if(!val('a-data-avaliacao')){ alert('Informe a data da avaliação.'); return; }
+  if(!val('a-altura') || !val('a-peso')){ alert('Altura e Peso são obrigatórios.'); return; }
+  if(!val('a-mgorda') || !val('a-mmuscular')){ alert('Massa Gorda e Massa Muscular são obrigatórias.'); return; }
+  if(!s.avaliacoesAntro) s.avaliacoesAntro = [];
+  const snap = antroSnapshotAtual();
+  snap.responsavel = (typeof _supaUser!=='undefined' && _supaUser?.email) || 'Modo teste (local)';
+  if(_antroEditId){
+    const idx = s.avaliacoesAntro.findIndex(r=>r.id===_antroEditId);
+    if(idx>=0) s.avaliacoesAntro[idx] = Object.assign({}, s.avaliacoesAntro[idx], snap);
+    else { snap.id=_antroEditId; s.avaliacoesAntro.push(snap); }
+  } else {
+    snap.id = Date.now();
+    s.avaliacoesAntro.push(snap);
+  }
+  s.avaliacoesAntro.sort((a,b)=>(b.data_avaliacao||'').localeCompare(a.data_avaliacao||''));
+  _antroEditId = null;
+  onAnamneseChange(); // sincroniza s.anamnese com os campos atuais (mantém os motores de cálculo funcionando)
+  saveStudent();
+  antroMostrarLista();
+}
+
+function antroExcluirAvaliacao(id){
+  const s=getActive(); if(!s) return;
+  if(!confirm('Excluir esta avaliação? Esta ação não pode ser desfeita.')) return;
+  s.avaliacoesAntro = (s.avaliacoesAntro||[]).filter(r=>r.id!==id);
+  saveStudent();
+  renderAntroLista();
+}
+
+function renderAntroLista(){
+  const s=getActive();
+  const cont=$('antro-lista-tabela'); if(!cont) return;
+  const lista = (s?.avaliacoesAntro||[]).slice().sort((a,b)=>(b.data_avaliacao||'').localeCompare(a.data_avaliacao||''));
+  if(!lista.length){
+    cont.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text3);font-size:13px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">Nenhuma avaliação salva ainda. Clique em "+ Adicionar Avaliação" para registrar a primeira.</div>`;
+    return;
+  }
+  let html = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="border-bottom:1px solid var(--border);text-align:left">
+      <th style="padding:8px 10px;color:var(--text3);font-weight:500">Data</th>
+      <th style="padding:8px 10px;color:var(--text3);font-weight:500">Responsável</th>
+      <th style="padding:8px 10px;color:var(--text3);font-weight:500">Altura</th>
+      <th style="padding:8px 10px;color:var(--text3);font-weight:500">Peso</th>
+      <th style="padding:8px 10px;color:var(--text3);font-weight:500">Gordura</th>
+      <th style="padding:8px 10px;color:var(--text3);font-weight:500">Músculo</th>
+      <th style="padding:8px 10px;color:var(--text3);font-weight:500">IMC</th>
+      <th style="padding:8px 10px;color:var(--text3);font-weight:500;text-align:right">Ações</th>
+    </tr></thead><tbody>`;
+  lista.forEach(rec=>{
+    const gordTxt = rec.mgorda ? `${rec.mgorda} kg${rec.gordura?` / ${rec.gordura}%`:''}` : '—';
+    const muscTxt = rec.mmuscular ? `${rec.mmuscular} kg${rec.mmuscular_pct?` / ${rec.mmuscular_pct}%`:''}` : '—';
+    html += `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:8px 10px">${formatarDataBR(rec.data_avaliacao)}</td>
+      <td style="padding:8px 10px;color:var(--text3)">${rec.responsavel||'—'}</td>
+      <td style="padding:8px 10px">${rec.altura||'—'}</td>
+      <td style="padding:8px 10px">${rec.peso||'—'}</td>
+      <td style="padding:8px 10px">${gordTxt}</td>
+      <td style="padding:8px 10px">${muscTxt}</td>
+      <td style="padding:8px 10px">${rec.imc||'—'}</td>
+      <td style="padding:8px 10px;text-align:right;white-space:nowrap">
+        <button type="button" onclick="antroEditarAvaliacao(${rec.id})" style="font-size:11px;padding:3px 8px;background:var(--bg4);border:1px solid var(--border);color:var(--text2);border-radius:4px;cursor:pointer;margin-right:4px">Editar</button>
+        <button type="button" onclick="antroExcluirAvaliacao(${rec.id})" style="font-size:11px;padding:3px 8px;background:var(--red-dim);border:1px solid #fecaca;color:var(--red);border-radius:4px;cursor:pointer">Excluir</button>
+      </td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+  cont.innerHTML = html;
+}
+
 
 // ─── CÁLCULOS ─────────────────────────────────────────────────────────────────
 
@@ -2644,6 +2800,3 @@ function goStep(n, silent){
   if(n===2&&!silent) fillStep2();
   if(n===3&&!silent) fillStep3();
 }
-
-
-
