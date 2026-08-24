@@ -8,6 +8,8 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <!-- Google API client (Drive) -->
 <script src="https://apis.google.com/js/api.js" async defer></script>
+<!-- Supabase (banco online + login) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -29,44 +31,44 @@ input[type=number]::-webkit-inner-spin-button{
 }
 
 :root {
-  /* Tema claro — tokens Dashboard FitCpx */
-  --bg:#f6f6f5;
+  /* Tema claro — padrão FitCpx */
+  --bg:#f9fafb;
   --bg2:#ffffff;
   --bg3:#ffffff;
-  --bg4:#f6f7f6;
-  --border:#ececec;
-  --border2:#d8dad8;
-  --accent:#22c55e;
-  --accent2:#16a34a;
-  --accent-dim:rgba(34,197,94,.10);
-  --accent-dim2:rgba(34,197,94,.12);
-  --text:#1f2328;
-  --text2:#5a615d;
-  --text3:#aeb3b0;
+  --bg4:#f3f4f6;
+  --border:#e5e7eb;
+  --border2:#d1d5db;
+  --accent:#16a34a;
+  --accent2:#15803d;
+  --accent-dim:#f0fdf4;
+  --accent-dim2:#dcfce7;
+  --text:#111827;
+  --text2:#6b7280;
+  --text3:#9ca3af;
   --red:#dc2626;
   --red-dim:#fef2f2;
   --amber:#d97706;
   --amber-dim:#fffbeb;
   --blue:#2563eb;
   --blue-dim:#eff6ff;
-  --radius:8px;
-  --radius2:14px;
-  --shadow:0 4px 16px rgba(20,40,30,.04);
-  --shadow2:0 18px 40px rgba(0,0,0,.18);
+  --radius:6px;
+  --radius2:8px;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --shadow2:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.05);
   --mono:'IBM Plex Mono',monospace;
   --sans:'Inter',sans-serif;
   --fs-base:14px;--fs-sm:13px;--fs-xs:12px;--fs-xxs:11px;
 }
 :root.dark {
-  --bg:#13161a;--bg2:#1c2024;--bg3:#1c2024;--bg4:rgba(255,255,255,.04);
-  --border:#2b3137;--border2:#343a55;
-  --accent:#22c55e;--accent2:#16a34a;
-  --accent-dim:rgba(34,197,94,.10);--accent-dim2:rgba(34,197,94,.18);
-  --text:#f1f4f2;--text2:#9aa39e;--text3:#6c736d;
+  --bg:#0f1117;--bg2:#1a1d27;--bg3:#1e2235;--bg4:#242840;
+  --border:#2a2f45;--border2:#343a55;
+  --accent:#16a34a;--accent2:#15803d;
+  --accent-dim:rgba(22,163,74,.1);--accent-dim2:rgba(22,163,74,.18);
+  --text:#f1f5f9;--text2:#94a3b8;--text3:#64748b;
   --red:#ef4444;--red-dim:rgba(239,68,68,.1);
   --amber:#f59e0b;--amber-dim:rgba(245,158,11,.1);
   --blue:#3b82f6;--blue-dim:rgba(59,130,246,.1);
-  --shadow:0 1px 3px rgba(0,0,0,.3);--shadow2:0 18px 40px rgba(0,0,0,.4);
+  --shadow:0 1px 3px rgba(0,0,0,.3);--shadow2:0 4px 6px rgba(0,0,0,.4);
 }
 
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:var(--fs-base);overflow:hidden;-webkit-font-smoothing:antialiased}
@@ -261,24 +263,33 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 </head>
 <body>
 
-<!-- LOGIN GATE — cobre o app inteiro até o login com Google ser confirmado.
-     Visível por padrão; só é escondida por gauthAtualizarUI(true) quando o
-     token é validado (login novo, restaurado ou renovado em segundo plano). -->
-<div id="login-gate" class="modal-overlay" style="z-index:2000;background:var(--bg)">
-  <div class="modal" style="width:360px;text-align:center;padding:36px 28px">
-    <div style="font-size:34px;margin-bottom:6px">🏋️</div>
-    <div class="modal-title" style="margin-bottom:4px">FitCPX Auto</div>
-    <div style="font-size:13px;color:var(--text2);margin-bottom:24px">Entre com sua conta Google para acessar e sincronizar seus dados.</div>
-    <button onclick="iniciarLoginGoogle()"
-      style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:11px 14px;cursor:pointer;font-size:14px;color:var(--text);font-weight:600;font-family:var(--sans);transition:all .2s">
-      <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-      Entrar com Google
-    </button>
-    <div id="login-gate-status" style="margin-top:14px;font-size:12px;color:var(--text3);font-family:var(--mono);min-height:16px">Verificando sessão salva...</div>
+<!-- ══ TELA DE LOGIN (Supabase Auth) ══ -->
+<div id="auth-screen" style="position:fixed;inset:0;z-index:5000;display:flex;align-items:center;justify-content:center;background:var(--bg);font-family:var(--sans)">
+  <div style="width:340px;max-width:92vw;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:32px;box-shadow:var(--shadow2)">
+    <div style="text-align:center;margin-bottom:22px">
+      <div style="font-size:20px;font-weight:700;color:var(--text)">FitCPX Auto</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:2px">Prescrição Inteligente de Treino</div>
+    </div>
+
+    <div class="field">
+      <label>E-mail</label>
+      <input type="email" id="auth-email" placeholder="seu@email.com" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" id="auth-senha" placeholder="••••••••" autocomplete="current-password">
+    </div>
+
+    <div id="auth-erro" style="display:none;color:var(--red);font-size:12px;margin-bottom:10px"></div>
+
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:8px" onclick="authEntrar()">Entrar</button>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="authCadastrar()">Criar conta</button>
+
+    <div id="auth-status" style="text-align:center;font-size:12px;color:var(--text3);margin-top:14px"></div>
   </div>
 </div>
 
-<div class="app">
+<div class="app" id="app-root" style="display:none">
 
   <!-- TOPBAR -->
   <div class="topbar">
@@ -326,6 +337,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       </div>
     </div>
 
+    <div id="supa-user-info" style="display:none;align-items:center;gap:8px;margin-right:8px;font-size:12px;color:var(--text2)">
+      <span id="supa-user-email"></span>
+      <button onclick="authSair()" style="background:transparent;border:1px solid var(--border2);border-radius:20px;padding:3px 10px;cursor:pointer;font-size:11px;color:var(--text2)">Sair</button>
+    </div>
+
     <button id="btn-tema" onclick="toggleTema()"
       style="background:transparent;border:1px solid var(--border2);border-radius:20px;padding:4px 12px;cursor:pointer;font-size:12px;color:var(--text2);display:flex;align-items:center;gap:5px;transition:all .2s;margin-right:8px;font-family:var(--sans);font-weight:500">
       <span id="tema-icon">🌙</span>
@@ -364,7 +380,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <div class="sidebar-item" id="nav-biblioteca"   onclick="navGo('biblioteca')"  style="font-size:12px;padding:6px 8px"><span>📚</span><span>Biblioteca de Treinos</span></div>
         <div class="sidebar-item" id="nav-distribuicao" onclick="navGo('distribuicao')" style="font-size:12px;padding:6px 8px"><span>📋</span><span>Distribuição</span></div>
         <div class="sidebar-item" id="nav-periodizacao" onclick="navGo('periodizacao')" style="font-size:12px;padding:6px 8px"><span>📈</span><span>Periodização</span></div>
-        <div class="sidebar-item" id="nav-exercicios" onclick="navGo('exercicios')" style="font-size:12px;padding:6px 8px"><span>💪</span><span>Exercícios</span><span id="nav-exercicios-count" style="margin-left:auto;font-size:10px;color:var(--text3);font-family:var(--mono)">—</span></div>
+        <div class="sidebar-item" id="nav-exercicios" onclick="navGo('exercicios')" style="font-size:12px;padding:6px 8px"><span>💪</span><span>Exercícios</span><span style="margin-left:auto;font-size:10px;color:var(--text3);font-family:var(--mono)">693</span></div>
       </div>
     </div>
 
@@ -685,7 +701,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <option value="10–16">10–16 séries — Força Máxima</option>
               <option value="10–20">10–20 séries — Hipertrofia (MEV→MAV)</option>
               <option value="12–20">12–20 séries — Emagrecimento / Resistência / Composição</option>
-              <option value="10–20 (Esportiva)">10–20 séries — Performance Esportiva</option>
+              <option value="10–20">10–20 séries — Performance Esportiva</option>
             </select>
             <div class="field-sub">Vault: MEV→MAV (Israetel 2019)</div>
           </div>
@@ -1121,7 +1137,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       <div class="page-header">
         <div>
           <div class="page-title">💪 Banco de Exercícios</div>
-          <div class="page-subtitle"><span class="badge badge-green" id="ex-badge-total">— exercícios</span><span class="badge badge-gray">Vault ACM v1.1</span><span class="badge badge-blue">19 grupos musculares</span></div>
+          <div class="page-subtitle"><span class="badge badge-green">693 exercícios</span><span class="badge badge-gray">Vault ACM v1.1</span><span class="badge badge-blue">19 grupos musculares</span></div>
         </div>
         <div class="page-header-actions">
           <span id="ex-count-label" style="font-size:12px;color:var(--text3);font-family:var(--mono)"></span>
@@ -2866,6 +2882,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 // (inclusive após recarregar a página): abra o aluno, vá em Prescrição
 // (mostra a ficha aprovada) e clique "✏ Editar".
 (function(){
+  if(!location.search.includes('demo')) return; // seed só roda com ?demo na URL
   const novosAlunosTeste = [{"id": 1782498533431, "perfil": {"nome": "Carlos Mendes", "nascimento": "1993-03-14", "sexo": "M", "atividade": "ativo", "profissao": "Engenheiro de software", "tempo_sentado": "6a8h", "whatsapp": "(11) 98123-4567", "modalidade": "presencial", "liberacao": "sim", "condicoes": "Nenhuma", "medicamentos": "Nenhum", "medicamentos_detalhe": "", "lesoes": "Nenhuma", "obs_clinicas": "Sem restrições. Treina há 6 anos.", "menstrual": "", "contraceptivo": "", "gestacao": "", "trimestre": ""}, "anamnese": {"nivel": "Avan", "tempo": "", "consistencia": "alta", "modalidades": "Musculação", "extras": "[]", "sono": "boa", "estresse": "baixo", "alcool": "", "suplementos": "Whey | Creatina", "pretreino": "", "objetivo_ef": "Hipertrofia", "objetivo_sec": "", "frequencia": "5x", "duracao": "75", "horario": "noite", "local": "academia", "gosta": "", "preferencias": "", "peso": "84.0", "altura": "180", "data_avaliacao": "2026-01-10", "gordura": "", "magra": "", "mgorda": "", "mmuscular": "", "cintura": "", "quadril": "", "abdomen": "", "braco_d": "", "braco_e": "", "braco_d_cont": "", "braco_e_cont": "", "coxa_d": "", "coxa_e": "", "pant_d": "", "pant_e": "", "obs_antro": "", "fc": "", "fms_ohsa": "", "fms_ohsa_flag": "", "fms_slsq": "", "fms_slsq_flag": "", "fms_hurdle": "", "fms_hurdle_flag": "", "fms_lunge": "", "fms_lunge_flag": "", "fms_shoulder": "", "fms_shoulder_flag": "", "fms_aslr": "", "fms_aslr_flag": "", "fms_rotary": "", "fms_rotary_flag": "", "fms_push": "", "fms_pull": "", "prancha": "", "prancha_lat_d": "", "prancha_lat_e": "", "equilibrio_d": "", "equilibrio_e": "", "tug": "", "sentar_levantar": "", "obs_func": "", "formula_1rm": "brzycki", "obs_forca": "", "data_forca": "", "forca": [{"ex": "Agachamento livre", "carga": "", "reps": ""}, {"ex": "Levantamento terra", "carga": "", "reps": ""}, {"ex": "Supino plano com barra", "carga": "", "reps": ""}, {"ex": "Remada curvada com barra", "carga": "", "reps": ""}, {"ex": "Puxada pronada", "carga": "", "reps": ""}, {"ex": "Desenvolvimento com barra", "carga": "", "reps": ""}, {"ex": "Avanço com halteres", "carga": "", "reps": ""}, {"ex": "Rosca direta com barra", "carga": "", "reps": ""}, {"ex": "Tríceps testa com barra", "carga": "", "reps": ""}], "cooper": "", "step_fc": "", "flexao": "", "flexao_modificada": false, "abdominal_reps": "", "squat_reps": "", "grip_d": "", "grip_e": "", "obs_resist": "", "sentar_alcancar": "", "sitreach_proto": "YMCA/ACSM", "sitreach_warmup": false, "isquio_d": "", "isquio_e": "", "iliopsoas_d": "", "iliopsoas_e": "", "dorsiflexao_d": "", "dorsiflexao_e": "", "mob_toracica_d": "", "mob_toracica_e": "", "ombro_flex_d": "", "ombro_flex_e": "", "quadril_rot_d": "", "quadril_rot_e": "", "obs_flex": "", "a_gon_ombro_flex_d": "", "a_gon_ombro_flex_e": "", "a_gon_ombro_ext_d": "", "a_gon_ombro_ext_e": "", "a_gon_ombro_abd_d": "", "a_gon_ombro_abd_e": "", "a_gon_ombro_ri_d": "", "a_gon_ombro_ri_e": "", "a_gon_ombro_re_d": "", "a_gon_ombro_re_e": "", "a_gon_quadril_flex_d": "", "a_gon_quadril_flex_e": "", "a_gon_quadril_ext_d": "", "a_gon_quadril_ext_e": "", "a_gon_quadril_abd_d": "", "a_gon_quadril_abd_e": "", "a_gon_quadril_ri_d": "", "a_gon_quadril_ri_e": "", "a_gon_quadril_re_d": "", "a_gon_quadril_re_e": "", "a_gon_joelho_flex_d": "", "a_gon_joelho_flex_e": "", "a_gon_torn_dors_d": "", "a_gon_torn_dors_e": "", "a_gon_torn_plant_d": "", "a_gon_torn_plant_e": "", "a_gon_col_flex_d": "", "a_gon_col_flex_e": "", "a_gon_col_ext_d": "", "a_gon_col_ext_e": "", "a_gon_col_lat_d": "", "a_gon_col_lat_e": "", "a_gon_col_rot_d": "", "a_gon_col_rot_e": ""}, "prescricao": {"objetivo": "Hip", "nivel": "Avan", "frequencia": "5x", "modelo": "CON", "obs": "", "treino": "## CICLO-01 — Carlos Mendes\n```yaml\nobjetivo: Hip\nnivel: Avançado\nfrequencia: 5x/sem\nmodelo: CON\nlocal: academia\ndata: 26/06/2026\n```\n\n### Treino A — Peito (20 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Peitoral | Supino Inclinado - Halter | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 2 | Peitoral | Supino Reto - Smith | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 3 | Peitoral | Crucifixo Declinado - Halter | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 4 | Peitoral | Supino Reto Sentado - Cross | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 5 | Peitoral | Flexão de Braço Fechado | 4 | 6–12 | 60–85% 1RM | 60–120s |\n\n### Treino B — Costas·Bíceps (20 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Latissimo | Remada Baixa na Polia com Pegada Fechada Neutra Unilateral | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 2 | Latissimo | Crucifixo Invertido Inclinado Unilateral - Cross | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 3 | Latissimo | Remada Inclinada com Pegada Fechada Neutra - Super Band | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 4 | Biceps | Rosca Direta com Pegada Supinada no Banco Inclinado - Halter | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 5 | Biceps | Rosca Direta com Pegada Pronada em Pé  - Cross e Barra | 4 | 6–12 | 60–85% 1RM | 60–120s |\n\n### Treino C — Pernas (20 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Quadriceps | Agachamento - Halter Duplo | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 2 | Quadriceps | Agachamento Frontal + Afundo Alternado - Halter | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 3 | Gluteos | Ponte com Pés no Banco | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 4 | Panturrilhas | Elevação de Panturrilha - Halter | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 5 | Panturrilhas | Elevação de Panturrilha Unilateral - Step e Anilha | 4 | 6–12 | 60–85% 1RM | 60–120s |\n\n### Treino D — Ombros (20 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Deltoide | Elevação Frontal em Pé com Pegada Neutra - Anilha | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 2 | Deltoide | Elevação Lateral em Pé Unilateral - Tube Band | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 3 | Deltoide | Flexão de Ombro em Y - Halter | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 4 | Trapezio | Encolhimento de Ombros - Cross | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 5 | Trapezio | Encolhimento de Ombros - Halter | 4 | 6–12 | 60–85% 1RM | 60–120s |\n\n### Treino E — Post.·Tríceps·Core (20 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Isquiossurais | Flexão de Joelho Sentado - Cadeira Flexora | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 2 | Isquiossurais | Stiff - Barra | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 3 | Triceps | Tríceps Polia Alta com Pegada Pronada - Cross e Barra | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 4 | RetoAbdominal | Abdominal Supra Curto com Perna 90° | 4 | 6–12 | 60–85% 1RM | 60–120s |\n| 5 | Obliquo | Flexão Lateral de Tronco em Prancha Lateral com Apoio no Joelho | 4 | 6–12 | 60–85% 1RM | 60–120s |\n\n### PROGRESSÃO SEMANAL\n| Sem | Foco | Ajuste |\n|---|---|---|\n| 1 | Adaptação | Carga conservadora |\n| 2 | Desenvolvimento | +carga ou +reps |\n| 3 | Sobrecarga | RPE 7–8 |\n| 4 | Deload | −40% volume |\n", "aprovado": true, "dataAprovacao": "26/06/2026", "_fichaObj": {"objetivo": "Hip", "nivel": "Avan", "frequencia": "5x", "local": "academia", "seriesPorEx": 4, "treinos": [{"label": "Treino A — Peito", "exercicios": [{"musculo": "Peitoral", "porcao": "Superior", "nome": "Supino Inclinado - Halter", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Médio", "nome": "Supino Reto - Smith", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Inferior", "nome": "Crucifixo Declinado - Halter", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Geral", "nome": "Supino Reto Sentado - Cross", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Geral", "nome": "Flexão de Braço Fechado", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}]}, {"label": "Treino B — Costas·Bíceps", "exercicios": [{"musculo": "Latissimo", "porcao": "Geral", "nome": "Remada Baixa na Polia com Pegada Fechada Neutra Unilateral", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Latissimo", "porcao": "Geral", "nome": "Crucifixo Invertido Inclinado Unilateral - Cross", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Latissimo", "porcao": "Geral", "nome": "Remada Inclinada com Pegada Fechada Neutra - Super Band", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Biceps", "porcao": "Cabeça Longa", "nome": "Rosca Direta com Pegada Supinada no Banco Inclinado - Halter", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Biceps", "porcao": "Cabeça Curta", "nome": "Rosca Direta com Pegada Pronada em Pé  - Cross e Barra", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}]}, {"label": "Treino C — Pernas", "exercicios": [{"musculo": "Quadriceps", "porcao": "Geral", "nome": "Agachamento - Halter Duplo", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Quadriceps", "porcao": "Geral", "nome": "Agachamento Frontal + Afundo Alternado - Halter", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Gluteos", "porcao": "Máximo", "nome": "Ponte com Pés no Banco", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Panturrilhas", "porcao": "Geral", "nome": "Elevação de Panturrilha - Halter", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Panturrilhas", "porcao": "Geral", "nome": "Elevação de Panturrilha Unilateral - Step e Anilha", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}]}, {"label": "Treino D — Ombros", "exercicios": [{"musculo": "Deltoide", "porcao": "Anterior", "nome": "Elevação Frontal em Pé com Pegada Neutra - Anilha", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Deltoide", "porcao": "Medial", "nome": "Elevação Lateral em Pé Unilateral - Tube Band", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Deltoide", "porcao": "Posterior", "nome": "Flexão de Ombro em Y - Halter", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Trapezio", "porcao": "Geral", "nome": "Encolhimento de Ombros - Cross", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Trapezio", "porcao": "Geral", "nome": "Encolhimento de Ombros - Halter", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}]}, {"label": "Treino E — Post.·Tríceps·Core", "exercicios": [{"musculo": "Isquiossurais", "porcao": "Geral", "nome": "Flexão de Joelho Sentado - Cadeira Flexora", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Isquiossurais", "porcao": "Geral", "nome": "Stiff - Barra", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Triceps", "porcao": "Longa Porção", "nome": "Tríceps Polia Alta com Pegada Pronada - Cross e Barra", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "RetoAbdominal", "porcao": "Superior", "nome": "Abdominal Supra Curto com Perna 90°", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Obliquo", "porcao": "Geral", "nome": "Flexão Lateral de Tronco em Prancha Lateral com Apoio no Joelho", "series": 4, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}]}], "dataGeracao": "26/06/2026"}, "_fichaObjAnterior": {"objetivo": "Hip", "nivel": "Avan", "frequencia": "5x", "local": "academia", "seriesPorEx": 3, "treinos": [{"label": "Treino A — Peito", "exercicios": [{"musculo": "Peitoral", "porcao": "Superior", "nome": "Flexão de Braço Fechado - Barra Australiana", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Médio", "nome": "Supino Reto - Máquina", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Inferior", "nome": "Supino Declinado - Halter", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Geral", "nome": "Supino Reto - Smith", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Geral", "nome": "Flexão de Braço Fechado com Apoio no Joelho", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Geral", "nome": "Supino Reto - Halter", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}]}, {"label": "Treino B — Costas·Bíceps", "exercicios": [{"musculo": "Latissimo", "porcao": "Geral", "nome": "Remada Inclinada com Pegada Fechada Neutra - Kettlebell", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Latissimo", "porcao": "Geral", "nome": "Remada Inclinada com Pegada Fechada Neutra - Cross", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Latissimo", "porcao": "Geral", "nome": "Puxada Alta com Pegada Fechada Supinada", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Biceps", "porcao": "Cabeça Longa", "nome": "Rosca Direita com Pegada Neutra Sentado - Halter", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Biceps", "porcao": "Cabeça Curta", "nome": "Rosca Alternada com Pegada Supinada em Pé - Halter", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Biceps", "porcao": "Geral", "nome": "Rosca Direta com Pegada Neutra no Banco Inclinado - Halter", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}]}, {"label": "Treino C — Pernas", "exercicios": [{"musculo": "Quadriceps", "porcao": "Geral", "nome": "Avanço Alternado - Halter", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Quadriceps", "porcao": "Geral", "nome": "Agachamento Frontal + Afundo Alternado - Halter", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Gluteos", "porcao": "Máximo", "nome": "Abdução de Quadril em Ponte Unilateral - Mini Band", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Gluteos", "porcao": "Médio", "nome": "Abdução de Quadril em Pé - Super Band", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Panturrilhas", "porcao": "Geral", "nome": "Elevação de Panturrilha Unilateral - Step", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Panturrilhas", "porcao": "Geral", "nome": "Elevação de Panturrilha Unilateral - Step e Anilha", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}]}, {"label": "Treino D — Ombros", "exercicios": [{"musculo": "Deltoide", "porcao": "Anterior", "nome": "Anjo em Pé - Bastão", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Deltoide", "porcao": "Medial", "nome": "Remada Alta - Halter", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Deltoide", "porcao": "Posterior", "nome": "Flexão de Ombro em Y Sentado - Super Band", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Deltoide", "porcao": "Geral", "nome": "Flexão de Ombro em Y Sentado - Tube Band", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Trapezio", "porcao": "Geral", "nome": "Encolhimento de Ombros - Anilha", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Trapezio", "porcao": "Geral", "nome": "Encolhimento de Ombros - Barra", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}]}, {"label": "Treino E — Post.·Tríceps·Core", "exercicios": [{"musculo": "Isquiossurais", "porcao": "Geral", "nome": "Flexão de Joelho Deitado - Super Band", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Isquiossurais", "porcao": "Geral", "nome": "Stiff na Parede", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Triceps", "porcao": "Longa Porção", "nome": "Tríceps Francês Sentado - Anilha", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Triceps", "porcao": "Lateral", "nome": "Tríceps Coice Unilateral - Halter", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "RetoAbdominal", "porcao": "Superior", "nome": "Abdominal Supra Curto - Anilha", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}, {"musculo": "Obliquo", "porcao": "Geral", "nome": "Anti-Rotação de Tronco Dinâmico - Cross", "series": 3, "reps": "6–12", "intensidade": "60–85% 1RM", "intervalo": "60–120s", "nota_clinica": ""}]}], "dataGeracao": "26/06/2026"}}, "reavaliacao": null, "historicoExercicios": ["Flexão de Braço Fechado - Barra Australiana", "Supino Reto - Máquina", "Supino Declinado - Halter", "Supino Reto - Smith", "Flexão de Braço Fechado com Apoio no Joelho", "Supino Reto - Halter", "Remada Inclinada com Pegada Fechada Neutra - Kettlebell", "Remada Inclinada com Pegada Fechada Neutra - Cross", "Puxada Alta com Pegada Fechada Supinada", "Rosca Direita com Pegada Neutra Sentado - Halter", "Rosca Alternada com Pegada Supinada em Pé - Halter", "Rosca Direta com Pegada Neutra no Banco Inclinado - Halter", "Avanço Alternado - Halter", "Agachamento Frontal + Afundo Alternado - Halter", "Abdução de Quadril em Ponte Unilateral - Mini Band", "Abdução de Quadril em Pé - Super Band", "Elevação de Panturrilha Unilateral - Step", "Elevação de Panturrilha Unilateral - Step e Anilha", "Anjo em Pé - Bastão", "Remada Alta - Halter", "Flexão de Ombro em Y Sentado - Super Band", "Flexão de Ombro em Y Sentado - Tube Band", "Encolhimento de Ombros - Anilha", "Encolhimento de Ombros - Barra", "Flexão de Joelho Deitado - Super Band", "Stiff na Parede", "Tríceps Francês Sentado - Anilha", "Tríceps Coice Unilateral - Halter", "Abdominal Supra Curto - Anilha", "Anti-Rotação de Tronco Dinâmico - Cross", "Supino Inclinado - Halter", "Crucifixo Declinado - Halter", "Supino Reto Sentado - Cross", "Flexão de Braço Fechado", "Remada Baixa na Polia com Pegada Fechada Neutra Unilateral", "Crucifixo Invertido Inclinado Unilateral - Cross", "Remada Inclinada com Pegada Fechada Neutra - Super Band", "Rosca Direta com Pegada Supinada no Banco Inclinado - Halter", "Rosca Direta com Pegada Pronada em Pé  - Cross e Barra", "Agachamento - Halter Duplo", "Ponte com Pés no Banco", "Elevação de Panturrilha - Halter", "Elevação Frontal em Pé com Pegada Neutra - Anilha", "Elevação Lateral em Pé Unilateral - Tube Band", "Flexão de Ombro em Y - Halter", "Encolhimento de Ombros - Cross", "Encolhimento de Ombros - Halter", "Flexão de Joelho Sentado - Cadeira Flexora", "Stiff - Barra", "Tríceps Polia Alta com Pegada Pronada - Cross e Barra", "Abdominal Supra Curto com Perna 90°", "Flexão Lateral de Tronco em Prancha Lateral com Apoio no Joelho"], "historicoSeries": {"Hip": 4}, "ultimaFaseVolSessao": {"objetivo": "Hip", "fase": "media"}}, {"id": 1782498535600, "perfil": {"nome": "Juliana Costa", "nascimento": "1990-07-02", "sexo": "F", "atividade": "moderadamente_ativo", "profissao": "Advogada", "tempo_sentado": "8h+", "whatsapp": "(21) 99876-1234", "modalidade": "presencial", "liberacao": "sim", "condicoes": "Nenhuma", "medicamentos": "Nenhum", "medicamentos_detalhe": "", "lesoes": "Nenhuma", "obs_clinicas": "Sem restrições.", "menstrual": "Regular", "contraceptivo": "DIU hormonal", "gestacao": "Não", "trimestre": ""}, "anamnese": {"nivel": "Inte", "tempo": "1–2 anos", "consistencia": "", "modalidades": "Musculação | Pilates", "extras": "[]", "sono": "regular", "estresse": "moderado", "alcool": "ocasional", "suplementos": "Whey", "pretreino": "", "objetivo_ef": "Emagrecimento", "objetivo_sec": "", "frequencia": "4x", "duracao": "60", "horario": "manhã", "local": "academia", "gosta": "Pernas e glúteos", "preferencias": "", "peso": "68.0", "altura": "163", "data_avaliacao": "2026-02-05", "gordura": "", "magra": "", "mgorda": "", "mmuscular": "", "cintura": "", "quadril": "", "abdomen": "", "braco_d": "", "braco_e": "", "braco_d_cont": "", "braco_e_cont": "", "coxa_d": "", "coxa_e": "", "pant_d": "", "pant_e": "", "obs_antro": "", "fc": "", "fms_ohsa": "", "fms_ohsa_flag": "", "fms_slsq": "", "fms_slsq_flag": "", "fms_hurdle": "", "fms_hurdle_flag": "", "fms_lunge": "", "fms_lunge_flag": "", "fms_shoulder": "", "fms_shoulder_flag": "", "fms_aslr": "", "fms_aslr_flag": "", "fms_rotary": "", "fms_rotary_flag": "", "fms_push": "", "fms_pull": "", "prancha": "", "prancha_lat_d": "", "prancha_lat_e": "", "equilibrio_d": "", "equilibrio_e": "", "tug": "", "sentar_levantar": "", "obs_func": "", "formula_1rm": "brzycki", "obs_forca": "", "data_forca": "", "forca": [{"ex": "Agachamento livre", "carga": "", "reps": ""}, {"ex": "Levantamento terra", "carga": "", "reps": ""}, {"ex": "Supino plano com barra", "carga": "", "reps": ""}, {"ex": "Remada curvada com barra", "carga": "", "reps": ""}, {"ex": "Puxada pronada", "carga": "", "reps": ""}, {"ex": "Desenvolvimento com barra", "carga": "", "reps": ""}, {"ex": "Avanço com halteres", "carga": "", "reps": ""}, {"ex": "Rosca direta com barra", "carga": "", "reps": ""}, {"ex": "Tríceps testa com barra", "carga": "", "reps": ""}], "cooper": "", "step_fc": "", "flexao": "", "flexao_modificada": false, "abdominal_reps": "", "squat_reps": "", "grip_d": "", "grip_e": "", "obs_resist": "", "sentar_alcancar": "", "sitreach_proto": "YMCA/ACSM", "sitreach_warmup": false, "isquio_d": "", "isquio_e": "", "iliopsoas_d": "", "iliopsoas_e": "", "dorsiflexao_d": "", "dorsiflexao_e": "", "mob_toracica_d": "", "mob_toracica_e": "", "ombro_flex_d": "", "ombro_flex_e": "", "quadril_rot_d": "", "quadril_rot_e": "", "obs_flex": "", "a_gon_ombro_flex_d": "", "a_gon_ombro_flex_e": "", "a_gon_ombro_ext_d": "", "a_gon_ombro_ext_e": "", "a_gon_ombro_abd_d": "", "a_gon_ombro_abd_e": "", "a_gon_ombro_ri_d": "", "a_gon_ombro_ri_e": "", "a_gon_ombro_re_d": "", "a_gon_ombro_re_e": "", "a_gon_quadril_flex_d": "", "a_gon_quadril_flex_e": "", "a_gon_quadril_ext_d": "", "a_gon_quadril_ext_e": "", "a_gon_quadril_abd_d": "", "a_gon_quadril_abd_e": "", "a_gon_quadril_ri_d": "", "a_gon_quadril_ri_e": "", "a_gon_quadril_re_d": "", "a_gon_quadril_re_e": "", "a_gon_joelho_flex_d": "", "a_gon_joelho_flex_e": "", "a_gon_torn_dors_d": "", "a_gon_torn_dors_e": "", "a_gon_torn_plant_d": "", "a_gon_torn_plant_e": "", "a_gon_col_flex_d": "", "a_gon_col_flex_e": "", "a_gon_col_ext_d": "", "a_gon_col_ext_e": "", "a_gon_col_lat_d": "", "a_gon_col_lat_e": "", "a_gon_col_rot_d": "", "a_gon_col_rot_e": ""}, "prescricao": {"objetivo": "Emagr", "nivel": "Inte", "frequencia": "4x", "modelo": "DUP", "obs": "", "treino": "## CICLO-01 — Juliana Costa\n```yaml\nobjetivo: Emagr\nnivel: Intermediário\nfrequencia: 4x/sem\nmodelo: DUP\nlocal: academia\ndata: 26/06/2026\n```\n\n### Treino A — Superior Emp. (18 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Peitoral | Flexão de Braço com Apoio no Joelho - Banco | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 2 | Peitoral | Supino Reto Sentado - Cross | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 3 | Triceps | Tríceps Testa - Barra | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 4 | Triceps | Tríceps Testa - Anilha | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 5 | Deltoide | Elevação Frontal Sentado com Pegada Neutra Alternada - Halter | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 6 | Deltoide | Elevação Lateral em Pé Unilateral- Halter | 3 | 6–12 | 50–75% 1RM | 30–60s |\n\n### Treino B — Inferior (18 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Quadriceps | Agachamento Frontal - Smith | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 2 | Quadriceps | Agachamento Frontal - Halter Simples | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 3 | Isquiossurais | Stiff Unilateral com Toque no Chão | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 4 | Isquiossurais | Stiff - Mini Band | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 5 | Gluteos | Elevação de Quadril no Banco - Barra | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 6 | Panturrilhas | Elevação de Panturrilha Unilateral - Halter | 3 | 6–12 | 50–75% 1RM | 30–60s |\n\n### Treino C — Superior Pux. (18 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Latissimo | Remada Inclinada com Pegada Fechada Neutra - Halter | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 2 | Latissimo | Remada Guiada com Pegada Aberta Neutra | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 3 | Biceps | Rosca Alternada com Giro em Pé - Halter | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 4 | Biceps | Rosca Direta com Pegada Neutra em Pé - Super Band | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 5 | Trapezio | Encolhimento de Ombros - Barra | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 6 | Trapezio | Encolhimento de Ombros - Halter | 3 | 6–12 | 50–75% 1RM | 30–60s |\n\n### Treino D — Inferior+Core (18 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Quadriceps | Agachamento Isométrico com Flexão Alternada de Braços | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 2 | Quadriceps | Agachamento com Salto | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 3 | Gluteos | Elevação de Quadril - Máquina para Elevação Pélvica | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 4 | Gluteos | Abdução de Quadril Sentado  - Mini Band | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 5 | RetoAbdominal | Abdominal Supra Curto com Perna 90° | 3 | 6–12 | 50–75% 1RM | 30–60s |\n| 6 | Obliquo | Flexão Lateral de Tronco Deitado Lateral | 3 | 6–12 | 50–75% 1RM | 30–60s |\n\n### PROGRESSÃO SEMANAL\n| Sem | Foco | Ajuste |\n|---|---|---|\n| 1 | Adaptação | Carga conservadora |\n| 2 | Desenvolvimento | +carga ou +reps |\n| 3 | Sobrecarga | RPE 7–8 |\n| 4 | Deload | −40% volume |\n", "aprovado": true, "dataAprovacao": "26/06/2026", "_fichaObj": {"objetivo": "Emagr", "nivel": "Inte", "frequencia": "4x", "local": "academia", "seriesPorEx": 3, "treinos": [{"label": "Treino A — Superior Emp.", "exercicios": [{"musculo": "Peitoral", "porcao": "Superior", "nome": "Flexão de Braço com Apoio no Joelho - Banco", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Médio", "nome": "Supino Reto Sentado - Cross", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Triceps", "porcao": "Longa Porção", "nome": "Tríceps Testa - Barra", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Triceps", "porcao": "Lateral", "nome": "Tríceps Testa - Anilha", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Deltoide", "porcao": "Anterior", "nome": "Elevação Frontal Sentado com Pegada Neutra Alternada - Halter", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Deltoide", "porcao": "Medial", "nome": "Elevação Lateral em Pé Unilateral- Halter", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}]}, {"label": "Treino B — Inferior", "exercicios": [{"musculo": "Quadriceps", "porcao": "Geral", "nome": "Agachamento Frontal - Smith", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Quadriceps", "porcao": "Geral", "nome": "Agachamento Frontal - Halter Simples", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Isquiossurais", "porcao": "Geral", "nome": "Stiff Unilateral com Toque no Chão", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Isquiossurais", "porcao": "Geral", "nome": "Stiff - Mini Band", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Gluteos", "porcao": "Máximo", "nome": "Elevação de Quadril no Banco - Barra", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Panturrilhas", "porcao": "Geral", "nome": "Elevação de Panturrilha Unilateral - Halter", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}]}, {"label": "Treino C — Superior Pux.", "exercicios": [{"musculo": "Latissimo", "porcao": "Geral", "nome": "Remada Inclinada com Pegada Fechada Neutra - Halter", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Latissimo", "porcao": "Geral", "nome": "Remada Guiada com Pegada Aberta Neutra", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Biceps", "porcao": "Cabeça Longa", "nome": "Rosca Alternada com Giro em Pé - Halter", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Biceps", "porcao": "Cabeça Curta", "nome": "Rosca Direta com Pegada Neutra em Pé - Super Band", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Trapezio", "porcao": "Geral", "nome": "Encolhimento de Ombros - Barra", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Trapezio", "porcao": "Geral", "nome": "Encolhimento de Ombros - Halter", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}]}, {"label": "Treino D — Inferior+Core", "exercicios": [{"musculo": "Quadriceps", "porcao": "Geral", "nome": "Agachamento Isométrico com Flexão Alternada de Braços", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Quadriceps", "porcao": "Geral", "nome": "Agachamento com Salto", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Gluteos", "porcao": "Máximo", "nome": "Elevação de Quadril - Máquina para Elevação Pélvica", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Gluteos", "porcao": "Médio", "nome": "Abdução de Quadril Sentado  - Mini Band", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "RetoAbdominal", "porcao": "Superior", "nome": "Abdominal Supra Curto com Perna 90°", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}, {"musculo": "Obliquo", "porcao": "Geral", "nome": "Flexão Lateral de Tronco Deitado Lateral", "series": 3, "reps": "6–12", "intensidade": "50–75% 1RM", "intervalo": "30–60s", "nota_clinica": ""}]}], "dataGeracao": "26/06/2026"}, "_fichaObjAnterior": null}, "reavaliacao": null, "historicoExercicios": ["Flexão de Braço com Apoio no Joelho - Banco", "Supino Reto Sentado - Cross", "Tríceps Testa - Barra", "Tríceps Testa - Anilha", "Elevação Frontal Sentado com Pegada Neutra Alternada - Halter", "Elevação Lateral em Pé Unilateral- Halter", "Agachamento Frontal - Smith", "Agachamento Frontal - Halter Simples", "Stiff Unilateral com Toque no Chão", "Stiff - Mini Band", "Elevação de Quadril no Banco - Barra", "Elevação de Panturrilha Unilateral - Halter", "Remada Inclinada com Pegada Fechada Neutra - Halter", "Remada Guiada com Pegada Aberta Neutra", "Rosca Alternada com Giro em Pé - Halter", "Rosca Direta com Pegada Neutra em Pé - Super Band", "Encolhimento de Ombros - Barra", "Encolhimento de Ombros - Halter", "Agachamento Isométrico com Flexão Alternada de Braços", "Agachamento com Salto", "Elevação de Quadril - Máquina para Elevação Pélvica", "Abdução de Quadril Sentado  - Mini Band", "Abdominal Supra Curto com Perna 90°", "Flexão Lateral de Tronco Deitado Lateral"], "historicoSeries": {"Emagr": 3}, "ultimaFaseVolSessao": {"objetivo": "Emagr", "fase": "baixa"}}, {"id": 1782498536358, "perfil": {"nome": "Roberto Alves", "nascimento": "2001-11-20", "sexo": "M", "atividade": "ativo", "profissao": "Estudante", "tempo_sentado": "4a6h", "whatsapp": "(31) 98765-4321", "modalidade": "presencial", "liberacao": "sim", "condicoes": "Nenhuma", "medicamentos": "Nenhum", "medicamentos_detalhe": "", "lesoes": "Lesão lombar recente (hérnia L4-L5, sem indicação cirúrgica)", "obs_clinicas": "Treinava Força até 3 semanas atrás. Entrou em reabilitação por lesão lombar. Liberado para treino de baixo impacto pelo fisioterapeuta.", "menstrual": "", "contraceptivo": "", "gestacao": "", "trimestre": ""}, "anamnese": {"nivel": "Inic", "tempo": "", "consistencia": "", "modalidades": "Musculação", "extras": "[]", "sono": "regular", "estresse": "moderado", "alcool": "", "suplementos": "Nenhum", "pretreino": "", "objetivo_ef": "Reabilitação", "objetivo_sec": "", "frequencia": "3x", "duracao": "45", "horario": "tarde", "local": "academia", "gosta": "", "preferencias": "", "peso": "78.0", "altura": "176", "data_avaliacao": "2026-03-01", "gordura": "", "magra": "", "mgorda": "", "mmuscular": "", "cintura": "", "quadril": "", "abdomen": "", "braco_d": "", "braco_e": "", "braco_d_cont": "", "braco_e_cont": "", "coxa_d": "", "coxa_e": "", "pant_d": "", "pant_e": "", "obs_antro": "", "fc": "", "fms_ohsa": "", "fms_ohsa_flag": "", "fms_slsq": "", "fms_slsq_flag": "", "fms_hurdle": "", "fms_hurdle_flag": "", "fms_lunge": "", "fms_lunge_flag": "", "fms_shoulder": "", "fms_shoulder_flag": "", "fms_aslr": "", "fms_aslr_flag": "", "fms_rotary": "", "fms_rotary_flag": "", "fms_push": "", "fms_pull": "", "prancha": "", "prancha_lat_d": "", "prancha_lat_e": "", "equilibrio_d": "", "equilibrio_e": "", "tug": "", "sentar_levantar": "", "obs_func": "", "formula_1rm": "brzycki", "obs_forca": "", "data_forca": "", "forca": [{"ex": "Agachamento livre", "carga": "", "reps": ""}, {"ex": "Levantamento terra", "carga": "", "reps": ""}, {"ex": "Supino plano com barra", "carga": "", "reps": ""}, {"ex": "Remada curvada com barra", "carga": "", "reps": ""}, {"ex": "Puxada pronada", "carga": "", "reps": ""}, {"ex": "Desenvolvimento com barra", "carga": "", "reps": ""}, {"ex": "Avanço com halteres", "carga": "", "reps": ""}, {"ex": "Rosca direta com barra", "carga": "", "reps": ""}, {"ex": "Tríceps testa com barra", "carga": "", "reps": ""}], "cooper": "", "step_fc": "", "flexao": "", "flexao_modificada": false, "abdominal_reps": "", "squat_reps": "", "grip_d": "", "grip_e": "", "obs_resist": "", "sentar_alcancar": "", "sitreach_proto": "YMCA/ACSM", "sitreach_warmup": false, "isquio_d": "", "isquio_e": "", "iliopsoas_d": "", "iliopsoas_e": "", "dorsiflexao_d": "", "dorsiflexao_e": "", "mob_toracica_d": "", "mob_toracica_e": "", "ombro_flex_d": "", "ombro_flex_e": "", "quadril_rot_d": "", "quadril_rot_e": "", "obs_flex": "", "a_gon_ombro_flex_d": "", "a_gon_ombro_flex_e": "", "a_gon_ombro_ext_d": "", "a_gon_ombro_ext_e": "", "a_gon_ombro_abd_d": "", "a_gon_ombro_abd_e": "", "a_gon_ombro_ri_d": "", "a_gon_ombro_ri_e": "", "a_gon_ombro_re_d": "", "a_gon_ombro_re_e": "", "a_gon_quadril_flex_d": "", "a_gon_quadril_flex_e": "", "a_gon_quadril_ext_d": "", "a_gon_quadril_ext_e": "", "a_gon_quadril_abd_d": "", "a_gon_quadril_abd_e": "", "a_gon_quadril_ri_d": "", "a_gon_quadril_ri_e": "", "a_gon_quadril_re_d": "", "a_gon_quadril_re_e": "", "a_gon_joelho_flex_d": "", "a_gon_joelho_flex_e": "", "a_gon_torn_dors_d": "", "a_gon_torn_dors_e": "", "a_gon_torn_plant_d": "", "a_gon_torn_plant_e": "", "a_gon_col_flex_d": "", "a_gon_col_flex_e": "", "a_gon_col_ext_d": "", "a_gon_col_ext_e": "", "a_gon_col_lat_d": "", "a_gon_col_lat_e": "", "a_gon_col_rot_d": "", "a_gon_col_rot_e": ""}, "prescricao": {"objetivo": "Reab", "nivel": "Inic", "frequencia": "3x", "modelo": "LP", "obs": "", "treino": "## CICLO-01 — Roberto Alves\n```yaml\nobjetivo: Reab\nnivel: Iniciante\nfrequencia: 3x/sem\nmodelo: LP\nlocal: academia\ndata: 26/06/2026\n```\n\n### Treino A — MMSS Empurrar+Core (4 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Peitoral | Supino Inclinado - Smith | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 2 | Triceps | Tríceps Polia Alta com Pegada Supinada - Cross e Barra | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 3 | Deltoide | Anjo em Decúbito Dorsal | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 4 | RetoAbdominal | Abdominal Supra Curto | 1 | 10–20 | 20–50% 1RM | 90–120s |\n\n### Treino B — Membros Inferiores (4 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Quadriceps | Agachamento - Hack | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 2 | Isquiossurais | Flexão de Joelho Deitado - Mesa Flexora | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 3 | Gluteos | Coice no Cross | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 4 | Panturrilhas | Elevação de Panturrilha Unilateral - Step | 1 | 10–20 | 20–50% 1RM | 90–120s |\n\n### Treino C — MMSS Puxar+Core (4 séries)\n| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |\n|---|---------|-----------|--------|------|-------------|----------|\n| 1 | Latissimo | Puxada Alta com Pegada Fechada Neutra - Máquina | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 2 | Biceps | Rosca Alternada com Pegada Neutra Sentado - Halter | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 3 | Trapezio | Encolhimento de Ombros - Cross | 1 | 10–20 | 20–50% 1RM | 90–120s |\n| 4 | Obliquo | Flexão Lateral de Tronco - Anilha | 1 | 10–20 | 20–50% 1RM | 90–120s |\n\n### PROGRESSÃO SEMANAL\n| Sem | Foco | Ajuste |\n|---|---|---|\n| 1 | Adaptação | Carga conservadora |\n| 2 | Desenvolvimento | +carga ou +reps |\n| 3 | Sobrecarga | RPE 7–8 |\n| 4 | Deload | −40% volume |\n", "aprovado": true, "dataAprovacao": "26/06/2026", "_fichaObj": {"objetivo": "Reab", "nivel": "Inic", "frequencia": "3x", "local": "academia", "seriesPorEx": 1, "treinos": [{"label": "Treino A — MMSS Empurrar+Core", "exercicios": [{"musculo": "Peitoral", "porcao": "Superior", "nome": "Supino Inclinado - Smith", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "Triceps", "porcao": "Longa Porção", "nome": "Tríceps Polia Alta com Pegada Supinada - Cross e Barra", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "Deltoide", "porcao": "Anterior", "nome": "Anjo em Decúbito Dorsal", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "RetoAbdominal", "porcao": "Superior", "nome": "Abdominal Supra Curto", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}]}, {"label": "Treino B — Membros Inferiores", "exercicios": [{"musculo": "Quadriceps", "porcao": "Geral", "nome": "Agachamento - Hack", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "Isquiossurais", "porcao": "Geral", "nome": "Flexão de Joelho Deitado - Mesa Flexora", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "Gluteos", "porcao": "Máximo", "nome": "Coice no Cross", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "Panturrilhas", "porcao": "Geral", "nome": "Elevação de Panturrilha Unilateral - Step", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}]}, {"label": "Treino C — MMSS Puxar+Core", "exercicios": [{"musculo": "Latissimo", "porcao": "Geral", "nome": "Puxada Alta com Pegada Fechada Neutra - Máquina", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "Biceps", "porcao": "Cabeça Longa", "nome": "Rosca Alternada com Pegada Neutra Sentado - Halter", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "Trapezio", "porcao": "Geral", "nome": "Encolhimento de Ombros - Cross", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}, {"musculo": "Obliquo", "porcao": "Geral", "nome": "Flexão Lateral de Tronco - Anilha", "series": 1, "reps": "10–20", "intensidade": "20–50% 1RM", "intervalo": "90–120s", "nota_clinica": ""}]}], "dataGeracao": "26/06/2026"}, "_fichaObjAnterior": {"objetivo": "Forca", "nivel": "Inic", "frequencia": "3x", "local": "academia", "seriesPorEx": 1, "treinos": [{"label": "Treino A — Peito·Tríceps·Ombro", "exercicios": [{"musculo": "Peitoral", "porcao": "Superior", "nome": "Supino Polia Alta Sentado - Cross", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Médio", "nome": "Supino Reto - Halter", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Inferior", "nome": "Supino Declinado - Halter", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Peitoral", "porcao": "Geral", "nome": "Flexão de Braço Fechado com Apoio no Joelho - Banco", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Triceps", "porcao": "Longa Porção", "nome": "Tríceps Testa - Halter", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Triceps", "porcao": "Lateral", "nome": "Tríceps Francês Sentado - Halter", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Triceps", "porcao": "Geral", "nome": "Tríceps Francês Sentado Unilateral - Halter", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Deltoide", "porcao": "Anterior", "nome": "Anjo na Parede", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Deltoide", "porcao": "Medial", "nome": "Elevação Lateral em Pé - Halter", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Deltoide", "porcao": "Posterior", "nome": "Flexão de Ombro em Y Unilateral - Banco", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}]}, {"label": "Treino B — Pernas", "exercicios": [{"musculo": "Quadriceps", "porcao": "Geral", "nome": "Agachamento Isométrico com Flexão Alternada de Braços", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Quadriceps", "porcao": "Geral", "nome": "Avanço Alternado", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Quadriceps", "porcao": "Geral", "nome": "Extensão de Joelho Nórdico Isométrico", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Isquiossurais", "porcao": "Geral", "nome": "Flexão de Joelho Deitado Unilateral - Tube Band", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Isquiossurais", "porcao": "Geral", "nome": "Stiff com Bastão nas Costas", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Isquiossurais", "porcao": "Geral", "nome": "Flexão de Joelho Sentado Unilateral - Cadeira Flexora", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Gluteos", "porcao": "Máximo", "nome": "Ponte Isométrica", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Gluteos", "porcao": "Médio", "nome": "Abdução de Quadril com Pés Fixos Alternado- Mini Band", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Panturrilhas", "porcao": "Geral", "nome": "Elevação de Panturrilha - Step e Anilha", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Panturrilhas", "porcao": "Geral", "nome": "Elevação de Panturrilha - Hack", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}]}, {"label": "Treino C — Costas·Bíceps·Core", "exercicios": [{"musculo": "Latissimo", "porcao": "Geral", "nome": "Remada Baixa na Máquina com Pegada Fechada Supinada", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Latissimo", "porcao": "Geral", "nome": "Barra Fixa com Pegada Fechada Neutra - Gráviton", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Latissimo", "porcao": "Geral", "nome": "Puxada Alta com Pegada Fechada Neutra - Super Band", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Biceps", "porcao": "Cabeça Longa", "nome": "Rosca Alternada com Giro em Pé - Halter", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Biceps", "porcao": "Cabeça Curta", "nome": "Rosca Direta com Pegada Supinada em Pé - Cross e Barra", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Biceps", "porcao": "Geral", "nome": "Rosca Direta com Pegada Neutra em Pé - Cross e Corda", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "RetoAbdominal", "porcao": "Superior", "nome": "Abdominal Supra Curto com Perna 90°", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "RetoAbdominal", "porcao": "Inferior", "nome": "Abdominal Tesoura no Banco", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Obliquo", "porcao": "Geral", "nome": "Flexão Lateral de Tronco - Kettlebell", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}, {"musculo": "Obliquo", "porcao": "Geral", "nome": "Flexão Lateral de Tronco em Prancha Lateral", "series": 1, "reps": "1–5", "intensidade": "80–95% 1RM", "intervalo": "180–300s", "nota_clinica": ""}]}], "dataGeracao": "26/06/2026"}}, "reavaliacao": null, "historicoExercicios": ["Supino Polia Alta Sentado - Cross", "Supino Reto - Halter", "Supino Declinado - Halter", "Flexão de Braço Fechado com Apoio no Joelho - Banco", "Tríceps Testa - Halter", "Tríceps Francês Sentado - Halter", "Tríceps Francês Sentado Unilateral - Halter", "Anjo na Parede", "Elevação Lateral em Pé - Halter", "Flexão de Ombro em Y Unilateral - Banco", "Agachamento Isométrico com Flexão Alternada de Braços", "Avanço Alternado", "Extensão de Joelho Nórdico Isométrico", "Flexão de Joelho Deitado Unilateral - Tube Band", "Stiff com Bastão nas Costas", "Flexão de Joelho Sentado Unilateral - Cadeira Flexora", "Ponte Isométrica", "Abdução de Quadril com Pés Fixos Alternado- Mini Band", "Elevação de Panturrilha - Step e Anilha", "Elevação de Panturrilha - Hack", "Remada Baixa na Máquina com Pegada Fechada Supinada", "Barra Fixa com Pegada Fechada Neutra - Gráviton", "Puxada Alta com Pegada Fechada Neutra - Super Band", "Rosca Alternada com Giro em Pé - Halter", "Rosca Direta com Pegada Supinada em Pé - Cross e Barra", "Rosca Direta com Pegada Neutra em Pé - Cross e Corda", "Abdominal Supra Curto com Perna 90°", "Abdominal Tesoura no Banco", "Flexão Lateral de Tronco - Kettlebell", "Flexão Lateral de Tronco em Prancha Lateral", "Supino Inclinado - Smith", "Tríceps Polia Alta com Pegada Supinada - Cross e Barra", "Anjo em Decúbito Dorsal", "Abdominal Supra Curto", "Agachamento - Hack", "Flexão de Joelho Deitado - Mesa Flexora", "Coice no Cross", "Elevação de Panturrilha Unilateral - Step", "Puxada Alta com Pegada Fechada Neutra - Máquina", "Rosca Alternada com Pegada Neutra Sentado - Halter", "Encolhimento de Ombros - Cross", "Flexão Lateral de Tronco - Anilha"], "historicoSeries": {"Reab": 1}, "ultimaFaseVolSessao": {"objetivo": "Reab", "fase": "baixa"}}];
   try {
     const existentes = JSON.parse(localStorage.getItem('acm-students') || '[]');
@@ -3230,7 +3247,7 @@ function confirmarDeletarAluno(id){
   if(activeId===id){
     activeId=null;
     // Return to alunos list if we were viewing the deleted student
-    NAV_SCREENS.forEach(sid=>{ const el=$(sid); if(el) el.classList.add('hidden'); });
+    NAV_SCREENS.forEach(sid=>{ const el=$(sid); if(el){ el.classList.add('hidden'); el.style.display=''; }});
     show('screen-alunos');
   }
   // Não usa saveStudent() aqui: se o aluno excluído era o ativo, activeId fica null e
@@ -3257,7 +3274,7 @@ function abrirSalvarBibliotecaDeAluno(id){
 function selectStudent(id){
   activeId = id;
   // Hide all screens, show student-view
-  NAV_SCREENS.forEach(sid=>{ const el=$(sid); if(el) el.classList.add('hidden'); });
+  NAV_SCREENS.forEach(sid=>{ const el=$(sid); if(el){ el.classList.add('hidden'); el.style.display=''; } });
   NAV_ITEMS.forEach(nid=>{ const el=$(nid); if(el) el.classList.remove('active'); });
   const sv=$('student-view');
   sv.classList.remove('hidden');
@@ -3527,26 +3544,17 @@ function calcSitReach(){
   const v=parseFloat(val('a-sentar-alcançar'));
   const el=$('a-sitreach-class'); if(!el) return;
   if(isNaN(v)){ el.value=''; return; }
-  const warmup=document.getElementById('a-sitreach-warmup')?.checked;
-  const nota=warmup?' (c/ aquecimento)':'';
-  const proto=val('a-sitreach-proto')||'YMCA/ACSM';
-  // As normas abaixo são ACSM/YMCA (zero = ponta dos pés). Protocolo Canadense usa
-  // zero = 26cm (tocar a ponta dos pés) — converte para o equivalente ACSM antes de
-  // classificar. V-sit não tem referência de conversão confiável, então não classifica.
-  if(proto==='V-sit'){
-    el.value='Sem tabela normativa para V-sit'+nota+' — usar só para acompanhamento evolutivo';
-    return;
-  }
-  const vAcsm = proto==='Canadense' ? (v-26) : v;
   const sexo=val('p-sexo')||'M';
   const nasc=val('p-nascimento');
-  const idade=_calcIdadeNum(nasc) ?? 30;
+  const idade=nasc?(new Date().getFullYear()-new Date(nasc).getFullYear()):30;
   const normsM=[[18,25,24,16,9,1],[26,35,23,15,7,0],[36,45,21,13,5,-1],[46,55,19,11,3,-2],[56,65,17,9,2,-3],[66,99,16,8,1,-3]];
   const normsF=[[18,25,30,22,15,7],[26,35,29,21,13,5],[36,45,27,18,10,2],[46,55,25,16,8,0],[56,65,23,14,7,-1],[66,99,22,13,6,-2]];
   const norms=sexo==='F'?normsF:normsM;
   const row=norms.find(n=>idade>=n[0]&&idade<=n[1])||norms[0];
   const labels=['Excelente','Bom','Médio','Abaixo da média','Fraco'];
-  for(let i=0;i<4;i++){ if(vAcsm>=row[i+2]){ el.value=labels[i]+nota; return; } }
+  const warmup=document.getElementById('a-sitreach-warmup')?.checked;
+  const nota=warmup?' (c/ aquecimento)':'';
+  for(let i=0;i<4;i++){ if(v>=row[i+2]){ el.value=labels[i]+nota; return; } }
   el.value='Fraco'+nota;
 }
 
@@ -4358,7 +4366,7 @@ function calcTMB_TDEE(gastoExtraSemanal){
   const nascimento=val('p-nascimento');
   const sexo=val('p-sexo');
   if(!peso||!alt) return null;
-  const idade = _calcIdadeNum(nascimento) ?? 30;
+  const idade = nascimento ? (new Date().getFullYear()-new Date(nascimento).getFullYear()) : 30;
   let tmb = sexo==='F'
     ? (10*peso)+(6.25*alt)-(5*idade)-161
     : (10*peso)+(6.25*alt)-(5*idade)+5;
@@ -4526,7 +4534,7 @@ function calcIdade(){
   const nasc=val('p-nascimento');
   const el=$('p-idade-label'); if(!el) return;
   if(!nasc){ el.textContent=''; return; }
-  const idade=_calcIdadeNum(nasc);
+  const idade=new Date().getFullYear()-new Date(nasc).getFullYear();
   el.textContent=idade>0?idade+' anos':'';
 }
 
@@ -4780,7 +4788,7 @@ function atualizarFlagAssimetria(){
 function calcFCMax(){
   const nasc=val('p-nascimento');
   const el=$('a-fcmax'); if(!el||!nasc) return;
-  const idade=_calcIdadeNum(nasc);
+  const idade=new Date().getFullYear()-new Date(nasc).getFullYear();
   if(idade>0) el.value=(220-idade)+' bpm';
 }
 
@@ -4844,7 +4852,7 @@ function calcVO2(){
   if(cls){
     const sexo=val('p-sexo')||'M';
     const nasc=val('p-nascimento');
-    const idade=_calcIdadeNum(nasc) ?? 30;
+    const idade=nasc?(new Date().getFullYear()-new Date(nasc).getFullYear()):30;
     cls.value=classVO2(vo2,sexo,idade);
   }
 }
@@ -4910,7 +4918,7 @@ function calcPushupClass(){
   const modificada=document.getElementById('a-flexao-modificada')?.checked;
   const sexo=val('p-sexo')||'M';
   const nasc=val('p-nascimento');
-  const idade=_calcIdadeNum(nasc) ?? 30;
+  const idade=nasc?(new Date().getFullYear()-new Date(nasc).getFullYear()):30;
   // Se posição modificada, usar normas femininas independente do sexo (menor exigência)
   const usarF = sexo==='F' || modificada;
   const normsM=[[18,25,36,29,22,17],[26,35,35,22,17,12],[36,45,30,22,15,10],[46,55,25,17,13,8],[56,65,21,13,10,6],[66,99,18,11,8,5]];
@@ -9090,9 +9098,8 @@ function gauthTentarAutoLogin(){
       GAUTH.user = user;
       GAUTH.driveFileId = fileId || null;
       if(GAUTH.gapiReady) gapi.client.setToken({ access_token: token });
-      // Não libera a tela de login ainda — o token salvo pode ter expirado (~1h).
-      // carregarDoDrive() só esconde o gate depois de confirmar que o token
-      // ainda é válido (ou, se não for, tenta renovar sozinho antes de desistir).
+      gauthAtualizarUI(true);
+      // Tentar carregar dados do Drive silenciosamente
       carregarDoDrive(true);
     }
   } catch(e){}
@@ -9113,18 +9120,8 @@ function iniciarLoginGoogle(){
   GAUTH.tokenClient.requestAccessToken({ prompt: 'consent' });
 }
 
-// Resolve de uma tentativa de renovação silenciosa em andamento (ver
-// tentarRenovarTokenSilencioso). null quando não há nenhuma pendente.
-let _resolveRenovacaoSilenciosa = null;
-
 async function gauthTokenCallback(resp){
-  if(resp.error){
-    if(_resolveRenovacaoSilenciosa){ const r=_resolveRenovacaoSilenciosa; _resolveRenovacaoSilenciosa=null; r(false); }
-    else setSyncStatus('Erro no login: '+resp.error, true);
-    return;
-  }
-
-  if(_resolveRenovacaoSilenciosa){ const r=_resolveRenovacaoSilenciosa; _resolveRenovacaoSilenciosa=null; r(true); }
+  if(resp.error){ setSyncStatus('Erro no login: '+resp.error, true); return; }
 
   GAUTH.token = resp.access_token;
   gapi.client.setToken({ access_token: resp.access_token });
@@ -9149,20 +9146,6 @@ async function gauthTokenCallback(resp){
   await carregarDoDrive(false);
 }
 
-// Pede um token novo sem popup (prompt:''). Só funciona se o navegador ainda tiver
-// uma sessão Google ativa e o usuário já tiver consentido antes — caso contrário o
-// Google recusa silenciosamente e resolvemos false após um tempo limite.
-function tentarRenovarTokenSilencioso(){
-  return new Promise((resolve)=>{
-    if(!GAUTH.tokenClient){ resolve(false); return; }
-    _resolveRenovacaoSilenciosa = resolve;
-    GAUTH.tokenClient.requestAccessToken({ prompt: '' });
-    setTimeout(()=>{
-      if(_resolveRenovacaoSilenciosa){ const r=_resolveRenovacaoSilenciosa; _resolveRenovacaoSilenciosa=null; r(false); }
-    }, 6000);
-  });
-}
-
 function deslogarGoogle(){
   if(GAUTH.token) google.accounts.oauth2.revoke(GAUTH.token);
   GAUTH.token = null;
@@ -9173,27 +9156,10 @@ function deslogarGoogle(){
   setSyncStatus('', false);
 }
 
-// Token de acesso expirou/foi revogado do lado do Google. Antes de derrubar a
-// sessão, tenta renovar em segundo plano (sem popup) — só pede login de novo
-// (mostrando o gate) se essa tentativa silenciosa também falhar.
-async function expirarSessaoDrive(msg){
-  const renovou = await tentarRenovarTokenSilencioso();
-  if(renovou) return true; // gauthTokenCallback já cuidou de tudo (token novo, UI, reload)
-  GAUTH.token = null;
-  GAUTH.user = null;
-  GAUTH.driveFileId = null;
-  localStorage.removeItem('fitcpx_gauth');
-  gauthAtualizarUI(false);
-  setSyncStatus(msg || 'Sessão do Google expirada — faça login novamente.', true);
-  setTimeout(()=>setSyncStatus('',false), 6000);
-  return false;
-}
-
 function gauthAtualizarUI(logado){
   const btnLogin    = $('btn-google-login');
   const userInfo    = $('google-user-info');
   const cloudActs   = $('cloud-actions');
-  const gate        = $('login-gate');
 
   if(logado && GAUTH.user){
     if(btnLogin)  btnLogin.style.display  = 'none';
@@ -9205,12 +9171,10 @@ function gauthAtualizarUI(logado){
       if(nm) nm.textContent = GAUTH.user.given_name || GAUTH.user.name || 'Usuário';
     }
     if(cloudActs) cloudActs.style.display = 'flex';
-    if(gate) gate.classList.add('hidden');
   } else {
     if(btnLogin)  btnLogin.style.display  = 'flex';
     if(userInfo)  userInfo.style.display  = 'none';
     if(cloudActs) cloudActs.style.display = 'none';
-    if(gate) gate.classList.remove('hidden');
   }
 }
 
@@ -9218,13 +9182,11 @@ function gauthAtualizarUI(logado){
 
 function setSyncStatus(msg, erro){
   const el = $('sync-status');
-  if(el){
-    if(!msg){ el.style.display='none'; el.textContent=''; }
-    else { el.style.display='block'; el.style.color = erro ? '#ff5050' : 'var(--text3)'; el.textContent = msg; }
-  }
-  // Espelha a mensagem na tela de login — a topbar fica coberta pelo gate enquanto deslogado
-  const gateEl = $('login-gate-status');
-  if(gateEl){ gateEl.style.color = erro ? 'var(--red)' : 'var(--text3)'; gateEl.textContent = msg || ''; }
+  if(!el) return;
+  if(!msg){ el.style.display='none'; el.textContent=''; return; }
+  el.style.display = 'block';
+  el.style.color = erro ? '#ff5050' : 'var(--text3)';
+  el.textContent = msg;
 }
 
 async function buscarFileIdNoDrive(){
@@ -9233,8 +9195,6 @@ async function buscarFileIdNoDrive(){
     `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${GAUTH.DRIVE_FILE_NAME}'&fields=files(id,name,modifiedTime)`,
     { headers: { Authorization: 'Bearer ' + GAUTH.token } }
   );
-  if(resp.status === 401){ const err=new Error('Sessão do Google expirada'); err.authExpired=true; throw err; }
-  if(!resp.ok) throw new Error('Drive respondeu '+resp.status+' ao buscar o arquivo');
   const data = await resp.json();
   if(data.files && data.files.length > 0){
     return data.files[0].id;
@@ -9251,9 +9211,6 @@ async function carregarDoDrive(silencioso){
     let fileId = GAUTH.driveFileId || await buscarFileIdNoDrive();
 
     if(!fileId){
-      // Chegar aqui só é possível se buscarFileIdNoDrive() respondeu com sucesso
-      // (não achou arquivo, mas o token é válido) — libera a tela de login.
-      gauthAtualizarUI(true);
       if(!silencioso) setSyncStatus('Nenhum dado no Drive ainda. Salve para criar.', false);
       setTimeout(()=>setSyncStatus('',false), 3000);
       return;
@@ -9267,27 +9224,10 @@ async function carregarDoDrive(silencioso){
       `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
       { headers: { Authorization: 'Bearer ' + GAUTH.token } }
     );
-    if(resp.status === 401){ const err=new Error('Sessão do Google expirada'); err.authExpired=true; throw err; }
-    if(!resp.ok) throw new Error('Drive respondeu '+resp.status+' ao baixar o arquivo');
-    // Token confirmado válido — libera a tela de login (se ainda estiver visível)
-    gauthAtualizarUI(true);
     const dados = await resp.json();
 
     // Merge: carregar alunos do Drive
     if(dados.students && Array.isArray(dados.students)){
-      // Se já existem alunos reais na tela (além da aluna de demonstração), confirma
-      // antes de substituir — evita apagar dados locais não sincronizados sem aviso.
-      const localTemDadosReais = students.some(s=>s.id!==9999999999);
-      if(localTemDadosReais){
-        const seguir = confirm(
-          `O Drive tem ${dados.students.length} aluno(s) salvo(s). Isso vai substituir os ${students.length} aluno(s) atualmente na tela. Continuar?`
-        );
-        if(!seguir){
-          setSyncStatus('Carregamento cancelado — dados locais mantidos.', false);
-          setTimeout(()=>setSyncStatus('',false), 3000);
-          return;
-        }
-      }
       students = dados.students;
       activeId = dados.activeId || (students[0]?.id ?? null);
       renderStudentList();
@@ -9298,11 +9238,7 @@ async function carregarDoDrive(silencioso){
       if(!silencioso){ setSyncStatus('Arquivo encontrado mas sem dados válidos.', false); setTimeout(()=>setSyncStatus('',false),3000); }
     }
   } catch(e){
-    if(e.authExpired){
-      await expirarSessaoDrive('Sessão do Google expirada — faça login novamente para sincronizar.');
-    } else if(!silencioso){
-      setSyncStatus('Erro ao carregar: '+e.message, true); setTimeout(()=>setSyncStatus('',false),5000);
-    }
+    if(!silencioso){ setSyncStatus('Erro ao carregar: '+e.message, true); setTimeout(()=>setSyncStatus('',false),5000); }
   }
 }
 
@@ -9325,7 +9261,7 @@ async function salvarNoDrive(){
 
     if(fileId){
       // Atualizar arquivo existente (PATCH)
-      const resp = await fetch(
+      await fetch(
         `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
         {
           method: 'PATCH',
@@ -9336,8 +9272,6 @@ async function salvarNoDrive(){
           body: payload,
         }
       );
-      if(resp.status === 401){ const err=new Error('Sessão do Google expirada'); err.authExpired=true; throw err; }
-      if(!resp.ok) throw new Error('Drive respondeu '+resp.status+' ao atualizar o arquivo');
     } else {
       // Criar arquivo novo no appDataFolder
       const meta = JSON.stringify({
@@ -9351,10 +9285,7 @@ async function salvarNoDrive(){
         'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
         { method: 'POST', headers: { Authorization: 'Bearer ' + GAUTH.token }, body: form }
       );
-      if(resp.status === 401){ const err=new Error('Sessão do Google expirada'); err.authExpired=true; throw err; }
-      if(!resp.ok) throw new Error('Drive respondeu '+resp.status+' ao criar o arquivo');
       const data = await resp.json();
-      if(!data.id) throw new Error('Drive não retornou um ID de arquivo válido');
       fileId = data.id;
       GAUTH.driveFileId = fileId;
       salvarSessaoLocal();
@@ -9364,14 +9295,7 @@ async function salvarNoDrive(){
     setSyncStatus(`✓ Salvo no Drive às ${agora}`, false);
     setTimeout(()=>setSyncStatus('',false), 4000);
   } catch(e){
-    if(e.authExpired){
-      const renovou = await expirarSessaoDrive('Sessão do Google expirada — faça login novamente para salvar.');
-      // Token renovado sozinho — este salvamento se perdeu, mas agenda um novo
-      // automaticamente em vez de deixar o usuário achar que já salvou.
-      if(renovou){ setSyncStatus('Sessão renovada — tentando salvar de novo...', false); driveAutoSave(); }
-    } else {
-      setSyncStatus('Erro ao salvar: '+e.message, true);
-    }
+    setSyncStatus('Erro ao salvar: '+e.message, true);
   } finally {
     if(btnDrive) btnDrive.textContent = '☁ Drive';
   }
@@ -9478,10 +9402,7 @@ const NAV_ITEMS   = ['nav-alunos','nav-locais','nav-biblioteca','nav-distribuica
 function noop(){}
 
 function navGo(tela){
-  // Só alterna a classe .hidden (display:none!important) — nunca mexer no
-  // style.display inline, porque cada tela depende do display:flex que já vem
-  // no HTML pra layout de main-scroll funcionar (senão o scroll trava/corta).
-  NAV_SCREENS.forEach(id=>{ const el=$(id); if(el) el.classList.add('hidden'); });
+  NAV_SCREENS.forEach(id=>{ const el=$(id); if(el){ el.classList.add('hidden'); el.style.display=''; } });
   NAV_ITEMS.forEach(id=>{ const el=$(id); if(el) el.classList.remove('active'); });
 
   if(tela==='alunos'){
@@ -11045,6 +10966,7 @@ try{
 
 // ─── ALUNO DE TESTE ───────────────────────────────────────────────────────────
 (function(){
+  if(!location.search.includes('demo')) return; // seed só roda com ?demo na URL
   const amanda = {
     id: 9999999999,
     perfil: {
@@ -11177,17 +11099,143 @@ try{
     prescricao: {},
     reavaliacao: null,
   };
-  // Só insere a aluna de demonstração se ela ainda não existir — sem essa checagem,
-  // toda vez que a página é recarregada uma cópia extra era empilhada em cima da
-  // já salva em localStorage/Drive, duplicando o registro a cada sessão.
-  if(!students.some(s=>s.id===amanda.id)) students.push(amanda);
+  students.push(amanda);
+  renderStudentList();
+  navGo('alunos');
+})();
+</script>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════
+// SUPABASE — BANCO ONLINE + LOGIN (email/senha)
+// ══════════════════════════════════════════════════════════════════════════
+const SUPA_URL = 'https://subqjcnztqzprtpqqrlt.supabase.co';
+const SUPA_KEY = 'sb_publishable_TpGanQ5F3BP082ptzYpYyQ_XyLU1l65';
+const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+
+let _supaUser = null;
+let _supaSaveTimer = null;
+
+function authMostrarErro(msg){
+  const el = document.getElementById('auth-erro');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function authLimparErro(){
+  document.getElementById('auth-erro').style.display = 'none';
+}
+function traduzErroAuth(msg){
+  if(/Invalid login credentials/i.test(msg)) return 'E-mail ou senha incorretos.';
+  if(/already registered/i.test(msg))        return 'Esse e-mail já tem conta. Clica em "Entrar".';
+  if(/Password should be/i.test(msg))        return 'Senha muito curta (mínimo 6 caracteres).';
+  return msg;
+}
+
+async function authEntrar(){
+  authLimparErro();
+  const email = document.getElementById('auth-email').value.trim();
+  const senha = document.getElementById('auth-senha').value;
+  if(!email || !senha){ authMostrarErro('Preenche e-mail e senha.'); return; }
+  const { data, error } = await supa.auth.signInWithPassword({ email, password: senha });
+  if(error){ authMostrarErro(traduzErroAuth(error.message)); return; }
+  await onLoginSucesso(data.user);
+}
+
+async function authCadastrar(){
+  authLimparErro();
+  const email = document.getElementById('auth-email').value.trim();
+  const senha = document.getElementById('auth-senha').value;
+  if(!email || !senha){ authMostrarErro('Preenche e-mail e senha.'); return; }
+  if(senha.length < 6){ authMostrarErro('Senha precisa de pelo menos 6 caracteres.'); return; }
+  const { data, error } = await supa.auth.signUp({ email, password: senha });
+  if(error){ authMostrarErro(traduzErroAuth(error.message)); return; }
+  if(data.session){
+    await onLoginSucesso(data.user);
+  } else {
+    const r = await supa.auth.signInWithPassword({ email, password: senha });
+    if(r.data?.user) await onLoginSucesso(r.data.user);
+    else authMostrarErro('Conta criada. Tenta "Entrar" agora.');
+  }
+}
+
+async function authSair(){
+  await supa.auth.signOut();
+  _supaUser = null;
+  document.getElementById('app-root').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('supa-user-info').style.display = 'none';
+  document.getElementById('auth-email').value = '';
+  document.getElementById('auth-senha').value = '';
+}
+
+async function onLoginSucesso(user){
+  _supaUser = user;
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-root').style.display = 'block';
+  document.getElementById('supa-user-info').style.display = 'flex';
+  document.getElementById('supa-user-email').textContent = user.email;
+  await supaCarregarDados();
+}
+
+// ── Carregar dados do usuário logado ─────────────────────────────────────────
+async function supaCarregarDados(){
+  if(!_supaUser) return;
+  const { data, error } = await supa.from('app_data').select('key,data').eq('user_id', _supaUser.id);
+  if(error){ console.error('Erro ao carregar dados do Supabase:', error); return; }
+  const rowStudents = data?.find(r=>r.key==='students');
+  const rowLibs      = data?.find(r=>r.key==='libs');
+
+  students = (rowStudents && Array.isArray(rowStudents.data)) ? rowStudents.data : [];
+  LIBS = (rowLibs && rowLibs.data && Object.keys(rowLibs.data).length) ? rowLibs.data : gerarLibsDefault();
+
+  activeId = null;
+  renderObjGrid();
   renderStudentList();
   navGo('alunos');
 
-  const navExCount = document.getElementById('nav-exercicios-count');
-  if(navExCount) navExCount.textContent = VAULT_EX.length;
-  const exBadgeTotal = document.getElementById('ex-badge-total');
-  if(exBadgeTotal) exBadgeTotal.textContent = VAULT_EX.length+' exercícios';
+  // Conta nova: grava o estado inicial pra já existir registro no banco
+  if(!rowStudents || !rowLibs) supaSalvarAgora();
+}
+
+// ── Salvar (debounced, dispara junto com driveAutoSave) ───────────────────────
+function supaAutoSave(){
+  if(!_supaUser) return;
+  clearTimeout(_supaSaveTimer);
+  setSyncStatus('☁ Sincronizando...', false);
+  _supaSaveTimer = setTimeout(supaSalvarAgora, 1500);
+}
+
+async function supaSalvarAgora(){
+  if(!_supaUser) return;
+  try{
+    const agora = new Date().toISOString();
+    const { error } = await supa.from('app_data').upsert([
+      { user_id: _supaUser.id, key: 'students', data: students, updated_at: agora },
+      { user_id: _supaUser.id, key: 'libs',     data: LIBS,     updated_at: agora },
+    ]);
+    if(error) throw error;
+    setSyncStatus('☁ Salvo', false);
+  }catch(e){
+    console.error('Erro ao salvar no Supabase:', e);
+    setSyncStatus('⚠ Erro ao salvar', true);
+  }
+}
+
+// Estender o autosave existente — já é chamado após toda alteração relevante
+// (perfil, anamnese, aprovar ficha, etc.), então basta acoplar aqui.
+const _origDriveAutoSave = driveAutoSave;
+driveAutoSave = function(){
+  _origDriveAutoSave();
+  supaAutoSave();
+};
+
+document.getElementById('auth-senha')?.addEventListener('keydown', e=>{ if(e.key==='Enter') authEntrar(); });
+document.getElementById('auth-email')?.addEventListener('keydown', e=>{ if(e.key==='Enter') authEntrar(); });
+
+// ── Sessão já existente? entra direto sem pedir login de novo ────────────────
+(async function supaInitSessao(){
+  const { data } = await supa.auth.getSession();
+  if(data?.session?.user) await onLoginSucesso(data.session.user);
 })();
 </script>
 
