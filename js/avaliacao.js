@@ -2147,6 +2147,79 @@ function renderObjGrid(){
     d.onclick=()=>{selectedObj=o.code;renderObjGrid();checkStep1();};
     g.appendChild(d);
   });
+  renderAnaliseAvaliacao();
+}
+
+// ── Análise avaliação → meta ────────────────────────────────────────────────
+// Regras simples sobre dado que a anamnese já calcula (nada de IA, só
+// cruzamento): sinaliza conflito entre objetivo escolhido e o que a avaliação
+// mostra, e sugere um objetivo quando o aluno ainda não declarou nenhum.
+function analisarMetaAvaliacao(){
+  const s = getActive();
+  if(!s?.anamnese) return null;
+  const a = s.anamnese, p = s.perfil||{};
+  const avisos = [];
+  let sugestao = null;
+
+  const peso = parseFloat(a.peso), mg = parseFloat(a.mgorda);
+  let pctGordura = null;
+  if(peso && mg) pctGordura = (mg/peso)*100;
+  const sexo = p.sexo;
+  const limiteAltoGordura = sexo==='F' ? 32 : 25;
+
+  if(pctGordura!=null && pctGordura>=limiteAltoGordura && !['Emagr','Comp'].includes(selectedObj)){
+    avisos.push(`% de gordura estimado (${pctGordura.toFixed(1)}%) está acima da faixa saudável — considere Emagrecimento ou Composição Corporal como objetivo principal.`);
+  }
+
+  const gestante = (p.gestacao||'').toLowerCase()==='sim';
+  if(gestante && !['Saude','Reab','Comp'].includes(selectedObj)){
+    avisos.push('Aluna gestante — objetivos de alta intensidade (Força Máxima, Hipertrofia agressiva) não são recomendados sem liberação específica. Priorize Saúde/Manutenção.');
+  }
+
+  const temCondicao = (p.condicoes||'Nenhuma') !== 'Nenhuma';
+  if(temCondicao && p.liberacao!=='sim'){
+    avisos.push('Condição clínica registrada no perfil sem liberação médica confirmada — obtenha a liberação antes de prescrever.');
+  }
+
+  if(a.nivel==='Inic' && selectedObj==='Forca'){
+    avisos.push('Nível Iniciante com objetivo Força Máxima — considere uma fase de adaptação (Hipertrofia/Saúde) antes de intensidades de 1–5 reps.');
+  }
+
+  const { bloqueios } = extrairFlagsClinicas();
+  if(bloqueios.includes('Baixo Impacto') && ['Forca','Esport'].includes(selectedObj)){
+    avisos.push('IMC ≥30 identificado na avaliação — objetivos de alto impacto/potência pedem cautela adicional na seleção de exercícios.');
+  }
+  if(bloqueios.includes('Dores Lombares') && selectedObj==='Forca'){
+    avisos.push('Dor lombar registrada — reforce técnica e considere adiar cargas máximas em padrões de dobradiça de quadril.');
+  }
+
+  // Sugestão só quando o aluno ainda não declarou nenhum objetivo na anamnese
+  if(!a.objetivo_ef && !selectedObj){
+    if(gestante) sugestao = 'Saude';
+    else if(pctGordura!=null && pctGordura>=limiteAltoGordura) sugestao = 'Emagr';
+  }
+
+  return { avisos, sugestao, pctGordura };
+}
+
+function renderAnaliseAvaliacao(){
+  const box = $('analise-avaliacao');
+  if(!box) return;
+  const s = getActive();
+  if(!s?.anamnese){ box.classList.add('hidden'); return; }
+  const r = analisarMetaAvaliacao();
+  if(!r || (!r.avisos.length && !r.sugestao)){ box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  let html = '<div style="display:flex;gap:8px;align-items:flex-start"><span>🔎</span><div>';
+  if(r.sugestao){
+    const label = OBJETIVOS.find(o=>o.code===r.sugestao)?.label || r.sugestao;
+    html += `<div style="margin-bottom:4px"><strong>Sugestão baseada na avaliação:</strong> ${label}</div>`;
+  }
+  if(r.avisos.length){
+    html += `<ul style="margin:0;padding-left:18px">${r.avisos.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+  }
+  html += '</div></div>';
+  box.innerHTML = html;
 }
 
 function preencherStep1DaAnamnese(){
