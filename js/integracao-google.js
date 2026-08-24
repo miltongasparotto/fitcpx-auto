@@ -295,7 +295,7 @@ const NAV_ITEMS   = ['nav-alunos','nav-locais','nav-biblioteca','nav-distribuica
 function noop(){}
 
 function navGo(tela){
-  NAV_SCREENS.forEach(id=>{ const el=$(id); if(el){ el.classList.add('hidden'); el.style.display=''; } });
+  NAV_SCREENS.forEach(id=>{ const el=$(id); if(el) el.classList.add('hidden'); });
   NAV_ITEMS.forEach(id=>{ const el=$(id); if(el) el.classList.remove('active'); });
 
   if(tela==='alunos'){

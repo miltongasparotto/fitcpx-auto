@@ -352,7 +352,7 @@ function confirmarDeletarAluno(id){
   if(activeId===id){
     activeId=null;
     // Return to alunos list if we were viewing the deleted student
-    NAV_SCREENS.forEach(sid=>{ const el=$(sid); if(el){ el.classList.add('hidden'); el.style.display=''; }});
+    NAV_SCREENS.forEach(sid=>{ const el=$(sid); if(el) el.classList.add('hidden'); });
     show('screen-alunos');
   }
   // Não usa saveStudent() aqui: se o aluno excluído era o ativo, activeId fica null e
@@ -379,7 +379,7 @@ function abrirSalvarBibliotecaDeAluno(id){
 function selectStudent(id){
   activeId = id;
   // Hide all screens, show student-view
-  NAV_SCREENS.forEach(sid=>{ const el=$(sid); if(el){ el.classList.add('hidden'); el.style.display=''; } });
+  NAV_SCREENS.forEach(sid=>{ const el=$(sid); if(el) el.classList.add('hidden'); });
   NAV_ITEMS.forEach(nid=>{ const el=$(nid); if(el) el.classList.remove('active'); });
   const sv=$('student-view');
   sv.classList.remove('hidden');
