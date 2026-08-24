@@ -433,13 +433,14 @@ function loadStudentData(s){
   carregarExtras(a.extras||'');
 
   // Antropométrica
-  const anaAntro = ['peso','altura','gordura','mgorda','mmuscular',
+  const anaAntro = ['peso','altura','gordura','mgorda','mmuscular','osso','residual',
    'cintura','quadril','abdomen','data-avaliacao',
    'braco-d','braco-e','braco-d-cont','braco-e-cont',
    'coxa-d','coxa-e','pant-d','pant-e','fc'];
   anaAntro.forEach(k=>{ setVal('a-'+k, a[k.replace(/-/g,'_')]||''); });
   setVal('a-obs-antro', a.obs_antro||'');
   calcIMC(); calcRCQ(); calcComp();
+  renderMeta();
   Object.keys(PARES_ASSIM).forEach(par=>calcAssimetria(par));
 
   // Funcional — FMS
@@ -1726,6 +1727,7 @@ function onAnamneseChange(){
     peso:val('a-peso'), altura:val('a-altura'), data_avaliacao:val('a-data-avaliacao'),
     gordura: (()=>{ const v=val('a-gordura'); return v?parseFloat(v):'' })(),
     magra:val('a-magra'), mgorda:val('a-mgorda'), mmuscular:val('a-mmuscular'),
+    osso:val('a-osso'), residual:val('a-residual'),
     cintura:val('a-cintura'), quadril:val('a-quadril'), abdomen:val('a-abdomen'),
     braco_d:val('a-braco-d'), braco_e:val('a-braco-e'),
     braco_d_cont:val('a-braco-d-cont'), braco_e_cont:val('a-braco-e-cont'),
@@ -1840,6 +1842,261 @@ function calcRCQ(){
   const el=$('a-rcq'); if(!el) return;
   if(c&&q) el.value=(c/q).toFixed(2);
   else el.value='';
+}
+
+// ─── META — COMPOSIÇÃO CORPORAL ────────────────────────────────────────────────
+// Referências IMC e %Gordura por sexo/faixa etária/nível — fornecidas pelo Milton.
+const REF_IMC = {
+  M:{'18-59':{'saude-1':21,  'saude0':22.5,'saude+1':24,  'magro':22,  'atletico':24.5,'musculoso':26.5},
+     '60+'  :{'saude-1':23,  'saude0':25,  'saude+1':26.5,'magro':23.5,'atletico':25.5,'musculoso':27}},
+  F:{'18-59':{'saude-1':20,  'saude0':21.7,'saude+1':23.5,'magro':21,  'atletico':23,  'musculoso':26},
+     '60+'  :{'saude-1':23,  'saude0':24.5,'saude+1':26,  'magro':22.5,'atletico':24,  'musculoso':25.5}}
+};
+const REF_GORDURA = {
+  M:{'18-59':{'saude-1':13,'saude0':17,'saude+1':19,'magro':12,'atletico':10,'musculoso':8},
+     '60+'  :{'saude-1':18,'saude0':22,'saude+1':24,'magro':17,'atletico':15,'musculoso':13}},
+  F:{'18-59':{'saude-1':17,'saude0':21,'saude+1':23,'magro':16,'atletico':14,'musculoso':12},
+     '60+'  :{'saude-1':23,'saude0':27,'saude+1':29,'magro':22,'atletico':20,'musculoso':18}}
+};
+const META_NIVEL_LABELS = {
+  'saude-1':'Saúde Leve','saude0':'Saúde Padrão','saude+1':'Saúde Robusto',
+  'magro':'Magro','atletico':'Atlético','musculoso':'Musculoso','personalizado':'Personalizado'
+};
+
+// Residual preditivo (Würch 1973) + Óssea preditiva (aproximação, sem diâmetro —
+// não existe fórmula validada sem punho/fêmur na literatura). Testado contra dado
+// real: erro médio ~15-27%, mais alto em pessoas com %muscular baixo. Usar só
+// como fallback quando não há Músculo medido, e sempre para a Meta (alvo hipotético).
+const WURCH_PCT_RESIDUAL_COMBINADO = { M:24.1, F:20.9 };
+const OSSO_PCT_APROX = { M:15.0, F:12.0 };
+
+function metaFaixaEtaria(){
+  const s=getActive(); if(!s) return '18-59';
+  const nasc=s.perfil?.nascimento;
+  if(!nasc) return '18-59';
+  const idade=new Date().getFullYear()-new Date(nasc).getFullYear();
+  return idade>=60 ? '60+' : '18-59';
+}
+
+function metaSexo(){
+  const s=getActive();
+  return (s?.perfil?.sexo==='F') ? 'F' : 'M';
+}
+
+// Retorna { peso_base, altura_cm, gordura_pct_base, musculo_pct_base, musculoInformado, fonteLabel }
+// ou { erro: 'texto' } quando falta dado obrigatório.
+// Óssea/Residual NUNCA são digitados — vira sempre Residual = Peso - Gordura - Músculo.
+// Se Músculo não vier (só possível na fonte manual), musculoInformado=false e o cálculo final
+// estima Músculo pela fórmula preditiva (ver calcMetaFinal).
+function metaFonteDados(){
+  const s=getActive(); if(!s) return {erro:'Nenhum aluno selecionado.'};
+  const fonte = document.querySelector('input[name="meta-fonte"]:checked')?.value || 'anterior';
+  if(fonte==='manual'){
+    const unidade = document.querySelector('input[name="meta-unidade"]:checked')?.value || 'pct';
+    const altura_cm = parseFloat(val('meta-manual-altura'))||0;
+    const peso_base = parseFloat(val('meta-manual-peso'))||0;
+    const gRaw = val('meta-manual-gordura');
+    const mRaw = val('meta-manual-musculo');
+    if(!altura_cm) return {erro:'Preencha a Altura (obrigatório).'};
+    if(!peso_base) return {erro:'Preencha o Peso (obrigatório).'};
+    if(!gRaw) return {erro:'Preencha a Gordura (obrigatório).'};
+    const gordura_pct_base = unidade==='kg' ? (parseFloat(gRaw)/peso_base)*100 : parseFloat(gRaw);
+    const musculoInformado = !!mRaw;
+    const musculo_pct_base = musculoInformado ? (unidade==='kg' ? (parseFloat(mRaw)/peso_base)*100 : parseFloat(mRaw)) : null;
+    return {peso_base, altura_cm, gordura_pct_base, musculo_pct_base, musculoInformado, fonteLabel:'dados inseridos manualmente'};
+  }
+  // fonte = anterior (última avaliação salva na Avaliação) — trava dura, sem fallback.
+  const a=s.anamnese||{};
+  const peso_base = parseFloat(a.peso)||0;
+  const altura_cm = parseFloat(a.altura)||0;
+  if(!peso_base || !altura_cm) return {erro:'A última avaliação não tem Peso/Altura preenchidos. Complete na aba Avaliação.'};
+  if(!a.mgorda && !a.gordura) return {erro:'A última avaliação não tem Gordura preenchida. Complete na aba Avaliação.'};
+  if(!a.mmuscular) return {erro:'A última avaliação não tem Músculo preenchido. Complete na aba Avaliação antes de calcular a Meta.'};
+  const gordura_pct_base = parseFloat(a.gordura)|| (peso_base && a.mgorda ? (parseFloat(a.mgorda)/peso_base)*100 : 0);
+  const musculo_pct_base = (parseFloat(a.mmuscular)/peso_base)*100;
+  return {peso_base, altura_cm, gordura_pct_base, musculo_pct_base, musculoInformado:true, fonteLabel:'última avaliação ('+(a.data_avaliacao||'sem data')+')'};
+}
+
+// Óssea+Residual preditos (Würch + aproximação óssea) — usados sempre para a META,
+// e para o ATUAL apenas quando Músculo não foi informado (fallback, menos preciso).
+function residualPreditoKg(peso, sexo){
+  return (WURCH_PCT_RESIDUAL_COMBINADO[sexo]/100)*peso + (OSSO_PCT_APROX[sexo]/100)*peso;
+}
+
+function onMetaFonteChange(){
+  const manual = document.querySelector('input[name="meta-fonte"]:checked')?.value==='manual';
+  toggle('meta-manual-bloco', manual);
+  esconderErroMeta();
+  atualizarBadgeFonte();
+}
+
+function onMetaManualChange(){
+  const kg = document.querySelector('input[name="meta-unidade"]:checked')?.value==='kg';
+  $('meta-manual-musculo-label').textContent = kg?'Músculo (kg) — opcional':'Músculo (%) — opcional';
+  $('meta-manual-gordura-label').innerHTML = kg?'<b>Gordura (kg) *</b>':'<b>Gordura (%) *</b>';
+  atualizarBadgeFonte();
+}
+
+function atualizarBadgeFonte(){
+  const el=$('meta-fonte-badge'); if(!el) return;
+  const d=metaFonteDados();
+  if(d.erro){ el.textContent=''; return; }
+  const metodo = d.musculoInformado ? 'Residual = Peso − Gordura − Músculo (direto)' : 'Músculo não informado — Residual/Músculo por predição (Würch, menos preciso)';
+  el.textContent = `Base: ${d.fonteLabel} · ${metodo}`;
+}
+
+function esconderErroMeta(){ toggle('meta-erro', false); }
+function mostrarErroMeta(msg){
+  const el=$('meta-erro'); if(!el) return;
+  el.textContent = msg;
+  toggle('meta-erro', true);
+}
+
+// Nível de meta selecionado no dropdown → preenche IMC/Peso/%Gordura de referência
+function onMetaNivelChange(){
+  const nivel = val('meta-nivel');
+  if(!nivel || nivel==='personalizado'){ toggle('meta-personalizado-badge', nivel==='personalizado'); return; }
+  toggle('meta-personalizado-badge', false);
+  const sexo=metaSexo(), faixa=metaFaixaEtaria();
+  const imc = REF_IMC[sexo][faixa][nivel];
+  const gordura = REF_GORDURA[sexo][faixa][nivel];
+  setVal('meta-imc', imc);
+  setVal('meta-gordura-pct', gordura);
+  recalcPesoDeImc();
+}
+
+function alturaMetros(){
+  const d=metaFonteDados();
+  if(d?.altura_cm) return d.altura_cm/100;
+  const s=getActive();
+  const alt=parseFloat(s?.anamnese?.altura);
+  return alt ? alt/100 : 0;
+}
+
+function recalcPesoDeImc(){
+  const h=alturaMetros(), imc=parseFloat(val('meta-imc'));
+  if(h&&imc) setVal('meta-peso', (imc*h*h).toFixed(1));
+}
+
+function recalcImcDePeso(){
+  const h=alturaMetros(), peso=parseFloat(val('meta-peso'));
+  if(h&&peso) setVal('meta-imc', (peso/(h*h)).toFixed(1));
+}
+
+// Editar Peso ou IMC manualmente vira "Personalizado", mas mantém os valores atuais
+// (não reseta a referência que estava selecionada).
+function onMetaPesoChange(){
+  recalcImcDePeso();
+  if(val('meta-nivel')!=='personalizado'){ setVal('meta-nivel','personalizado'); toggle('meta-personalizado-badge', true); }
+}
+function onMetaImcChange(){
+  recalcPesoDeImc();
+  if(val('meta-nivel')!=='personalizado'){ setVal('meta-nivel','personalizado'); toggle('meta-personalizado-badge', true); }
+}
+function onMetaGorduraChange(){
+  if(val('meta-nivel')!=='personalizado'){ setVal('meta-nivel','personalizado'); toggle('meta-personalizado-badge', true); }
+}
+
+// Botão "Calcular" — valida obrigatórios e só então roda o cálculo final.
+function calcularMeta(){
+  esconderErroMeta();
+  const d=metaFonteDados();
+  if(d.erro){ mostrarErroMeta(d.erro); $('meta-tabela-body').innerHTML='<tr><td colspan="4" style="color:var(--text3);text-align:center">Corrija o campo indicado acima e clique em Calcular</td></tr>'; return; }
+  const pesoMeta = parseFloat(val('meta-peso'));
+  const gorduraPctMeta = parseFloat(val('meta-gordura-pct'));
+  if(!val('meta-nivel')){ mostrarErroMeta('Selecione um Nível de meta antes de calcular.'); return; }
+  if(!pesoMeta || !gorduraPctMeta){ mostrarErroMeta('Preencha IMC/Peso/%Gordura alvo antes de calcular.'); return; }
+  calcMetaFinal(d, pesoMeta, gorduraPctMeta);
+}
+
+// Monta a tabela final Atual vs Meta vs Diferença.
+// ATUAL: se Músculo foi informado -> Residual = Peso - Gordura - Músculo (direto, "fórmula base").
+//        se Músculo NÃO foi informado (só na fonte manual) -> Residual/Músculo por predição (fallback).
+// META: sempre por predição (Würch + óssea aproximada), pois é um alvo hipotético, não medido.
+function calcMetaFinal(d, pesoMeta, gorduraPctMeta){
+  const sexo=metaSexo();
+  const residualMeta = residualPreditoKg(pesoMeta, sexo);
+  const gorduraKgMeta = (gorduraPctMeta/100) * pesoMeta;
+  const musculoKgMeta = pesoMeta - gorduraKgMeta - residualMeta;
+
+  const pesoAtual = d.peso_base;
+  const gorduraKgAtual = (d.gordura_pct_base/100) * pesoAtual;
+  let musculoKgAtual, residualKgAtual, avisoEstimativa='';
+  if(d.musculoInformado){
+    musculoKgAtual = (d.musculo_pct_base/100) * pesoAtual;
+    residualKgAtual = pesoAtual - gorduraKgAtual - musculoKgAtual;
+  } else {
+    residualKgAtual = residualPreditoKg(pesoAtual, sexo);
+    musculoKgAtual = pesoAtual - gorduraKgAtual - residualKgAtual;
+    avisoEstimativa = '<div style="margin-bottom:10px;padding:8px 12px;background:rgba(255,180,0,.08);border:1px solid rgba(255,180,0,.3);border-radius:var(--radius);font-size:12px;color:#ffb400">⚠ Músculo não informado — Atual estimado por predição (erro esperado ~15-27% em testes com dados reais). Prefira informar o Músculo medido sempre que possível.</div>';
+  }
+
+  const linha=(label,atual,meta,unidade)=>{
+    const diff=meta-atual;
+    const sinal=diff>0?'+':'';
+    const cor=Math.abs(diff)<0.05?'var(--text3)':(diff>0?'var(--accent)':'var(--red)');
+    return `<tr>
+      <td>${label}</td>
+      <td style="font-family:var(--mono)">${atual.toFixed(1)}${unidade}</td>
+      <td style="font-family:var(--mono);font-weight:600">${meta.toFixed(1)}${unidade}</td>
+      <td style="font-family:var(--mono);color:${cor}">${sinal}${diff.toFixed(1)}${unidade}</td>
+    </tr>`;
+  };
+
+  const body=$('meta-tabela-body');
+  body.innerHTML =
+    linha('Peso', pesoAtual, pesoMeta, ' kg') +
+    linha('Gordura', gorduraKgAtual, gorduraKgMeta, ' kg') +
+    linha('Músculo', musculoKgAtual, musculoKgMeta, ' kg') +
+    linha('Residual (óssea+residual)', residualKgAtual, residualMeta, ' kg');
+
+  const avisoEl=$('meta-aviso-estimativa');
+  if(avisoEl) avisoEl.remove();
+  if(avisoEstimativa){
+    const div=document.createElement('div');
+    div.id='meta-aviso-estimativa';
+    div.innerHTML=avisoEstimativa;
+    body.closest('table').insertAdjacentElement('beforebegin', div.firstChild);
+  }
+}
+
+function renderMeta(){
+  const s=getActive(); if(!s) return;
+  const m=s.meta||{};
+  esconderErroMeta();
+  const avisoEl=$('meta-aviso-estimativa'); if(avisoEl) avisoEl.remove();
+  // Fonte
+  const fonteEl=document.querySelector(`input[name="meta-fonte"][value="${m.fonte||'anterior'}"]`);
+  if(fonteEl) fonteEl.checked=true;
+  toggle('meta-manual-bloco', (m.fonte==='manual'));
+  setVal('meta-manual-altura', m.manual_altura||'');
+  setVal('meta-manual-peso', m.manual_peso||'');
+  setVal('meta-manual-musculo', m.manual_musculo||'');
+  setVal('meta-manual-gordura', m.manual_gordura||'');
+  const unidadeEl=document.querySelector(`input[name="meta-unidade"][value="${m.manual_unidade||'pct'}"]`);
+  if(unidadeEl) unidadeEl.checked=true;
+  onMetaManualChange(); // ajusta labels kg/%
+  // Nível/IMC/Peso/%Gordura
+  setVal('meta-nivel', m.nivel||'');
+  setVal('meta-imc', m.imc||'');
+  setVal('meta-peso', m.peso||'');
+  setVal('meta-gordura-pct', m.gordura_pct||'');
+  toggle('meta-personalizado-badge', m.nivel==='personalizado');
+  atualizarBadgeFonte();
+  $('meta-tabela-body').innerHTML = '<tr><td colspan="4" style="color:var(--text3);text-align:center">Preencha os dados e clique em Calcular</td></tr>';
+}
+
+function salvarMeta(){
+  const s=getActive(); if(!s) return;
+  s.meta = {
+    fonte: document.querySelector('input[name="meta-fonte"]:checked')?.value||'anterior',
+    manual_unidade: document.querySelector('input[name="meta-unidade"]:checked')?.value||'pct',
+    manual_altura: val('meta-manual-altura'), manual_peso: val('meta-manual-peso'),
+    manual_musculo: val('meta-manual-musculo'), manual_gordura: val('meta-manual-gordura'),
+    nivel: val('meta-nivel'), imc: val('meta-imc'), peso: val('meta-peso'),
+    gordura_pct: val('meta-gordura-pct'),
+  };
+  saveStudent();
 }
 
 // Pares: id base → [idD, idE, idDelta]
@@ -2101,10 +2358,11 @@ function calcDelta(curId, antId, outId, higherIsBetter){
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 
 function switchTab(name){
-  ['perfil','anamnese','prescricao','reavaliacao'].forEach(t=>{
+  ['perfil','anamnese','meta','prescricao','reavaliacao'].forEach(t=>{
     toggle('panel-'+t, t===name);
     $('tab-'+t).classList.toggle('active', t===name);
   });
+  if(name==='meta') renderMeta();
   if(name==='prescricao') { checkPrescWarning(); renderizarTriagem(); }
   if(name==='reavaliacao'){
     const s=getActive(); if(!s)return;

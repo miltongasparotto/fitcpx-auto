@@ -64,8 +64,12 @@ try{
       peso: '72.0',
       altura: '165',
       data_avaliacao: '2025-06-10',
+      gordura: '30.97',
       mgorda: '22.3',
       magra: '49.7',
+      mmuscular: '23.0',
+      osso: '8.6',
+      residual: '25.1',
       cintura: '82',
       quadril: '102',
       abdomen: '88',
@@ -150,4 +154,106 @@ try{
   students.push(amanda);
   renderStudentList();
   navGo('alunos');
+})();
+
+// ─── ALUNA DE TESTE 2 — DADOS REAIS (Thaís) ────────────────────────────────────
+(function(){
+  const thais = {
+    id: 9999999998,
+    perfil: {
+      nome: 'Thaís Helena Leão Feitosa',
+      nascimento: '1997-04-10',
+      sexo: 'F',
+      atividade: 'moderadamente_ativo',
+      profissao: '',
+      tempo_sentado: '',
+      whatsapp: '',
+      modalidade: 'presencial',
+      liberacao: 'sim',
+      condicoes: 'Nenhuma',
+      medicamentos: 'Nenhum',
+      medicamentos_detalhe: '',
+      lesoes: 'Nenhuma',
+      obs_clinicas: '',
+      menstrual: 'Regular',
+      contraceptivo: '',
+      gestacao: 'Não',
+      trimestre: '',
+    },
+    anamnese: {
+      nivel: 'Inte',
+      tempo: '',
+      consistencia: '',
+      modalidades: 'Musculação',
+      extras: '[]',
+      sono: '',
+      estresse: '',
+      alcool: '',
+      suplementos: '',
+      pretreino: '',
+      objetivo_ef: 'Composição corporal',
+      objetivo_sec: '',
+      frequencia: '4x',
+      duracao: '60',
+      horario: '',
+      local: 'academia',
+      gosta: '',
+      preferencias: '',
+
+      // Antropométrica — dado real (avaliação 06/06/2026, mais recente das 3)
+      peso: '61.80',
+      altura: '160',
+      data_avaliacao: '2026-06-06',
+      gordura: '22.6',
+      mgorda: '14.0',
+      magra: '47.8',
+      mmuscular: '21.6',
+      osso: '8.8',
+      residual: '28.0',
+      cintura: '',
+      quadril: '',
+      abdomen: '',
+      braco_d: '', braco_e: '', braco_d_cont: '', braco_e_cont: '',
+      coxa_d: '', coxa_e: '', pant_d: '', pant_e: '',
+      fc: '',
+      obs_antro: 'Dado real — avaliação de bioimpedância (relatório externo, 06/06/2026). IMC 24,1.',
+
+      fms_ohsa: '', fms_ohsa_flag: '',
+      fms_slsq: '', fms_slsq_flag: '',
+      fms_hurdle: '', fms_hurdle_flag: '',
+      fms_lunge: '', fms_lunge_flag: '',
+      fms_shoulder: '', fms_shoulder_flag: '',
+      fms_aslr: '', fms_aslr_flag: '',
+      fms_rotary: '', fms_rotary_flag: '',
+      fms_push: '', fms_pull: '',
+      prancha: '', prancha_lat_d: '', prancha_lat_e: '',
+      equilibrio_d: '', equilibrio_e: '',
+      tug: '', sentar_levantar: '', obs_func: '',
+
+      formula_1rm: 'brzycki', obs_forca: '', data_forca: '',
+      forca: [],
+
+      cooper: '', step_fc: '', flexao: '', flexao_modificada: false,
+      abdominal_reps: '', squat_reps: '', grip_d: '', grip_e: '', obs_resist: '',
+
+      sentar_alcancar: '', sitreach_proto: 'YMCA/ACSM', sitreach_warmup: false,
+      isquio_d: '', isquio_e: '', iliopsoas_d: '', iliopsoas_e: '',
+      dorsiflexao_d: '', dorsiflexao_e: '', mob_toracica_d: '', mob_toracica_e: '',
+      ombro_flex_d: '', ombro_flex_e: '', quadril_rot_d: '', quadril_rot_e: '',
+      obs_flex: '',
+    },
+    prescricao: {},
+    // Reavaliação — ponto anterior real (28/02/2026), pra comparação de ciclo
+    reavaliacao: {
+      peso: '61.60',
+      gordura: '24.5',
+      magra: '46.5',
+      cintura: '',
+      analise: 'Avaliação anterior real (28/02/2026): peso 61,60kg, gordura 24,5% (15,1kg), músculo 35,4% (21,8kg), óssea 14,3% (8,8kg), residual 25,8% (15,9kg). Terceiro ponto real disponível: 29/11/2025 — peso 60,40kg, gordura 23,7% (14,3kg), músculo 35,4% (21,4kg), óssea 14,6% (8,8kg), residual 26,2% (15,8kg).',
+      decisao: '',
+      data: '28/02/2026',
+    },
+  };
+  students.push(thais);
+  renderStudentList();
 })();

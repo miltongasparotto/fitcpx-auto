@@ -1321,6 +1321,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       <div class="tabs">
         <div class="tab active" onclick="switchTab('perfil')" id="tab-perfil">Perfil</div>
         <div class="tab" onclick="switchTab('anamnese')" id="tab-anamnese">Avaliação</div>
+        <div class="tab" onclick="switchTab('meta')" id="tab-meta">Meta</div>
         <div class="tab" onclick="switchTab('prescricao')" id="tab-prescricao">Prescrição</div>
         <div class="tab" onclick="switchTab('reavaliacao')" id="tab-reavaliacao">Reavaliação</div>
       </div>
@@ -1766,6 +1767,24 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 
               </div>
               <div id="antro-comp-alerta" style="display:none;margin-top:6px;padding:6px 12px;background:rgba(255,180,0,.07);border:1px solid rgba(255,180,0,.25);border-radius:var(--radius);font-size:12px;color:#ffb400"></div>
+
+              <!-- Óssea + Residual — opcional, geralmente vem de bioimpedância -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+                <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
+                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Óssea <span style="font-size:9px;opacity:.7">opcional — bioimpedância</span></div>
+                  <div class="field" style="margin:0">
+                    <label style="font-size:11px">kg</label>
+                    <input type="number" step="0.1" id="a-osso" oninput="onAnamneseChange()" placeholder="—" style="font-size:15px;font-weight:600">
+                  </div>
+                </div>
+                <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
+                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Residual <span style="font-size:9px;opacity:.7">opcional — bioimpedância</span></div>
+                  <div class="field" style="margin:0">
+                    <label style="font-size:11px">%</label>
+                    <input type="number" step="0.1" id="a-residual" oninput="onAnamneseChange()" placeholder="—" style="font-size:15px;font-weight:600">
+                  </div>
+                </div>
+              </div>
 
               <!-- Circunferências — layout 3 colunas -->
               <div class="section-label" style="margin-top:16px">Circunferências (cm)</div>
@@ -2380,6 +2399,110 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
             </div>
           </div>
 
+        </div>
+
+        <!-- ══════════════ META — COMPOSIÇÃO CORPORAL ══════════════ -->
+        <div id="panel-meta" class="content hidden">
+          <div class="card">
+            <div class="card-title">Meta — Composição Corporal</div>
+
+            <div class="section-label">Fonte dos dados base (Altura, Peso, Músculo, Gordura)</div>
+            <div style="display:flex;gap:16px;margin-bottom:12px">
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+                <input type="radio" name="meta-fonte" value="anterior" id="meta-fonte-anterior" checked onchange="onMetaFonteChange()">
+                Puxar da última avaliação
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+                <input type="radio" name="meta-fonte" value="manual" id="meta-fonte-manual" onchange="onMetaFonteChange()">
+                Inserir manualmente (bioimpedância)
+              </label>
+            </div>
+
+            <!-- Bloco manual — só aparece se fonte = manual -->
+            <div id="meta-manual-bloco" class="hidden" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:16px">
+              <div style="display:flex;gap:16px;margin-bottom:10px">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                  <input type="radio" name="meta-unidade" value="pct" id="meta-unidade-pct" checked onchange="onMetaManualChange()">
+                  Músculo/Gordura em %
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                  <input type="radio" name="meta-unidade" value="kg" id="meta-unidade-kg" onchange="onMetaManualChange()">
+                  Músculo/Gordura em kg
+                </label>
+              </div>
+              <div class="grid-4" style="gap:12px">
+                <div class="field">
+                  <label><b>Altura (cm) *</b></label>
+                  <input type="number" step="0.1" id="meta-manual-altura" oninput="onMetaManualChange()" placeholder="—">
+                </div>
+                <div class="field">
+                  <label><b>Peso da bioimpedância (kg) *</b></label>
+                  <input type="number" step="0.1" id="meta-manual-peso" oninput="onMetaManualChange()" placeholder="—">
+                </div>
+                <div class="field">
+                  <label id="meta-manual-musculo-label">Músculo (%) — opcional</label>
+                  <input type="number" step="0.1" id="meta-manual-musculo" oninput="onMetaManualChange()" placeholder="—">
+                </div>
+                <div class="field">
+                  <label id="meta-manual-gordura-label"><b>Gordura (%) *</b></label>
+                  <input type="number" step="0.1" id="meta-manual-gordura" oninput="onMetaManualChange()" placeholder="—">
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--text3);margin-top:8px">* obrigatório. Se Músculo não for informado, o sistema estima a partir da fórmula preditiva (menos preciso — ver aviso ao calcular). Óssea e Residual não são digitados — sempre calculados.</div>
+            </div>
+
+            <div id="meta-fonte-badge" style="font-size:12px;color:var(--text3);margin-bottom:16px"></div>
+
+            <div class="section-label">Nível de meta</div>
+            <div class="field" style="max-width:320px;margin-bottom:16px">
+              <select id="meta-nivel" onchange="onMetaNivelChange()">
+                <option value="">Selecionar</option>
+                <option value="saude-1">Saúde Leve</option>
+                <option value="saude0">Saúde Padrão</option>
+                <option value="saude+1">Saúde Robusto</option>
+                <option value="magro">Magro</option>
+                <option value="atletico">Atlético</option>
+                <option value="musculoso">Musculoso</option>
+                <option value="personalizado">Personalizado</option>
+              </select>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px">
+              <div class="field">
+                <label>IMC alvo</label>
+                <input type="number" step="0.1" id="meta-imc" oninput="onMetaImcChange()" placeholder="—">
+              </div>
+              <div class="field">
+                <label>Peso alvo (kg)</label>
+                <input type="number" step="0.1" id="meta-peso" oninput="onMetaPesoChange()" placeholder="—">
+              </div>
+              <div class="field">
+                <label>% Gordura alvo</label>
+                <input type="number" step="0.1" id="meta-gordura-pct" oninput="onMetaGorduraChange()" placeholder="—">
+              </div>
+            </div>
+            <div id="meta-personalizado-badge" style="display:none;font-size:11px;color:#ffb400;margin-bottom:12px">⚠ Valores ajustados manualmente — meta marcada como Personalizado</div>
+
+            <div id="meta-erro" style="display:none;margin-bottom:12px;padding:8px 12px;background:rgba(255,60,60,.08);border:1px solid rgba(255,60,60,.3);border-radius:var(--radius);font-size:13px;color:#ff4d4d"></div>
+
+            <div class="btn-row" style="justify-content:flex-start;margin:0 0 16px">
+              <button class="btn btn-primary" onclick="calcularMeta()">Calcular</button>
+            </div>
+
+            <div class="section-label" style="margin-top:0">Comparativo — Atual vs. Meta</div>
+            <table class="treino-table">
+              <thead>
+                <tr><th>Métrica</th><th>Atual</th><th>Meta</th><th>Diferença</th></tr>
+              </thead>
+              <tbody id="meta-tabela-body">
+                <tr><td colspan="4" style="color:var(--text3);text-align:center">Preencha os dados e clique em Calcular</td></tr>
+              </tbody>
+            </table>
+
+            <div class="btn-row" style="margin-top:16px">
+              <button class="btn btn-primary" onclick="salvarMeta()">Salvar Meta</button>
+            </div>
+          </div>
         </div>
 
         <!-- ══════════════ PRESCRIÇÃO ══════════════ -->
