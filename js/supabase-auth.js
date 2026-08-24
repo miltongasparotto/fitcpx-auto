@@ -70,6 +70,24 @@ async function onLoginSucesso(user){
   await supaCarregarDados();
 }
 
+// ── Modo teste: pula o login, não toca no Supabase ────────────────────────────
+// _supaUser fica null de propósito -> supaAutoSave() já é no-op nesse estado,
+// então nada tenta sincronizar. Dados ficam só no localStorage local (init-seed.js).
+function authModoTeste(){
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-root').style.display = 'grid';
+  const info = document.getElementById('supa-user-info');
+  if(info){
+    info.style.display = 'flex';
+    const emailEl = document.getElementById('supa-user-email');
+    if(emailEl) emailEl.textContent = 'modo teste (local)';
+  }
+  if(typeof LIBS === 'undefined' || !LIBS || !Object.keys(LIBS).length) LIBS = gerarLibsDefault();
+  renderObjGrid();
+  renderStudentList();
+  navGo('alunos');
+}
+
 // ── Carregar dados do usuário logado ─────────────────────────────────────────
 async function supaCarregarDados(){
   if(!_supaUser) return;

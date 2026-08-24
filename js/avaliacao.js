@@ -433,10 +433,10 @@ function loadStudentData(s){
   carregarExtras(a.extras||'');
 
   // Antropométrica
-  const anaAntro = ['peso','altura','gordura','mgorda','mmuscular','osso','residual',
-   'cintura','quadril','abdomen','data-avaliacao',
+  const anaAntro = ['peso','altura','gordura','mgorda','mmuscular','mmuscular-pct','osso','osso-pct','residual','residual-pct',
+   'cintura','quadril','abdomen','ombro','data-avaliacao',
    'braco-d','braco-e','braco-d-cont','braco-e-cont',
-   'coxa-d','coxa-e','pant-d','pant-e','fc'];
+   'coxa-d','coxa-e','pant-d','pant-e'];
   anaAntro.forEach(k=>{ setVal('a-'+k, a[k.replace(/-/g,'_')]||''); });
   setVal('a-obs-antro', a.obs_antro||'');
   calcIMC(); calcRCQ(); calcComp();
@@ -1726,9 +1726,11 @@ function onAnamneseChange(){
     // Antropométrica
     peso:val('a-peso'), altura:val('a-altura'), data_avaliacao:val('a-data-avaliacao'),
     gordura: (()=>{ const v=val('a-gordura'); return v?parseFloat(v):'' })(),
-    magra:val('a-magra'), mgorda:val('a-mgorda'), mmuscular:val('a-mmuscular'),
-    osso:val('a-osso'), residual:val('a-residual'),
-    cintura:val('a-cintura'), quadril:val('a-quadril'), abdomen:val('a-abdomen'),
+    magra:val('a-magra'), magra_pct:val('a-magra-pct'),
+    mgorda:val('a-mgorda'), mmuscular:val('a-mmuscular'), mmuscular_pct:val('a-mmuscular-pct'),
+    osso:val('a-osso'), osso_pct:val('a-osso-pct'),
+    residual:val('a-residual'), residual_pct:val('a-residual-pct'),
+    cintura:val('a-cintura'), quadril:val('a-quadril'), abdomen:val('a-abdomen'), ombro:val('a-ombro'),
     braco_d:val('a-braco-d'), braco_e:val('a-braco-e'),
     braco_d_cont:val('a-braco-d-cont'), braco_e_cont:val('a-braco-e-cont'),
     coxa_d:val('a-coxa-d'), coxa_e:val('a-coxa-e'),
@@ -1810,38 +1812,123 @@ function calcIMC(){
   }
 }
 
+// Campos de composição corporal com par kg/%. Chave = nome do campo, valor = ids dos inputs.
+const MASSA_FIELDS = {
+  mgorda:    {kg:'a-mgorda',     pct:'a-gordura'},
+  mmuscular: {kg:'a-mmuscular',  pct:'a-mmuscular-pct'},
+  osso:      {kg:'a-osso',       pct:'a-osso-pct'}
+};
+
+// Disparado pelo oninput de cada campo kg/% de Gordura, Muscular, Óssea.
+// Converte só o par editado (kg->% ou %->kg) usando o peso atual, depois
+// recalcula os campos derivados (Magra, Residual).
+function onMassaInput(campo, unidade){
+  const peso = parseFloat(val('a-peso'));
+  const ids = MASSA_FIELDS[campo];
+  if(ids && peso){
+    const kgEl=$(ids.kg), pctEl=$(ids.pct);
+    if(kgEl && pctEl){
+      if(unidade==='kg'){
+        const kg=parseFloat(kgEl.value);
+        pctEl.value=(kg||kg===0)?((kg/peso)*100).toFixed(1):'';
+      } else {
+        const pct=parseFloat(pctEl.value);
+        kgEl.value=(pct||pct===0)?((peso*pct/100)).toFixed(1):'';
+      }
+    }
+  }
+  calcComp();
+  onAnamneseChange();
+}
+
+// Ao mudar o peso: re-sincroniza kg<->% de cada campo (kg manda quando os dois existem).
+function syncPesoUnidades(){
+  const peso=parseFloat(val('a-peso'));
+  if(!peso) return;
+  Object.values(MASSA_FIELDS).forEach(ids=>{
+    const kgEl=$(ids.kg), pctEl=$(ids.pct);
+    if(!kgEl||!pctEl) return;
+    const kg=parseFloat(kgEl.value), pct=parseFloat(pctEl.value);
+    if(kg||kg===0)      pctEl.value=((kg/peso)*100).toFixed(1);
+    else if(pct||pct===0) kgEl.value=((peso*pct/100)).toFixed(1);
+  });
+}
+
 function calcComp(){
+  syncPesoUnidades();
   const peso=parseFloat(val('a-peso'));
   const mg=parseFloat(val('a-mgorda'));
-  const mm_input=parseFloat(val('a-mmuscular'));
-  const gEl=$('a-gordura'), mEl=$('a-magra'), mPctEl=$('a-magra-pct'), alerta=$('antro-comp-alerta');
+  const mm=parseFloat(val('a-mmuscular'));
+  const mo=parseFloat(val('a-osso'));
+  const mEl=$('a-magra'), mPctEl=$('a-magra-pct');
+  const rEl=$('a-residual'), rPctEl=$('a-residual-pct'), rLabelEl=$('a-residual-label');
+  const alerta=$('antro-comp-alerta');
 
   // Massa magra = peso − gordura (automático)
   if(peso&&mg){
     const magra=(peso-mg);
-    if(mEl) mEl.value=magra.toFixed(1)+' kg';
-    if(gEl) gEl.value=((mg/peso)*100).toFixed(1)+'%';
-    if(mPctEl) mPctEl.value=((magra/peso)*100).toFixed(1)+'%';
-    // Alerta de coerência apenas se massa muscular for maior que magra
-    if(alerta){
-      if(mm_input&&mm_input>magra){
-        alerta.style.display='block';
-        alerta.textContent=`⚠ Massa muscular (${mm_input}kg) > massa magra calculada (${magra.toFixed(1)}kg). Verifique os valores.`;
-      } else { alerta.style.display='none'; }
-    }
+    if(mEl) mEl.value=magra.toFixed(1);
+    if(mPctEl) mPctEl.value=((magra/peso)*100).toFixed(1);
   } else {
     if(mEl) mEl.value='';
-    if(gEl) gEl.value='';
     if(mPctEl) mPctEl.value='';
-    if(alerta) alerta.style.display='none';
+  }
+
+  // Massa residual: se Óssea informada, residual exclui ela (Peso−Gordura−Músculo−Óssea).
+  // Se Óssea não informada, residual absorve ela (Peso−Gordura−Músculo) — campo variável.
+  if(peso&&mg&&mm){
+    let residual, label;
+    if(mo||mo===0){
+      residual = peso-mg-mm-mo;
+      label = 'Massa Residual (sem óssea)';
+    } else {
+      residual = peso-mg-mm;
+      label = 'Massa Residual + Óssea';
+    }
+    if(rEl) rEl.value=residual.toFixed(1);
+    if(rPctEl) rPctEl.value=((residual/peso)*100).toFixed(1);
+    if(rLabelEl) rLabelEl.textContent=label;
+  } else {
+    if(rEl) rEl.value='';
+    if(rPctEl) rPctEl.value='';
+    if(rLabelEl) rLabelEl.textContent='Massa Residual';
+  }
+
+  // Alerta de coerência: Gordura + Músculo não pode exceder o peso total
+  if(alerta){
+    if(peso&&mg&&mm&&(mg+mm)>peso){
+      alerta.style.display='block';
+      alerta.textContent=`⚠ Gordura (${mg}kg) + Músculo (${mm}kg) excede o peso total (${peso}kg). Verifique os valores.`;
+    } else { alerta.style.display='none'; }
   }
 }
 
 function calcRCQ(){
   const c=parseFloat(val('a-cintura')), q=parseFloat(val('a-quadril'));
-  const el=$('a-rcq'); if(!el) return;
-  if(c&&q) el.value=(c/q).toFixed(2);
-  else el.value='';
+  const el=$('a-rcq'), cls=$('a-rcq-class');
+  if(!el) return;
+  if(c&&q){
+    const rcq=c/q;
+    el.value=rcq.toFixed(2);
+    if(cls){
+      const sexo=val('p-sexo');
+      // Cutoffs OMS por sexo (risco cardiovascular associado à distribuição de gordura)
+      if(sexo==='F'){
+        if(rcq<0.80)      cls.value='Baixo risco';
+        else if(rcq<0.85) cls.value='Risco moderado';
+        else              cls.value='Alto risco';
+      } else if(sexo==='M'){
+        if(rcq<0.90)      cls.value='Baixo risco';
+        else if(rcq<1.00) cls.value='Risco moderado';
+        else              cls.value='Alto risco';
+      } else {
+        cls.value='Informe o sexo no Perfil';
+      }
+    }
+  } else {
+    el.value='';
+    if(cls) cls.value='';
+  }
 }
 
 // ─── META — COMPOSIÇÃO CORPORAL ────────────────────────────────────────────────
