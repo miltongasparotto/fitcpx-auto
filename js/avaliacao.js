@@ -1854,7 +1854,20 @@ function syncPesoUnidades(){
   });
 }
 
+// Trava/destrava Gordura, Muscular, Óssea (kg+%): só liberam depois do Peso informado,
+// porque a conversão kg<->% depende do peso.
+function toggleCompFieldsLock(){
+  const peso = parseFloat(val('a-peso'));
+  const liberado = !!peso;
+  ['a-mgorda','a-gordura','a-mmuscular','a-mmuscular-pct','a-osso','a-osso-pct'].forEach(id=>{
+    const el=$(id); if(el) el.disabled = !liberado;
+  });
+  const bloqueio=$('antro-comp-bloqueio');
+  if(bloqueio) bloqueio.style.display = liberado ? 'none' : 'block';
+}
+
 function calcComp(){
+  toggleCompFieldsLock();
   syncPesoUnidades();
   const peso=parseFloat(val('a-peso'));
   const mg=parseFloat(val('a-mgorda'));
