@@ -353,7 +353,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       <span id="tema-icon">🌙</span>
       <span id="tema-label">Escuro</span>
     </button>
-    <span class="topbar-badge">v1.6.1 — Módulo EF</span>
+    <span class="topbar-badge">v1.6.2 — Módulo EF</span>
   </div>
 
   <!-- SIDEBAR -->
@@ -1328,6 +1328,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <div class="tab active" onclick="switchTab('perfil')" id="tab-perfil">Perfil</div>
         <div class="tab" onclick="switchTab('anamnese')" id="tab-anamnese">Avaliação</div>
         <div class="tab" onclick="switchTab('prescricao')" id="tab-prescricao">Prescrição</div>
+        <div class="tab" onclick="switchTab('evolucao')" id="tab-evolucao">Evolução</div>
       </div>
 
       <div class="main-scroll" id="tab-content">
@@ -2016,7 +2017,22 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <!-- ══════════════ PRESCRIÇÃO ══════════════ -->
         <div id="panel-prescricao" class="content hidden">
           <div class="card">
-            <div class="card-title">Prescrição — Fluxo Guiado</div>
+            <div class="card-title">Prescrição</div>
+
+            <!-- ── LISTA DE TREINOS SALVOS ── -->
+            <div id="treinos-lista-view">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                <div style="font-size:12px;color:var(--text3)">Todos os treinos criados para este aluno.</div>
+                <button type="button" class="btn btn-primary" onclick="treinosAdicionar()" style="font-size:12px;padding:6px 14px">+ Adicionar Treino</button>
+              </div>
+              <div id="treinos-lista-tabela"></div>
+            </div>
+
+            <!-- ── FORMULÁRIO / FLUXO GUIADO (novo treino ou edição) ── -->
+            <div id="treinos-form-view" style="display:none">
+            <div style="display:flex;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+              <button type="button" class="btn btn-ghost" onclick="treinosVoltarLista()" style="font-size:12px;padding:6px 12px">← Voltar para lista</button>
+            </div>
 
             <!-- ══ PAINEL DE TRIAGEM CLÍNICA ══ -->
             <div id="triagem-painel" style="display:none;margin-bottom:20px">
@@ -2404,6 +2420,20 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 </button>
               </div>
             </div>
+
+            </div><!-- /treinos-form-view -->
+          </div>
+        </div>
+
+        <!-- ══════════════ EVOLUÇÃO ══════════════ -->
+        <!-- Placeholder — comparação de ciclos com gráficos, vault + treinos-store.js.
+             Fica vazio de propósito até a próxima fase de desenvolvimento. -->
+        <div id="panel-evolucao" class="content hidden">
+          <div class="card">
+            <div class="card-title">Evolução</div>
+            <div style="padding:32px 16px;text-align:center;color:var(--text3);font-size:13px">
+              🚧 Em construção — comparação de ciclos com gráficos de evolução.
+            </div>
           </div>
         </div>
 
@@ -2432,6 +2462,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 
 <script src="js/avaliacao.js"></script>
 <script src="js/exercicios-db.js"></script>
+<script src="js/treinos-store.js"></script>
 <script src="js/prescricao-motor.js"></script>
 <script src="js/integracao-google.js"></script>
 <script src="js/biblioteca-exercicios.js"></script>
