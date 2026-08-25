@@ -531,15 +531,6 @@ function loadStudentData(s){
     goStep(1, true);
   }
 
-  // Reavaliação
-  toggle('reav-no-presc', !pr.aprovado);
-  toggle('reav-form', !!pr.aprovado);
-  if(pr.aprovado){
-    $('reav-ant-peso').textContent = a.peso||'—';
-    $('reav-ant-gordura').textContent = a.gordura||'—';
-    $('reav-ant-magra').textContent = a.magra||'—';
-    $('reav-ant-cintura').textContent = a.cintura||'—';
-  }
   updateHeader(s);
 }
 
@@ -1779,7 +1770,7 @@ function onAnamneseChange(){
 }
 // ─── SUBABAS DA AVALIAÇÃO ────────────────────────────────────────────────────
 
-const SUBTABS_AVAL = ['anamnese-hist','anamnese-antro','anamnese-func','anamnese-forca','anamnese-resist','anamnese-flex'];
+const SUBTABS_AVAL = ['anamnese-hist','anamnese-antro','anamnese-meta'];
 
 function switchSubtab(name){
   SUBTABS_AVAL.forEach(t=>{
@@ -1788,9 +1779,8 @@ function switchSubtab(name){
     if(panel) toggle('subpanel-'+t, t===name);
     if(tab)   tab.classList.toggle('active', t===name);
   });
-  if(name==='anamnese-func' && !$('fms-rows')?.children?.length) renderFMSRows();
-  if(name==='anamnese-flex' && !$('gonio-grid')?.children?.length) renderGoniometria();
   if(name==='anamnese-antro'){ _antroEditId=null; antroMostrarLista(); }
+  if(name==='anamnese-meta') renderMeta();
 }
 
 // ─── HISTÓRICO DE AVALIAÇÕES ANTROPOMÉTRICAS ───────────────────────────────────
@@ -2614,23 +2604,11 @@ function calcDelta(curId, antId, outId, higherIsBetter){
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 
 function switchTab(name){
-  ['perfil','anamnese','meta','prescricao','reavaliacao'].forEach(t=>{
+  ['perfil','anamnese','prescricao'].forEach(t=>{
     toggle('panel-'+t, t===name);
     $('tab-'+t).classList.toggle('active', t===name);
   });
-  if(name==='meta') renderMeta();
   if(name==='prescricao') { checkPrescWarning(); renderizarTriagem(); }
-  if(name==='reavaliacao'){
-    const s=getActive(); if(!s)return;
-    toggle('reav-no-presc',!s.prescricao.aprovado);
-    toggle('reav-form',!!s.prescricao.aprovado);
-    if(s.prescricao.aprovado&&s.anamnese){
-      $('reav-ant-peso').textContent=s.anamnese.peso||'—';
-      $('reav-ant-gordura').textContent=s.anamnese.gordura||'—';
-      $('reav-ant-magra').textContent=s.anamnese.magra||'—';
-      $('reav-ant-cintura').textContent=s.anamnese.cintura||'—';
-    }
-  }
 }
 
 function checkPrescWarning(){
