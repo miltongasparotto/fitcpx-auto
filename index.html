@@ -1529,6 +1529,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
           <!-- Subabas -->
           <div style="display:flex;gap:2px;border-bottom:1px solid var(--border);padding:0 32px;background:var(--bg2);flex-shrink:0;margin-bottom:0">
             <div class="subtab active" onclick="switchSubtab('anamnese-hist')" id="subtab-anamnese-hist">Anamnese</div>
+            <div class="subtab" onclick="switchSubtab('anamnese-treino')" id="subtab-anamnese-treino">Histórico de Treino</div>
             <div class="subtab" onclick="switchSubtab('anamnese-antro')" id="subtab-anamnese-antro">Antropométrica</div>
             <div class="subtab" onclick="switchSubtab('anamnese-meta')" id="subtab-anamnese-meta">Meta</div>
           </div>
@@ -1538,66 +1539,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
           <div id="subpanel-anamnese-hist" class="content" style="padding:0">
             <div class="card">
               <div class="card-title">Anamnese EF 🔒</div>
-
-              <div class="section-label">Classificação & Histórico</div>
-              <div class="grid-3" style="gap:12px">
-                <div class="field">
-                  <label>Nível de treinamento</label>
-                  <select id="a-nivel" onchange="onAnamneseChange()">
-                    <option value="">Selecionar</option>
-                    <option value="Inic">Iniciante (0–6 meses ou retorno após pausa longa)</option>
-                    <option value="Inte">Intermediário (6 meses–2 anos, consistente)</option>
-                    <option value="Avan">Avançado (2+ anos consistentes, boa técnica)</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label>Tempo de treino contínuo atual</label>
-                  <select id="a-tempo" onchange="onAnamneseChange()">
-                    <option value="">Selecionar</option>
-                    <option value="Menos de 1 mês">Menos de 1 mês</option>
-                    <option value="1–3 meses">1–3 meses</option>
-                    <option value="3–6 meses">3–6 meses</option>
-                    <option value="6–12 meses">6–12 meses</option>
-                    <option value="1–2 anos">1–2 anos</option>
-                    <option value="2–4 anos">2–4 anos</option>
-                    <option value="Mais de 4 anos">Mais de 4 anos</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label>Consistência histórica</label>
-                  <select id="a-consistencia" onchange="onAnamneseChange()">
-                    <option value="">Selecionar</option>
-                    <option value="irregular">Irregular — treina e para com frequência</option>
-                    <option value="regular">Regular — treina na maioria das semanas</option>
-                    <option value="alta">Alta — raramente perde treinos</option>
-                  </select>
-                </div>
-                <div class="field" style="grid-column:1/-1">
-                  <label>Modalidade(s) praticada(s)</label>
-                  <div id="a-modalidades-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 12px">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Musculação" onchange="onModalChange()"> Musculação</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="CrossFit / Funcional" onchange="onModalChange()"> CrossFit / Funcional</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Calistenia" onchange="onModalChange()"> Calistenia</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Corrida" onchange="onModalChange()"> Corrida</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Ciclismo" onchange="onModalChange()"> Ciclismo</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Natação" onchange="onModalChange()"> Natação</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Esportes coletivos" onchange="onModalChange()"> Esportes coletivos</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Artes marciais" onchange="onModalChange()"> Artes marciais / luta</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Yoga / Pilates" onchange="onModalChange()"> Yoga / Pilates</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Nenhuma" onchange="onModalChange()"> Nunca treinou</label>
-                  </div>
-                  <input type="hidden" id="a-modalidades">
-                </div>
-                <div class="field" style="grid-column:1/-1">
-                  <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px">
-                    <label style="margin:0">Atividades físicas extra-treino</label>
-                    <button type="button" onclick="addExtraAtividade()" style="align-self:flex-start;font-size:11px;padding:3px 10px;background:var(--accent-dim);border:1px solid rgba(0,229,160,.3);color:var(--accent);border-radius:4px;cursor:pointer;font-family:var(--mono)">+ Adicionar atividade</button>
-                  </div>
-                  <div id="extras-lista" style="display:flex;flex-direction:column;gap:8px"></div>
-                  <div style="font-size:11px;color:var(--text3);margin-top:6px;font-family:var(--mono)">O gasto calórico estimado (MET × peso × tempo) é calculado no Relatório e integrado à demanda energética pelo módulo NUT.</div>
-                  <input type="hidden" id="a-extras">
-                </div>
-              </div>
 
               <div class="section-label">Estilo de Vida</div>
               <div class="grid-3" style="gap:12px">
@@ -1656,6 +1597,73 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                     <option value="Variável">Variável / sem padrão</option>
                   </select>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── SUBPAINEL: HISTÓRICO DE TREINO ── -->
+          <div id="subpanel-anamnese-treino" class="content hidden" style="padding:0">
+            <div class="card">
+              <div class="card-title">Histórico de Treino 🔒</div>
+
+              <div class="section-label">Histórico</div>
+              <div class="grid-3" style="gap:12px">
+                <div class="field">
+                  <label>Nível de treinamento</label>
+                  <select id="a-nivel" onchange="onAnamneseChange()">
+                    <option value="">Selecionar</option>
+                    <option value="Inic">Iniciante (0–6 meses ou retorno após pausa longa)</option>
+                    <option value="Inte">Intermediário (6 meses–2 anos, consistente)</option>
+                    <option value="Avan">Avançado (2+ anos consistentes, boa técnica)</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Tempo de treino contínuo atual</label>
+                  <select id="a-tempo" onchange="onAnamneseChange()">
+                    <option value="">Selecionar</option>
+                    <option value="Menos de 1 mês">Menos de 1 mês</option>
+                    <option value="1–3 meses">1–3 meses</option>
+                    <option value="3–6 meses">3–6 meses</option>
+                    <option value="6–12 meses">6–12 meses</option>
+                    <option value="1–2 anos">1–2 anos</option>
+                    <option value="2–4 anos">2–4 anos</option>
+                    <option value="Mais de 4 anos">Mais de 4 anos</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Consistência histórica</label>
+                  <select id="a-consistencia" onchange="onAnamneseChange()">
+                    <option value="">Selecionar</option>
+                    <option value="irregular">Irregular — treina e para com frequência</option>
+                    <option value="regular">Regular — treina na maioria das semanas</option>
+                    <option value="alta">Alta — raramente perde treinos</option>
+                  </select>
+                </div>
+                <div class="field" style="grid-column:1/-1">
+                  <label>Modalidade(s) praticada(s)</label>
+                  <div id="a-modalidades-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 12px">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Musculação" onchange="onModalChange()"> Musculação</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="CrossFit / Funcional" onchange="onModalChange()"> CrossFit / Funcional</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Calistenia" onchange="onModalChange()"> Calistenia</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Corrida" onchange="onModalChange()"> Corrida</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Ciclismo" onchange="onModalChange()"> Ciclismo</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Natação" onchange="onModalChange()"> Natação</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Esportes coletivos" onchange="onModalChange()"> Esportes coletivos</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Artes marciais" onchange="onModalChange()"> Artes marciais / luta</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Yoga / Pilates" onchange="onModalChange()"> Yoga / Pilates</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Nenhuma" onchange="onModalChange()"> Nunca treinou</label>
+                  </div>
+                  <input type="hidden" id="a-modalidades">
+                </div>
+                <div class="field" style="grid-column:1/-1">
+                  <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px">
+                    <label style="margin:0">Atividades físicas extra-treino</label>
+                    <button type="button" onclick="addExtraAtividade()" style="align-self:flex-start;font-size:11px;padding:3px 10px;background:var(--accent-dim);border:1px solid rgba(0,229,160,.3);color:var(--accent);border-radius:4px;cursor:pointer;font-family:var(--mono)">+ Adicionar atividade</button>
+                  </div>
+                  <div id="extras-lista" style="display:flex;flex-direction:column;gap:8px"></div>
+                  <div style="font-size:11px;color:var(--text3);margin-top:6px;font-family:var(--mono)">O gasto calórico estimado (MET × peso × tempo) é calculado no Relatório e integrado à demanda energética pelo módulo NUT.</div>
+                  <input type="hidden" id="a-extras">
+                </div>
                 <div class="field">
                   <label>Objetivo principal <span style="color:var(--accent);font-size:11px">→ importado na Prescrição</span></label>
                   <select id="a-objetivo-ef" onchange="onAnamneseChange()">
@@ -1687,10 +1695,86 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   </select>
                 </div>
               </div>
+
+              <div class="section-label">Rotina Atual & Preferências</div>
+              <div class="grid-4" style="gap:12px;margin-bottom:4px">
+                <div class="field">
+                  <label>Frequência semanal disponível</label>
+                  <select id="a-frequencia" onchange="onAnamneseChange()">
+                    <option value="">Selecionar</option>
+                    <option value="2x">2x por semana</option>
+                    <option value="3x">3x por semana</option>
+                    <option value="4x">4x por semana</option>
+                    <option value="5x">5x por semana</option>
+                    <option value="6x">6x por semana</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Duração por sessão</label>
+                  <select id="a-duracao" onchange="onAnamneseChange()">
+                    <option value="">Selecionar</option>
+                    <option value="30">Até 30 minutos</option>
+                    <option value="45">30–45 minutos</option>
+                    <option value="60">45–60 minutos</option>
+                    <option value="75">60–75 minutos</option>
+                    <option value="90">75–90 minutos</option>
+                    <option value="90+">Mais de 90 minutos</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Melhor horário para treinar</label>
+                  <select id="a-horario" onchange="onAnamneseChange()">
+                    <option value="">Selecionar</option>
+                    <option value="manhã">Manhã (06h–12h)</option>
+                    <option value="tarde">Tarde (12h–18h)</option>
+                    <option value="noite">Noite (18h–22h)</option>
+                    <option value="variável">Variável / sem preferência</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Local de treino</label>
+                  <select id="a-local" onchange="onAnamneseChange()">
+                    <option value="">Selecionar</option>
+                    <option value="academia">Academia completa</option>
+                    <option value="casa">Em casa (equipamentos limitados)</option>
+                    <option value="ar livre">Ao ar livre (sem equipamentos)</option>
+                    <option value="híbrido">Híbrido (academia + casa)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="section-label">Preferências de Exercício</div>
+              <div class="grid-2" style="gap:12px">
+                <div class="field">
+                  <label>Preferência de exercícios / grupos musculares</label>
+                  <select id="a-gosta" onchange="onAnamneseChange()">
+                    <option value="">Sem preferência definida</option>
+                    <option value="Pernas e glúteos">Foco em pernas e glúteos</option>
+                    <option value="Superior (peito e costas)">Foco em superior (peito/costas)</option>
+                    <option value="Braços e ombros">Foco em braços e ombros</option>
+                    <option value="Core e abdômen">Foco em core e abdômen</option>
+                    <option value="Corpo inteiro">Treino corpo inteiro</option>
+                    <option value="Exercícios funcionais">Prefere exercícios funcionais</option>
+                    <option value="Exercícios com máquinas">Prefere máquinas</option>
+                    <option value="Exercícios com peso livre">Prefere peso livre</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Exercícios ou movimentos a evitar</label>
+                  <select id="a-preferencias" onchange="onAnamneseChange()">
+                    <option value="">Nenhum a evitar</option>
+                    <option value="Dores nos Joelhos">Agachamentos profundos (dor no joelho)</option>
+                    <option value="Dores nos Ombros">Desenvolvimentos acima da cabeça (dor no ombro)</option>
+                    <option value="Dores Lombares">Terra / stiff (dor lombar)</option>
+                    <option value="Dores nos Cotovelos">Extensões de cotovelo (dor no cotovelo)</option>
+                    <option value="Impacto">Exercícios de alto impacto (corrida, saltos)</option>
+                    <option value="Barra livre">Não se sente seguro com barra livre</option>
+                    <option value="Exercícios complexos">Exercícios técnicos/complexos</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
-
-          <!-- ── SUBPAINEL: ANTROPOMÉTRICA ── -->
           <div id="subpanel-anamnese-antro" class="content hidden" style="padding:0">
             <div class="card">
               <div class="card-title">Avaliação Antropométrica 🔒</div>
@@ -2069,96 +2153,17 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
             </div>
             <!-- /TRIAGEM -->
 
-            <!-- Logística e Preferências — movido da aba Avaliação -->
-            <div class="section-label">Logística de Treino</div>
-            <div class="grid-4" style="gap:12px;margin-bottom:4px">
-              <div class="field">
-                <label>Frequência semanal disponível</label>
-                <select id="a-frequencia" onchange="onAnamneseChange()">
-                  <option value="">Selecionar</option>
-                  <option value="2x">2x por semana</option>
-                  <option value="3x">3x por semana</option>
-                  <option value="4x">4x por semana</option>
-                  <option value="5x">5x por semana</option>
-                  <option value="6x">6x por semana</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Duração por sessão</label>
-                <select id="a-duracao" onchange="onAnamneseChange()">
-                  <option value="">Selecionar</option>
-                  <option value="30">Até 30 minutos</option>
-                  <option value="45">30–45 minutos</option>
-                  <option value="60">45–60 minutos</option>
-                  <option value="75">60–75 minutos</option>
-                  <option value="90">75–90 minutos</option>
-                  <option value="90+">Mais de 90 minutos</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Melhor horário para treinar</label>
-                <select id="a-horario" onchange="onAnamneseChange()">
-                  <option value="">Selecionar</option>
-                  <option value="manhã">Manhã (06h–12h)</option>
-                  <option value="tarde">Tarde (12h–18h)</option>
-                  <option value="noite">Noite (18h–22h)</option>
-                  <option value="variável">Variável / sem preferência</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Local de treino</label>
-                <select id="a-local" onchange="onAnamneseChange()">
-                  <option value="">Selecionar</option>
-                  <option value="academia">Academia completa</option>
-                  <option value="casa">Em casa (equipamentos limitados)</option>
-                  <option value="ar livre">Ao ar livre (sem equipamentos)</option>
-                  <option value="híbrido">Híbrido (academia + casa)</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="section-label">Preferências de Exercício</div>
-            <div class="grid-2" style="gap:12px;margin-bottom:20px">
-              <div class="field">
-                <label>Preferência de exercícios / grupos musculares</label>
-                <select id="a-gosta" onchange="onAnamneseChange()">
-                  <option value="">Sem preferência definida</option>
-                  <option value="Pernas e glúteos">Foco em pernas e glúteos</option>
-                  <option value="Superior (peito e costas)">Foco em superior (peito/costas)</option>
-                  <option value="Braços e ombros">Foco em braços e ombros</option>
-                  <option value="Core e abdômen">Foco em core e abdômen</option>
-                  <option value="Corpo inteiro">Treino corpo inteiro</option>
-                  <option value="Exercícios funcionais">Prefere exercícios funcionais</option>
-                  <option value="Exercícios com máquinas">Prefere máquinas</option>
-                  <option value="Exercícios com peso livre">Prefere peso livre</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Exercícios ou movimentos a evitar</label>
-                <select id="a-preferencias" onchange="onAnamneseChange()">
-                  <option value="">Nenhum a evitar</option>
-                  <option value="Dores nos Joelhos">Agachamentos profundos (dor no joelho)</option>
-                  <option value="Dores nos Ombros">Desenvolvimentos acima da cabeça (dor no ombro)</option>
-                  <option value="Dores Lombares">Terra / stiff (dor lombar)</option>
-                  <option value="Dores nos Cotovelos">Extensões de cotovelo (dor no cotovelo)</option>
-                  <option value="Impacto">Exercícios de alto impacto (corrida, saltos)</option>
-                  <option value="Barra livre">Não se sente seguro com barra livre</option>
-                  <option value="Exercícios complexos">Exercícios técnicos/complexos</option>
-                </select>
-              </div>
-            </div>
-
             <div id="presc-warning" class="alert alert-amber hidden">
               <span>⚠</span><div>Preencha o Perfil e a Avaliação antes de gerar a prescrição.</div>
             </div>
 
             <!-- STEPS -->
             <div class="steps">
-              <div class="step active" id="step-1"><div class="step-num">1</div>Objetivo</div>
+              <div class="step active" id="step-1"><div class="step-num">1</div>Configurações Gerais</div>
               <div class="step-line"></div>
-              <div class="step" id="step-2"><div class="step-num">2</div>Periodização</div>
+              <div class="step" id="step-2"><div class="step-num">2</div>Distribuição</div>
               <div class="step-line"></div>
-              <div class="step" id="step-3"><div class="step-num">3</div>Ficha</div>
+              <div class="step" id="step-3"><div class="step-num">3</div>Exercícios</div>
               <div class="step-line"></div>
               <div class="step" id="step-4"><div class="step-num">4</div>Aprovação</div>
             </div>
@@ -2198,39 +2203,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   <input type="text" id="pr-objetivo-sec" readonly style="color:var(--text2);background:var(--bg4);font-size:13px" placeholder="—">
                 </div>
               </div>
-              <div class="btn-row">
-                <button class="btn btn-primary" id="btn-step1-next" disabled onclick="goStep(2)">Próximo →</button>
-              </div>
-            </div>
-
-            <!-- STEP 2 -->
-            <div id="presc-step2" class="hidden">
-              <div class="alert alert-green" id="modelo-recomendado"></div>
-              <div class="param-block">
-                <div class="param-grid">
-                  <div><div class="param-key">Objetivo</div><div class="param-val" id="info-objetivo">—</div></div>
-                  <div><div class="param-key">Modelo</div><div id="info-modelo" class="badge badge-green">—</div></div>
-                  <div><div class="param-key">Frequência</div><div class="param-val" id="info-freq">—</div></div>
-                  <div><div class="param-key">Nível</div><div class="param-val" id="info-nivel">—</div></div>
-                  <div><div class="param-key">Sexo</div><div class="param-val" id="info-sexo">—</div></div>
-                  <div><div class="param-key">Duração/sessão</div><div class="param-val" id="info-duracao">—</div></div>
-                </div>
-              </div>
-
-              <!-- REFERÊNCIA DE VARIÁVEIS -->
-              <div class="alert alert-blue mt-12">
-                <span>ℹ</span>
-                <div id="ref-variaveis" style="font-size:13px;line-height:1.7"></div>
-              </div>
-
-              <!-- MODELO DE PERIODIZAÇÃO -->
-              <div class="section-label" style="margin-top:16px">Modelo de Periodização</div>
-              <div id="modelo-cards" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"></div>
-
-              <div class="grid-2" style="gap:12px;margin-top:4px">
+              <div class="section-label" style="margin-top:16px">Validade & Observações</div>
+              <div class="grid-2" style="gap:12px;margin-bottom:16px">
                 <div class="field">
-                  <label>Duração do macrociclo</label>
-                  <select id="pr-macrociclo">
+                  <label>Validade do treino <span style="color:var(--text3);font-size:11px">(vencimento — só informativo)</span></label>
+                  <select id="pr-validade">
                     <option value="8sem">8 semanas</option>
                     <option value="12sem" selected>12 semanas (padrão)</option>
                     <option value="16sem">16 semanas</option>
@@ -2241,17 +2218,40 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   <textarea id="pr-obs" placeholder="Focar em MMII, incluir cardio, evitar alto impacto..." style="min-height:36px"></textarea>
                 </div>
               </div>
+
+              <!-- ── RESUMO / SUGESTÃO DO SISTEMA ── -->
+              <div id="resumo-config-geral" style="display:none;margin-bottom:16px">
+                <div class="alert alert-green" id="modelo-recomendado"></div>
+                <div class="param-block">
+                  <div class="param-grid">
+                    <div><div class="param-key">Objetivo</div><div class="param-val" id="info-objetivo">—</div></div>
+                    <div><div class="param-key">Modelo</div><div id="info-modelo" class="badge badge-green">—</div></div>
+                    <div><div class="param-key">Frequência</div><div class="param-val" id="info-freq">—</div></div>
+                    <div><div class="param-key">Nível</div><div class="param-val" id="info-nivel">—</div></div>
+                    <div><div class="param-key">Sexo</div><div class="param-val" id="info-sexo">—</div></div>
+                    <div><div class="param-key">Duração/sessão</div><div class="param-val" id="info-duracao">—</div></div>
+                  </div>
+                </div>
+                <div class="alert alert-blue mt-12">
+                  <span>ℹ</span>
+                  <div id="ref-variaveis" style="font-size:13px;line-height:1.7"></div>
+                </div>
+              </div>
+
               <div class="btn-row">
-                <button class="btn btn-ghost" onclick="goStep(1)">← Voltar</button>
-                <button class="btn btn-primary" onclick="goStep(3)">Montar Ficha →</button>
+                <button class="btn btn-primary" id="btn-step1-next" disabled onclick="goStep(2)">Próximo →</button>
               </div>
             </div>
 
-            <!-- STEP 3: volume → divisão → ficha -->
-            <div id="presc-step3" class="hidden">
+            <!-- STEP 2: distribuição (volume → divisão → resumo) -->
+            <div id="presc-step2" class="hidden">
+              <div class="btn-row" style="margin-bottom:14px">
+                <button class="btn btn-ghost" onclick="goStep(1)">← Configurações Gerais</button>
+              </div>
 
               <!-- ── TELA A: VOLUME & MAPA ───────────────────────── -->
               <div id="s3-volume">
+                <div id="step2-perfil-ctx-anchor"></div>
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
                   <div style="flex:1">
                     <div class="section-label" style="margin-bottom:2px">Volume por Grupo Muscular</div>
@@ -2303,7 +2303,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   <div style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text3)"><div style="width:8px;height:8px;border-radius:2px;background:#ef4444"></div>Acima MRV — risco de overtraining</div>
                 </div>
                 <div class="btn-row">
-                  <button class="btn btn-ghost" onclick="goStep(2)">← Periodização</button>
+                  <button class="btn btn-ghost" onclick="goStep(1)">← Configurações Gerais</button>
                   <button class="btn btn-primary" onclick="irParaDivisao()">Distribuir Treinos →</button>
                 </div>
               </div>
@@ -2341,12 +2341,32 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 
                 <div class="btn-row">
                   <button class="btn btn-ghost" onclick="voltarVolume()">← Volume</button>
-                  <button class="btn btn-primary" onclick="irParaFicha()">Montar Ficha →</button>
+                  <button class="btn btn-primary" onclick="montarFichaModelo()">Ver Resumo →</button>
                 </div>
               </div>
 
-              <!-- ── TELA C: FICHA DE EXERCÍCIOS ─────────────────── -->
-              <div id="s3-ficha" class="hidden">
+              <!-- ── TELA C: RESUMO DA DISTRIBUIÇÃO (visão geral antes de avançar) ── -->
+              <div id="s3-resumo" class="hidden">
+                <div class="section-label">Modelo de Treino Pronto</div>
+                <div class="alert alert-green" style="margin-bottom:12px;font-size:13px">
+                  <span>✓</span>
+                  <div id="resumo-dist-texto">Distribuição e volume configurados. Revise antes de avançar para a seleção de exercícios.</div>
+                </div>
+                <div id="resumo-dist-detalhe" style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap">
+                  <div><div class="param-key">Divisão</div><div class="param-val" id="resumo-divisao-label">—</div></div>
+                  <div><div class="param-key">Volume</div><div class="param-val" id="resumo-vol-label">—</div></div>
+                </div>
+                <div id="resumo-vol-semanal"></div>
+                <div class="btn-row">
+                  <button class="btn btn-ghost" onclick="voltarDivisaoDoResumo()">← Ajustar Distribuição</button>
+                  <button class="btn btn-primary" onclick="avancarParaExercicios()">Avançar para Exercícios →</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- STEP 3: seleção de exercícios -->
+            <div id="presc-step3" class="hidden">
+              <div id="s3-ficha">
 
                 <!-- Painel de assimetrias ativas — Camada 4 -->
                 <div id="ficha-assimetrias" style="display:none;margin-bottom:12px"></div>
