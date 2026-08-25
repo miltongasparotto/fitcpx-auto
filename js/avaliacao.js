@@ -422,14 +422,16 @@ function loadStudentData(s){
   // Anamnese — campos base
   const anaBase = ['nivel','tempo','consistencia','extras',
    'frequencia','duracao','horario','local','sono','estresse','alcool',
-   'pretreino','gosta','preferencias'];
+   'pretreino','gosta','preferencias','tabagismo','cirurgias',
+   'lesoes_passadas','motivo_pausa'];
   anaBase.forEach(k=>{ setVal('a-'+k, a[k]||''); });
   setVal('a-objetivo-ef', a.objetivo_ef||'');
   setVal('a-objetivo-sec', a.objetivo_sec||'');
   carregarModalidades(a.modalidades||'');
   carregarSuplementos(a.suplementos||'');
   carregarExtras(a.extras||'');
-  if(typeof refreshTreinoMirrors==='function') refreshTreinoMirrors();
+  carregarSintomas(a.sintomas||'');
+  carregarHistFamiliar(a.hist_familiar||'');
 
   // Antropométrica
   const anaAntro = ['peso','altura','gordura','mgorda','mmuscular','mmuscular-pct','osso','osso-pct','residual','residual-pct',
@@ -1448,7 +1450,6 @@ function calcExtras(){
   // Salva os dados no hidden — cálculo de gasto (MET×peso×horas) é feito no Relatório/NUT
   const hidden=$('a-extras');
   if(hidden) hidden.value=JSON.stringify(_extrasData);
-  if(typeof renderResumoTreinoAnamnese==='function') renderResumoTreinoAnamnese();
 }
 
 // calcTMB_TDEE e calcVO2 disponíveis para uso futuro no Relatório/NUT
@@ -1494,7 +1495,6 @@ function onModalChange(){
   const vals = [...document.querySelectorAll('.modal-check:checked')].map(c=>c.value);
   if(hidden) hidden.value = vals.join(' | ');
   onAnamneseChange();
-  if(typeof renderResumoTreinoAnamnese==='function') renderResumoTreinoAnamnese();
 }
 
 function carregarModalidades(valorSalvo){
@@ -1705,10 +1705,14 @@ function onAnamneseChange(){
     sono:val('a-sono'), estresse:val('a-estresse'), alcool:val('a-alcool'),
     suplementos:val('a-suplementos'), pretreino:val('a-pretreino'),
     objetivo_ef:val('a-objetivo-ef'), objetivo_sec:val('a-objetivo-sec'),
-    // Logística (agora na subaba Histórico de Treino)
+    // Bloco 1 — Histórico de Saúde (triagem)
+    sintomas:val('a-sintomas'), tabagismo:val('a-tabagismo'),
+    hist_familiar:val('a-hist-familiar'), cirurgias:val('a-cirurgias'),
+    // Bloco 2 — Histórico de Experiência com Treino
+    lesoes_passadas:val('a-lesoes-passadas'), motivo_pausa:val('a-motivo-pausa'),
+    // Bloco 3 — Dados Atuais de Treino (chave pra prescrição, importado automaticamente)
     frequencia:val('a-frequencia'), duracao:val('a-duracao'),
     horario:val('a-horario'), local:val('a-local'),
-    // Preferências (agora na subaba Histórico de Treino)
     gosta:val('a-gosta'), preferencias:val('a-preferencias'),
     // Antropométrica
     peso:val('a-peso'), altura:val('a-altura'), data_avaliacao:val('a-data-avaliacao'),
@@ -1763,39 +1767,58 @@ function onAnamneseChange(){
   renderStudentList();
 }
 
-// ─── CAMPOS ESPELHADOS: Anamnese ↔ Histórico de Treino ──────────────────────
-// Nível/Tempo/Consistência/Objetivos aparecem em DUAS subabas por pedido do
-// personal (não quis perder visibilidade em nenhuma). O dado é único
-// (s.anamnese), só a TELA duplica — editar em qualquer um dos dois lugares
-// salva e reflete no outro. Chamado pelo onchange dos campos canônicos
-// (Histórico de Treino, prefixo a-) e dos espelhos (Anamnese, prefixo m-).
-function onAnamneseTreinoChange(){
+// ─── NOVOS CAMPOS DE TRIAGEM (Bloco 1 — Histórico de Saúde) ─────────────────
+// Mesmo padrão de onCondicaoChange/onLesaoChange: "Nenhum" é exclusivo com
+// as demais opções.
+function onSintomaChange(el){
+  const checks = document.querySelectorAll('.sintoma-check');
+  if(el.value === 'Nenhum' && el.checked){
+    checks.forEach(c => { if(c.value !== 'Nenhum') c.checked = false; });
+  } else if(el.checked){
+    const nenhum = document.querySelector('.sintoma-check[value="Nenhum"]');
+    if(nenhum) nenhum.checked = false;
+  }
+  const hidden = $('a-sintomas');
+  const vals = [...document.querySelectorAll('.sintoma-check:checked')].map(c=>c.value);
+  if(hidden) hidden.value = vals.join(' | ');
   onAnamneseChange();
-  refreshTreinoMirrors();
 }
 
-function refreshTreinoMirrors(){
-  ['nivel','tempo','consistencia'].forEach(k=>{ setVal('m-'+k, val('a-'+k)); });
-  setVal('m-objetivo-ef', val('a-objetivo-ef'));
-  setVal('m-objetivo-sec', val('a-objetivo-sec'));
-  renderResumoTreinoAnamnese();
+function carregarSintomas(valorSalvo){
+  document.querySelectorAll('.sintoma-check').forEach(c=>c.checked=false);
+  if(!valorSalvo) return;
+  valorSalvo.split(' | ').forEach(v=>{
+    const el = document.querySelector(`.sintoma-check[value="${v}"]`);
+    if(el) el.checked = true;
+  });
 }
 
-// Modalidades e atividades extras não são duplicadas como widget (checkbox
-// grid + lista dinâmica são complexos de sincronizar em dois lugares) — a
-// Anamnese mostra um resumo somente-leitura, editável em Histórico de Treino.
-function renderResumoTreinoAnamnese(){
-  const el = $('resumo-modalidades-extras-anamnese'); if(!el) return;
-  const modalidades = val('a-modalidades') || '—';
-  let nExtras = 0;
-  try { nExtras = (JSON.parse(val('a-extras')||'[]')||[]).length; } catch(e){ nExtras = 0; }
-  el.innerHTML = `<div style="font-size:12px;color:var(--text3)">Modalidades: <strong style="color:var(--text2)">${modalidades}</strong></div>
-    <div style="font-size:12px;color:var(--text3);margin-top:4px">Atividades extra-treino cadastradas: <strong style="color:var(--text2)">${nExtras}</strong></div>`;
+function onHistFamiliarChange(el){
+  const checks = document.querySelectorAll('.histfam-check');
+  if(el.value === 'Nenhum conhecido' && el.checked){
+    checks.forEach(c => { if(c.value !== 'Nenhum conhecido') c.checked = false; });
+  } else if(el.checked){
+    const nenhum = document.querySelector('.histfam-check[value="Nenhum conhecido"]');
+    if(nenhum) nenhum.checked = false;
+  }
+  const hidden = $('a-hist-familiar');
+  const vals = [...document.querySelectorAll('.histfam-check:checked')].map(c=>c.value);
+  if(hidden) hidden.value = vals.join(' | ');
+  onAnamneseChange();
+}
+
+function carregarHistFamiliar(valorSalvo){
+  document.querySelectorAll('.histfam-check').forEach(c=>c.checked=false);
+  if(!valorSalvo) return;
+  valorSalvo.split(' | ').forEach(v=>{
+    const el = document.querySelector(`.histfam-check[value="${v}"]`);
+    if(el) el.checked = true;
+  });
 }
 
 // ─── SUBABAS DA AVALIAÇÃO ────────────────────────────────────────────────────
 
-const SUBTABS_AVAL = ['anamnese-hist','anamnese-treino','anamnese-antro','anamnese-meta'];
+const SUBTABS_AVAL = ['anamnese-hist','anamnese-antro','anamnese-meta'];
 
 function switchSubtab(name){
   SUBTABS_AVAL.forEach(t=>{
@@ -2756,9 +2779,18 @@ function preencherStep1DaAnamnese(){
   } else if(val('pr-frequencia') && val('pr-frequencia') === a.frequencia){
     const el=$('freq-origem'); if(el) el.textContent='← da Avaliação';
   }
-  // Objetivo secundário
-  const secEl=$('pr-objetivo-sec');
-  if(secEl) secEl.value = a.objetivo_sec || '—';
+  // Bloco 3 (Dados Atuais de Treino) — importado uma vez, editável só nesta
+  // prescrição. Ajustar aqui NUNCA escreve de volta em s.anamnese: o aluno
+  // pode ter dito "Emagrecimento" na Anamnese e o personal decidir prescrever
+  // "Hipertrofia" — o treino responde à escolha feita aqui, a Anamnese do
+  // aluno continua com o que ele relatou.
+  ['pr-objetivo-sec','pr-duracao','pr-horario','pr-local','pr-gosta','pr-evitar'].forEach(id=>{
+    if(!val(id)){
+      const key = {'pr-objetivo-sec':'objetivo_sec','pr-duracao':'duracao','pr-horario':'horario',
+        'pr-local':'local','pr-gosta':'gosta','pr-evitar':'preferencias'}[id];
+      setVal(id, a[key]||'');
+    }
+  });
   renderObjGrid();
   checkStep1();
 }
