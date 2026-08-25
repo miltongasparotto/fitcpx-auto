@@ -1406,76 +1406,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               </div>
             </div>
 
-            <div class="section-label">Saúde & Restrições</div>
-            <div class="grid-2" style="gap:12px">
-              <div class="field" style="grid-column:1/-1">
-                <label>Condições de saúde ativas</label>
-                <div id="p-condicoes-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 16px">
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Nenhuma" onchange="onCondicaoChange(this)"> Nenhuma</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Hipertensão arterial" onchange="onCondicaoChange(this)"> Hipertensão arterial</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Diabetes tipo 1" onchange="onCondicaoChange(this)"> Diabetes tipo 1</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Diabetes tipo 2" onchange="onCondicaoChange(this)"> Diabetes tipo 2</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Dislipidemia" onchange="onCondicaoChange(this)"> Dislipidemia (colesterol/triglicerídeos)</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Obesidade" onchange="onCondicaoChange(this)"> Obesidade</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Hipotireoidismo" onchange="onCondicaoChange(this)"> Hipotireoidismo</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Hipertireoidismo" onchange="onCondicaoChange(this)"> Hipertireoidismo</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Asma / DPOC" onchange="onCondicaoChange(this)"> Asma / DPOC</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Cardiopatia" onchange="onCondicaoChange(this)"> Cardiopatia (controlada)</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Osteoporose / Osteopenia" onchange="onCondicaoChange(this)"> Osteoporose / Osteopenia</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Fibromialgia" onchange="onCondicaoChange(this)"> Fibromialgia</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Ansiedade / Depressão" onchange="onCondicaoChange(this)"> Ansiedade / Depressão</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="SOP" onchange="onCondicaoChange(this)"> Síndrome dos ovários policísticos (SOP)</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Outros" id="cond-outros-check" onchange="onCondicaoChange(this)"> Outros</label>
-                </div>
-                <input type="text" id="p-condicoes-outros" oninput="onPerfilChange()" placeholder="Descrever condição..." style="margin-top:6px;display:none">
-                <input type="hidden" id="p-condicoes">
-              </div>
-              <div class="field" style="grid-column:1/-1">
-                <label>Medicamentos em uso contínuo</label>
-                <div id="p-medicamentos-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 16px">
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="med-check" value="Nenhum" onchange="onMedChange(this)"> Nenhum</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Betabloqueadores, ECA, BRA, bloqueadores de canal de cálcio — afetam FC-alvo"><input type="checkbox" class="med-check" value="Anti-hipertensivos" onchange="onMedChange(this)"> Anti-hipertensivos <span style="font-size:10px;color:var(--text3)">(↓FC)</span></label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Metformina, glipizida, inibidores SGLT2, GLP-1 — monitorar hipoglicemia no treino"><input type="checkbox" class="med-check" value="Hipoglicemiantes orais" onchange="onMedChange(this)"> Hipoglicemiantes / antidiabéticos <span style="font-size:10px;color:var(--text3)">(glicemia)</span></label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Insulina — ajuste de dose peri-treino, risco de hipoglicemia"><input type="checkbox" class="med-check" value="Insulina" onchange="onMedChange(this)"> Insulina</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Levotiroxina, propiltiouracil — impacto no metabolismo basal"><input type="checkbox" class="med-check" value="Hormônios tireoidianos" onchange="onMedChange(this)"> Hormônios tireoidianos</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Hormônios sexuais, anabolizantes prescritos, TRH — impacto na composição corporal e força"><input type="checkbox" class="med-check" value="Hormônios sexuais / TRH" onchange="onMedChange(this)"> Hormônios sexuais / TRH</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Corticoides sistêmicos — catabolismo muscular, retenção hídrica, osteoporose secundária"><input type="checkbox" class="med-check" value="Corticosteróides" onchange="onMedChange(this)"> Corticosteróides <span style="font-size:10px;color:var(--text3)">(catabolismo)</span></label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="ISRS, IRSN, tricíclicos — podem afetar FC, termorregulação e motivação"><input type="checkbox" class="med-check" value="Antidepressivos / ansiolíticos" onchange="onMedChange(this)"> Antidepressivos / ansiolíticos</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Varfarina, rivaroxabana — evitar exercícios de alto risco de trauma/queda"><input type="checkbox" class="med-check" value="Anticoagulantes" onchange="onMedChange(this)"> Anticoagulantes</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="AINEs, analgésicos de uso contínuo — podem mascarar dor de lesão"><input type="checkbox" class="med-check" value="Analgésicos / anti-inflamatórios" onchange="onMedChange(this)"> Analgésicos / anti-inflamatórios</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="med-check" value="Outros medicamentos" id="med-outros-check" onchange="onMedChange(this)"> Outros</label>
-                </div>
-                <input type="text" id="p-medicamentos-detalhe" oninput="onPerfilChange()" placeholder="Nome(s) do(s) medicamento(s) e/ou informações adicionais..." style="margin-top:6px">
-                <input type="hidden" id="p-medicamentos">
-              </div>
-              <div class="field" style="grid-column:1/-1">
-                <label>Região de dor ou lesão ativa</label>
-                <div id="p-lesoes-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 16px">
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Nenhuma" onchange="onLesaoChange(this)"> Nenhuma</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Joelho D" onchange="onLesaoChange(this)"> Joelho D</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Joelho E" onchange="onLesaoChange(this)"> Joelho E</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Ombro D" onchange="onLesaoChange(this)"> Ombro D</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Ombro E" onchange="onLesaoChange(this)"> Ombro E</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Lombar / coluna baixa" onchange="onLesaoChange(this)"> Lombar / coluna baixa</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Cervical / coluna alta" onchange="onLesaoChange(this)"> Cervical / coluna alta</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Cotovelo D" onchange="onLesaoChange(this)"> Cotovelo D</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Cotovelo E" onchange="onLesaoChange(this)"> Cotovelo E</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Quadril D" onchange="onLesaoChange(this)"> Quadril D</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Quadril E" onchange="onLesaoChange(this)"> Quadril E</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Tornozelo / pé D" onchange="onLesaoChange(this)"> Tornozelo / pé D</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Tornozelo / pé E" onchange="onLesaoChange(this)"> Tornozelo / pé E</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Pós-cirurgia" onchange="onLesaoChange(this)"> Pós-cirurgia (&lt;12 meses)</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Outros" id="lesao-outros-check" onchange="onLesaoChange(this)"> Outros</label>
-                </div>
-                <input type="text" id="p-lesoes-outros" oninput="onPerfilChange()" placeholder="Descrever região..." style="margin-top:6px;display:none">
-                <input type="hidden" id="p-lesoes">
-              </div>
-              <div class="field" style="grid-column:1/-1">
-                <label>Observações clínicas</label>
-                <textarea id="p-obs-clinicas" oninput="onPerfilChange()" placeholder="Ex: Cirurgia de joelho D há 8 meses (LCA). Uso de anti-inflamatório para dor lombar. Restrição: agachamento profundo e impacto. Médico: liberar fortalecimento progressivo." style="min-height:65px"></textarea>
-              </div>
-            </div>
-
             <div id="perfil-feminino" class="hidden">
               <div class="section-label">Perfil Hormonal Feminino</div>
               <div class="grid-3" style="gap:12px">
@@ -1539,6 +1469,145 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
           <div id="subpanel-anamnese-hist" class="content" style="padding:0">
             <div class="card">
               <div class="card-title">Anamnese EF 🔒</div>
+
+              <div class="section-label">Classificação & Histórico <span style="color:var(--text3);font-size:11px;font-weight:400">campos espelhados de Histórico de Treino — editar aqui ou lá, sincroniza</span></div>
+              <div class="grid-3" style="gap:12px">
+                <div class="field">
+                  <label>Nível de treinamento</label>
+                  <select id="m-nivel" onchange="setVal('a-nivel', this.value); onAnamneseTreinoChange();">
+                    <option value="">Selecionar</option>
+                    <option value="Inic">Iniciante (0–6 meses ou retorno após pausa longa)</option>
+                    <option value="Inte">Intermediário (6 meses–2 anos, consistente)</option>
+                    <option value="Avan">Avançado (2+ anos consistentes, boa técnica)</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Tempo de treino contínuo atual</label>
+                  <select id="m-tempo" onchange="setVal('a-tempo', this.value); onAnamneseTreinoChange();">
+                    <option value="">Selecionar</option>
+                    <option value="Menos de 1 mês">Menos de 1 mês</option>
+                    <option value="1–3 meses">1–3 meses</option>
+                    <option value="3–6 meses">3–6 meses</option>
+                    <option value="6–12 meses">6–12 meses</option>
+                    <option value="1–2 anos">1–2 anos</option>
+                    <option value="2–4 anos">2–4 anos</option>
+                    <option value="Mais de 4 anos">Mais de 4 anos</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Consistência histórica</label>
+                  <select id="m-consistencia" onchange="setVal('a-consistencia', this.value); onAnamneseTreinoChange();">
+                    <option value="">Selecionar</option>
+                    <option value="irregular">Irregular — treina e para com frequência</option>
+                    <option value="regular">Regular — treina na maioria das semanas</option>
+                    <option value="alta">Alta — raramente perde treinos</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Objetivo principal</label>
+                  <select id="m-objetivo-ef" onchange="setVal('a-objetivo-ef', this.value); onAnamneseTreinoChange();">
+                    <option value="">Selecionar</option>
+                    <option value="Hipertrofia">Ganhar massa muscular (hipertrofia)</option>
+                    <option value="Emagrecimento">Emagrecer / reduzir gordura</option>
+                    <option value="Composição corporal">Remodelar corpo (recomposição)</option>
+                    <option value="Força">Aumentar força máxima</option>
+                    <option value="Resistência">Melhorar resistência muscular</option>
+                    <option value="Saúde">Saúde geral e qualidade de vida</option>
+                    <option value="Performance">Performance esportiva</option>
+                    <option value="Reabilitação">Reabilitação / retorno pós-lesão</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Objetivo secundário <span style="color:var(--text3);font-size:11px">(opcional)</span></label>
+                  <select id="m-objetivo-sec" onchange="setVal('a-objetivo-sec', this.value); onAnamneseTreinoChange();">
+                    <option value="">Nenhum</option>
+                    <option value="Hipertrofia">Ganhar massa muscular (hipertrofia)</option>
+                    <option value="Emagrecimento">Emagrecer / reduzir gordura</option>
+                    <option value="Composição corporal">Remodelar corpo (recomposição)</option>
+                    <option value="Força">Aumentar força máxima</option>
+                    <option value="Resistência">Melhorar resistência muscular</option>
+                    <option value="Saúde">Saúde geral e qualidade de vida</option>
+                    <option value="Performance">Performance esportiva</option>
+                    <option value="Reabilitação">Reabilitação / retorno pós-lesão</option>
+                    <option value="Postura">Melhora postural</option>
+                    <option value="Mobilidade">Mobilidade e flexibilidade</option>
+                  </select>
+                </div>
+                <div class="field" style="grid-column:1/-1">
+                  <label>Modalidades & atividades extras <span style="color:var(--text3);font-size:11px">(editável em Histórico de Treino)</span></label>
+                  <div id="resumo-modalidades-extras-anamnese" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px"></div>
+                </div>
+              </div>
+
+              <div class="section-label">Saúde & Restrições <span style="color:var(--text3);font-size:11px;font-weight:400">🌐 compartilhado com NUT/FT — gravado no Perfil</span></div>
+              <div class="grid-2" style="gap:12px">
+                <div class="field" style="grid-column:1/-1">
+                  <label>Condições de saúde ativas</label>
+                  <div id="p-condicoes-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 16px">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Nenhuma" onchange="onCondicaoChange(this)"> Nenhuma</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Hipertensão arterial" onchange="onCondicaoChange(this)"> Hipertensão arterial</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Diabetes tipo 1" onchange="onCondicaoChange(this)"> Diabetes tipo 1</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Diabetes tipo 2" onchange="onCondicaoChange(this)"> Diabetes tipo 2</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Dislipidemia" onchange="onCondicaoChange(this)"> Dislipidemia (colesterol/triglicerídeos)</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Obesidade" onchange="onCondicaoChange(this)"> Obesidade</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Hipotireoidismo" onchange="onCondicaoChange(this)"> Hipotireoidismo</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Hipertireoidismo" onchange="onCondicaoChange(this)"> Hipertireoidismo</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Asma / DPOC" onchange="onCondicaoChange(this)"> Asma / DPOC</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Cardiopatia" onchange="onCondicaoChange(this)"> Cardiopatia (controlada)</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Osteoporose / Osteopenia" onchange="onCondicaoChange(this)"> Osteoporose / Osteopenia</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Fibromialgia" onchange="onCondicaoChange(this)"> Fibromialgia</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Ansiedade / Depressão" onchange="onCondicaoChange(this)"> Ansiedade / Depressão</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="SOP" onchange="onCondicaoChange(this)"> Síndrome dos ovários policísticos (SOP)</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Outros" id="cond-outros-check" onchange="onCondicaoChange(this)"> Outros</label>
+                  </div>
+                  <input type="text" id="p-condicoes-outros" oninput="onPerfilChange()" placeholder="Descrever condição..." style="margin-top:6px;display:none">
+                  <input type="hidden" id="p-condicoes">
+                </div>
+                <div class="field" style="grid-column:1/-1">
+                  <label>Medicamentos em uso contínuo</label>
+                  <div id="p-medicamentos-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 16px">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="med-check" value="Nenhum" onchange="onMedChange(this)"> Nenhum</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Betabloqueadores, ECA, BRA, bloqueadores de canal de cálcio — afetam FC-alvo"><input type="checkbox" class="med-check" value="Anti-hipertensivos" onchange="onMedChange(this)"> Anti-hipertensivos <span style="font-size:10px;color:var(--text3)">(↓FC)</span></label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Metformina, glipizida, inibidores SGLT2, GLP-1 — monitorar hipoglicemia no treino"><input type="checkbox" class="med-check" value="Hipoglicemiantes orais" onchange="onMedChange(this)"> Hipoglicemiantes / antidiabéticos <span style="font-size:10px;color:var(--text3)">(glicemia)</span></label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Insulina — ajuste de dose peri-treino, risco de hipoglicemia"><input type="checkbox" class="med-check" value="Insulina" onchange="onMedChange(this)"> Insulina</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Levotiroxina, propiltiouracil — impacto no metabolismo basal"><input type="checkbox" class="med-check" value="Hormônios tireoidianos" onchange="onMedChange(this)"> Hormônios tireoidianos</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Hormônios sexuais, anabolizantes prescritos, TRH — impacto na composição corporal e força"><input type="checkbox" class="med-check" value="Hormônios sexuais / TRH" onchange="onMedChange(this)"> Hormônios sexuais / TRH</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Corticoides sistêmicos — catabolismo muscular, retenção hídrica, osteoporose secundária"><input type="checkbox" class="med-check" value="Corticosteróides" onchange="onMedChange(this)"> Corticosteróides <span style="font-size:10px;color:var(--text3)">(catabolismo)</span></label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="ISRS, IRSN, tricíclicos — podem afetar FC, termorregulação e motivação"><input type="checkbox" class="med-check" value="Antidepressivos / ansiolíticos" onchange="onMedChange(this)"> Antidepressivos / ansiolíticos</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Varfarina, rivaroxabana — evitar exercícios de alto risco de trauma/queda"><input type="checkbox" class="med-check" value="Anticoagulantes" onchange="onMedChange(this)"> Anticoagulantes</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="AINEs, analgésicos de uso contínuo — podem mascarar dor de lesão"><input type="checkbox" class="med-check" value="Analgésicos / anti-inflamatórios" onchange="onMedChange(this)"> Analgésicos / anti-inflamatórios</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="med-check" value="Outros medicamentos" id="med-outros-check" onchange="onMedChange(this)"> Outros</label>
+                  </div>
+                  <input type="text" id="p-medicamentos-detalhe" oninput="onPerfilChange()" placeholder="Nome(s) do(s) medicamento(s) e/ou informações adicionais..." style="margin-top:6px">
+                  <input type="hidden" id="p-medicamentos">
+                </div>
+                <div class="field" style="grid-column:1/-1">
+                  <label>Região de dor ou lesão ativa</label>
+                  <div id="p-lesoes-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 16px">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Nenhuma" onchange="onLesaoChange(this)"> Nenhuma</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Joelho D" onchange="onLesaoChange(this)"> Joelho D</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Joelho E" onchange="onLesaoChange(this)"> Joelho E</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Ombro D" onchange="onLesaoChange(this)"> Ombro D</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Ombro E" onchange="onLesaoChange(this)"> Ombro E</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Lombar / coluna baixa" onchange="onLesaoChange(this)"> Lombar / coluna baixa</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Cervical / coluna alta" onchange="onLesaoChange(this)"> Cervical / coluna alta</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Cotovelo D" onchange="onLesaoChange(this)"> Cotovelo D</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Cotovelo E" onchange="onLesaoChange(this)"> Cotovelo E</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Quadril D" onchange="onLesaoChange(this)"> Quadril D</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Quadril E" onchange="onLesaoChange(this)"> Quadril E</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Tornozelo / pé D" onchange="onLesaoChange(this)"> Tornozelo / pé D</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Tornozelo / pé E" onchange="onLesaoChange(this)"> Tornozelo / pé E</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Pós-cirurgia" onchange="onLesaoChange(this)"> Pós-cirurgia (&lt;12 meses)</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Outros" id="lesao-outros-check" onchange="onLesaoChange(this)"> Outros</label>
+                  </div>
+                  <input type="text" id="p-lesoes-outros" oninput="onPerfilChange()" placeholder="Descrever região..." style="margin-top:6px;display:none">
+                  <input type="hidden" id="p-lesoes">
+                </div>
+                <div class="field" style="grid-column:1/-1">
+                  <label>Observações clínicas</label>
+                  <textarea id="p-obs-clinicas" oninput="onPerfilChange()" placeholder="Ex: Cirurgia de joelho D há 8 meses (LCA). Uso de anti-inflamatório para dor lombar. Restrição: agachamento profundo e impacto. Médico: liberar fortalecimento progressivo." style="min-height:65px"></textarea>
+                </div>
+              </div>
 
               <div class="section-label">Estilo de Vida</div>
               <div class="grid-3" style="gap:12px">
@@ -1610,7 +1679,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <div class="grid-3" style="gap:12px">
                 <div class="field">
                   <label>Nível de treinamento</label>
-                  <select id="a-nivel" onchange="onAnamneseChange()">
+                  <select id="a-nivel" onchange="onAnamneseTreinoChange()">
                     <option value="">Selecionar</option>
                     <option value="Inic">Iniciante (0–6 meses ou retorno após pausa longa)</option>
                     <option value="Inte">Intermediário (6 meses–2 anos, consistente)</option>
@@ -1619,7 +1688,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 </div>
                 <div class="field">
                   <label>Tempo de treino contínuo atual</label>
-                  <select id="a-tempo" onchange="onAnamneseChange()">
+                  <select id="a-tempo" onchange="onAnamneseTreinoChange()">
                     <option value="">Selecionar</option>
                     <option value="Menos de 1 mês">Menos de 1 mês</option>
                     <option value="1–3 meses">1–3 meses</option>
@@ -1632,7 +1701,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 </div>
                 <div class="field">
                   <label>Consistência histórica</label>
-                  <select id="a-consistencia" onchange="onAnamneseChange()">
+                  <select id="a-consistencia" onchange="onAnamneseTreinoChange()">
                     <option value="">Selecionar</option>
                     <option value="irregular">Irregular — treina e para com frequência</option>
                     <option value="regular">Regular — treina na maioria das semanas</option>
@@ -1666,7 +1735,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 </div>
                 <div class="field">
                   <label>Objetivo principal <span style="color:var(--accent);font-size:11px">→ importado na Prescrição</span></label>
-                  <select id="a-objetivo-ef" onchange="onAnamneseChange()">
+                  <select id="a-objetivo-ef" onchange="onAnamneseTreinoChange()">
                     <option value="">Selecionar</option>
                     <option value="Hipertrofia">Ganhar massa muscular (hipertrofia)</option>
                     <option value="Emagrecimento">Emagrecer / reduzir gordura</option>
@@ -1680,7 +1749,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 </div>
                 <div class="field">
                   <label>Objetivo secundário <span style="color:var(--text3);font-size:11px">(opcional)</span></label>
-                  <select id="a-objetivo-sec" onchange="onAnamneseChange()">
+                  <select id="a-objetivo-sec" onchange="onAnamneseTreinoChange()">
                     <option value="">Nenhum</option>
                     <option value="Hipertrofia">Ganhar massa muscular (hipertrofia)</option>
                     <option value="Emagrecimento">Emagrecer / reduzir gordura</option>
