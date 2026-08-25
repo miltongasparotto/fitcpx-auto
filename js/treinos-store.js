@@ -19,6 +19,25 @@ const TREINOS_STATUS = { RASCUNHO: 'rascunho', APROVADO: 'aprovado' };
 
 function _treinosHojeBR(){ return new Date().toLocaleDateString('pt-BR'); }
 
+function _treinosParseDataBR(str){
+  if(!str || typeof str!=='string') return null;
+  const partes = str.split('/').map(Number);
+  const d=partes[0], m=partes[1], y=partes[2];
+  if(!d||!m||!y) return null;
+  return new Date(y, m-1, d);
+}
+
+// prazoSemanas aceita tanto '12sem' (valor do select) quanto 12 (número) —
+// parseInt('12sem') já resolve pra 12, então não precisa de tratamento extra.
+function _treinosCalcularVencimento(dataAprovacaoBR, prazoSemanas){
+  const base = _treinosParseDataBR(dataAprovacaoBR);
+  if(!base) return null;
+  const semanas = parseInt(prazoSemanas) || 12;
+  const venc = new Date(base);
+  venc.setDate(venc.getDate() + semanas*7);
+  return venc.toLocaleDateString('pt-BR');
+}
+
 // ── MIGRAÇÃO (idempotente — roda 1x por aluno, marca s._treinosMigrado) ────
 function migrarTreinosAntigo(s){
   if(!s) return;
@@ -137,11 +156,37 @@ function aprovarRascunho(s, id, dadosAprovados){
     t = { id: id || Date.now(), _fichaObj:null };
     s.treinos.push(t);
   }
+  const dataAprovacao = _treinosHojeBR();
+  const prazoSemanas  = dadosAprovados.prazoSemanas || t.prazoSemanas || '12sem';
   Object.assign(t, dadosAprovados, {
     status: TREINOS_STATUS.APROVADO,
-    dataAprovacao: _treinosHojeBR(),
+    dataAprovacao,
+    prazoSemanas,
+    dataVencimento: _treinosCalcularVencimento(dataAprovacao, prazoSemanas),
   });
   return t;
+}
+
+// Status de vencimento — controle de "validade do treino" (item G), vinculado
+// só ao treino/aluno por enquanto. Puramente informativo: NUNCA bloqueia
+// nada, só sinaliza pro personal ficar de olho. Faixas:
+//  - ok       : mais de 2 semanas restantes (sem indicador)
+//  - agendar  : últimas 2 semanas (🗓️ Agendar avaliação)
+//  - proximo  : última semana (⚠️ Vencimento próximo)
+//  - vencido  : passou da data (🔴 Vencido)
+function getStatusVencimento(treino){
+  if(!treino || treino.status !== TREINOS_STATUS.APROVADO || !treino.dataVencimento) return null;
+  const venc = _treinosParseDataBR(treino.dataVencimento);
+  if(!venc) return null;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  venc.setHours(0,0,0,0);
+  const diasRestantes = Math.round((venc - hoje) / 86400000);
+  const semanasRestantes = Math.ceil(diasRestantes / 7);
+  let tier = 'ok';
+  if(diasRestantes < 0) tier = 'vencido';
+  else if(diasRestantes <= 7) tier = 'proximo';
+  else if(diasRestantes <= 14) tier = 'agendar';
+  return { tier, diasRestantes, semanasRestantes, dataVencimento: treino.dataVencimento };
 }
 
 function removerTreino(s, id){

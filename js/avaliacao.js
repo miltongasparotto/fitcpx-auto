@@ -1702,10 +1702,10 @@ function onAnamneseChange(){
     sono:val('a-sono'), estresse:val('a-estresse'), alcool:val('a-alcool'),
     suplementos:val('a-suplementos'), pretreino:val('a-pretreino'),
     objetivo_ef:val('a-objetivo-ef'), objetivo_sec:val('a-objetivo-sec'),
-    // Logística (agora na aba Prescrição)
+    // Logística (agora na subaba Histórico de Treino)
     frequencia:val('a-frequencia'), duracao:val('a-duracao'),
     horario:val('a-horario'), local:val('a-local'),
-    // Preferências (agora na aba Prescrição)
+    // Preferências (agora na subaba Histórico de Treino)
     gosta:val('a-gosta'), preferencias:val('a-preferencias'),
     // Antropométrica
     peso:val('a-peso'), altura:val('a-altura'), data_avaliacao:val('a-data-avaliacao'),
@@ -1761,7 +1761,7 @@ function onAnamneseChange(){
 }
 // ─── SUBABAS DA AVALIAÇÃO ────────────────────────────────────────────────────
 
-const SUBTABS_AVAL = ['anamnese-hist','anamnese-antro','anamnese-meta'];
+const SUBTABS_AVAL = ['anamnese-hist','anamnese-treino','anamnese-antro','anamnese-meta'];
 
 function switchSubtab(name){
   SUBTABS_AVAL.forEach(t=>{
@@ -2715,12 +2715,12 @@ function preencherStep1DaAnamnese(){
   } else if(val('pr-nivel') && val('pr-nivel') === a.nivel){
     const el=$('nivel-origem'); if(el) el.textContent='← da Avaliação';
   }
-  // Frequência (da logística — agora na aba Prescrição, mas salva em anamnese)
+  // Frequência (Rotina Atual — agora na subaba Histórico de Treino, salva em anamnese)
   if(a.frequencia && !val('pr-frequencia')){
     setVal('pr-frequencia', a.frequencia);
-    const el=$('freq-origem'); if(el) el.textContent='← importado da Logística';
+    const el=$('freq-origem'); if(el) el.textContent='← importado da Avaliação';
   } else if(val('pr-frequencia') && val('pr-frequencia') === a.frequencia){
-    const el=$('freq-origem'); if(el) el.textContent='← da Logística';
+    const el=$('freq-origem'); if(el) el.textContent='← da Avaliação';
   }
   // Objetivo secundário
   const secEl=$('pr-objetivo-sec');
@@ -2732,6 +2732,7 @@ function preencherStep1DaAnamnese(){
 function checkStep1(){
   const ok=selectedObj&&val('pr-nivel')&&val('pr-frequencia');
   $('btn-step1-next').disabled=!ok;
+  if(typeof atualizarResumoConfigGeral==='function') atualizarResumoConfigGeral();
 }
 
 // Recalcula a tabela de Volume (e, se aplicável, a tela de Divisão) quando o
@@ -2766,6 +2767,5 @@ function goStep(n, silent){
     el.querySelector('.step-num').textContent=i<n?'✓':String(i);
   }
   if(n===1&&!silent) preencherStep1DaAnamnese();
-  if(n===2&&!silent) fillStep2();
-  if(n===3&&!silent) fillStep3();
+  if(n===2&&!silent) fillStep3();
 }

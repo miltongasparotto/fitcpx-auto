@@ -556,6 +556,12 @@ let _s3 = {
 };
 
 // Modelos de periodização — alinhados com FASE-2 do Obsidian
+// DORMENTE por decisão do personal (não usado hoje — todo treino roda em
+// padrão Linear). Estrutura de dados mantida intacta pra reativação futura;
+// só não é mais chamada em nenhum ponto do fluxo ativo enquanto
+// PERIODIZACAO_ATIVA=false. Ver `_modeloSelecionado` mais abaixo.
+const PERIODIZACAO_ATIVA = false;
+
 const MODELOS_PERIODO = {
   LP:  { nome:'Linear Progressiva',    sigla:'LP',  desc:'Progressão de carga semana a semana. Ideal para iniciantes e retorno após pausa.', icon:'📈' },
   DUP: { nome:'DUP — Ondulação Diária', sigla:'DUP', desc:'Varia volume/intensidade a cada sessão. Excelente para intermediários e mulheres.', icon:'〰️' },
@@ -586,48 +592,63 @@ function recomendarModelo(obj, nivel, sexo){
   return (MODELO_TABELA[obj]?.[nivel]?.[s]) || 'LP';
 }
 
+// Enquanto PERIODIZACAO_ATIVA=false, todo treino novo roda em Linear fixo —
+// sem card clicável, sem recomendação automática por objetivo/nível/sexo.
+// Treinos reabertos (aprovados ou vindos de biblioteca) preservam o modelo
+// que já tinham gravado, não são forçados pra LP.
 let _modeloSelecionado = '';
 
-function fillStep2(){
+// ── Step 1 (Configurações Gerais) — resumo/sugestão do sistema ─────────────
+// Substitui o antigo fillStep2() (tela de Periodização, agora dormente).
+// Chamado a cada mudança relevante de objetivo/nível/frequência no step 1.
+function atualizarResumoConfigGeral(){
   const s   = getActive(); if(!s) return;
   const nivel = val('pr-nivel');
   const freq  = val('pr-frequencia');
+  const resumoEl = $('resumo-config-geral');
+  if(!selectedObj || !nivel || !freq){
+    if(resumoEl) resumoEl.style.display='none';
+    return;
+  }
+  if(resumoEl) resumoEl.style.display='block';
+
   const sexo  = s.perfil?.sexo || '—';
-  const modelo = (MODELOS[selectedObj]||{})[nivel]||'LP';
   const obj   = OBJETIVOS.find(o=>o.code===selectedObj);
   const v     = VARIAVEIS_REF[selectedObj]||{};
 
-  $('modelo-recomendado').innerHTML = `<span>✓</span><div>Base: <strong>${selectedObj}</strong> · <strong>${nivel==='Inic'?'Iniciante':nivel==='Inte'?'Intermediário':'Avançado'}</strong> · <strong>${sexo}</strong> → periodização recomendada: <strong>${modelo}</strong></div>`;
+  // Periodização dormente (ver PERIODIZACAO_ATIVA) — modelo sempre exibido
+  // como Linear, sem recomendação dinâmica por objetivo/nível/sexo.
+  $('modelo-recomendado').innerHTML = `<span>✓</span><div>Base: <strong>${selectedObj}</strong> · <strong>${nivelLabel(nivel)}</strong> · <strong>${sexo}</strong> — sugestão do sistema pronta para a Distribuição.</div>`;
   $('info-objetivo').textContent  = obj ? obj.label : '—';
-  $('info-modelo').textContent    = modelo;
+  $('info-modelo').textContent    = 'Linear (padrão)';
   $('info-freq').textContent      = freq + '/semana';
-  $('info-nivel').textContent     = nivel==='Inic'?'Iniciante':nivel==='Inte'?'Intermediário':'Avançado';
+  $('info-nivel').textContent     = nivelLabel(nivel);
   $('info-sexo').textContent      = sexo;
   $('info-duracao').textContent   = (s.anamnese?.duracao||60) + ' min';
+
   const mods2 = calcModificadoresPerfil();
-  const intervaloRef = v.intervalo || '—';
   const intervaloExibido = mods2.intervaloFator > 1.0 && v.intervalo && v.intervalo !== '—'
     ? `<span style="color:#ffb400">${v.intervalo} → preferir limite superior ${mods2.intervaloMsg?'('+mods2.intervaloMsg.replace(/^[⚠ℹ] /,'').split(' —')[0]+')':''}</span>`
     : v.intervalo || '—';
   $('ref-variaveis').innerHTML = `<strong>Referência para ${selectedObj}:</strong><br>Séries: ${v.series||'—'} | Reps: ${v.reps||'—'}<br>Intensidade: ${v.intensidade||'—'}<br>Intervalo: ${intervaloExibido} | TUT: ${v.tut||'—'}`;
 
-  // Renderizar cards de modelo
-  _modeloSelecionado = _modeloSelecionado || recomendarModelo(selectedObj, nivel, sexo);
-
-  // ── Camada 2: contexto de perfil no Step 2 ──────────────────────────────
-  renderContextoPerfil(mods2);
-  renderModeloCards(nivel, sexo, mods2);
+  if(PERIODIZACAO_ATIVA){
+    _modeloSelecionado = _modeloSelecionado || recomendarModelo(selectedObj, nivel, sexo);
+  }
 }
 
+// Mensagens de contexto de perfil (idade/impacto/métodos) — úteis
+// independente de periodização, então seguem ativas. Ancoradas agora no
+// topo da tela de Distribuição (step 2), que é onde volume/divisão são
+// realmente ajustados.
 function renderContextoPerfil(mods){
-  // Injeta (ou atualiza) bloco de contexto de perfil acima dos cards de modelo
   let el = $('step2-perfil-ctx');
   if(!el){
     el = document.createElement('div');
     el.id = 'step2-perfil-ctx';
     el.style.cssText = 'display:flex;flex-direction:column;gap:5px;margin-bottom:10px';
-    const modCards = $('modelo-cards');
-    if(modCards) modCards.before(el);
+    const anchor = $('step2-perfil-ctx-anchor');
+    if(anchor) anchor.after(el);
   }
   const msgs = [mods.progressaoMsg, mods.metodosMsg, mods.impactoMsg].filter(Boolean);
   if(!msgs.length){ el.style.display='none'; return; }
@@ -2539,7 +2560,7 @@ function atualizarTotalSessao(inp){
   const novoTot = exV * serV;
   totEl.textContent = '= ' + novoTot + 's';
 
-  // ── Sync editado de volta para _s3 para que irParaFicha use os valores corretos
+  // ── Sync editado de volta para _s3 para que construirFichaModelo use os valores corretos
   // (mesmo que o accordion seja fechado e reaberto, os valores persistem)
   if(_s3.volPorGrupo[g]){
     // Salva o número de exercícios e séries por exercício editados pelo usuário
@@ -2649,27 +2670,41 @@ function sincronizarFreqGrupos(){
   });
 }
 
+// "← Distribuição" a partir do step 3 (Exercícios) — cruza de volta pro
+// step 2, direto na tela de divisão (já com a ficha montada preservada).
 function voltarDivisao(){
-  hide('s3-ficha');
-  hide('s3-volume');
+  goStep(2, true);
+  hide('s3-volume'); hide('s3-resumo');
   show('s3-divisao');
 }
 
 function voltarVolume(){
   hide('s3-divisao');
-  hide('s3-ficha');
+  hide('s3-resumo');
   renderTabelaVolumeGlobal();
   show('s3-volume');
 }
 
+// "← Ajustar Distribuição" a partir da tela de resumo — mesma etapa
+// (step 2), só troca qual sub-tela interna aparece.
+function voltarDivisaoDoResumo(){
+  hide('s3-resumo');
+  show('s3-divisao');
+}
+
 // ── TELA C: FICHA ─────────────────────────────────────────────────────────────
 
-function irParaFicha(){
-  const s      = getActive(); if(!s) return;
+// Monta o objeto de ficha (_s3.fichaObj) a partir do volume+divisão
+// escolhidos. Retorna true se construiu com sucesso, false se o personal
+// cancelou algum aviso de confirmação (grupos ausentes / incompatibilidade)
+// — nesse caso quem chamou não deve prosseguir (nem mostrar resumo, nem
+// re-renderizar a ficha).
+function construirFichaModelo(){
+  const s      = getActive(); if(!s) return false;
   const nivel  = val('pr-nivel') || s.anamnese?.nivel || 'Inic';
   const freq   = val('pr-frequencia') || s.anamnese?.frequencia || '3x';
   const op     = _s3.divisaoOpcoes[_s3.divisaoIdx] || _s3.divisaoOpcoes[0];
-  if(!op){ alert('Selecione uma divisão primeiro.'); return; }
+  if(!op){ alert('Selecione uma divisão primeiro.'); return false; }
 
   // ── Ler dados REAIS dos inputs do DOM por sessão ──────────────────────
   const numDias = parseInt(freq)||3;
@@ -2688,14 +2723,18 @@ function irParaFicha(){
 
 ${nomes}
 
-Eles não serão incluídos na ficha. Continuar assim mesmo?`)) return;
+Eles não serão incluídos na ficha. Continuar assim mesmo?`)) return false;
   }
 
   // ── Verificar compatibilidade divisão × periodização ──────────────────
-  const modeloPrescricao = _modeloSelecionado || '';
-  if(modeloPrescricao){
-    const aviso = verificarCompatibilidadePeriodDiv(modeloPrescricao, op, numDias);
-    if(aviso && !confirm(aviso + '\n\nDeseja continuar mesmo assim?')) return;
+  // Só roda com PERIODIZACAO_ATIVA=true — não faz sentido avisar sobre
+  // incompatibilidade de um modelo que ninguém escolheu ativamente.
+  if(PERIODIZACAO_ATIVA){
+    const modeloPrescricao = _modeloSelecionado || '';
+    if(modeloPrescricao){
+      const aviso = verificarCompatibilidadePeriodDiv(modeloPrescricao, op, numDias);
+      if(aviso && !confirm(aviso + '\n\nDeseja continuar mesmo assim?')) return false;
+    }
   }
 
   // Ler inputs do accordion (se aberto), overrides salvos, ou calcular
@@ -2754,22 +2793,55 @@ Eles não serão incluídos na ficha. Continuar assim mesmo?`)) return;
       sel.appendChild(opt);
     });
   }
+  return true;
+}
 
+// Preenche o resumo da tela "Modelo de Treino Pronto" (visão geral antes de
+// avançar pra seleção de exercícios).
+function renderResumoDistribuicao(){
+  const op  = _s3.divisaoOpcoes[_s3.divisaoIdx] || _s3.divisaoOpcoes[0];
+  const lbl = $('resumo-divisao-label'); if(lbl) lbl.textContent = op ? op.nome : '—';
+  const vol = $('resumo-vol-label');
+  if(vol) vol.textContent = _s3.seriesPorEx + ' sér/ex · desvio ±' + (op && op.desvio !== undefined ? op.desvio : 0) + 's';
+  renderPreviewVolSemanal('resumo-vol-semanal');
+}
+
+// Botão "Ver Resumo →" da tela de Divisão (step 2) — monta a ficha e mostra
+// a visão geral antes de avançar de fato pro step de Exercícios.
+function montarFichaModelo(){
+  if(!construirFichaModelo()) return;
+  renderResumoDistribuicao();
+  hide('s3-volume'); hide('s3-divisao');
+  show('s3-resumo');
+}
+
+// Botão "Avançar para Exercícios →" da tela de resumo — cruza de fato pro
+// step 3, renderizando a ficha de exercícios já montada.
+function avancarParaExercicios(){
   renderFichaTabs();
   renderPainelAssimetrias();
   renderPreviewVolSemanal();
-  hide('s3-volume');
-  hide('s3-divisao');
-  show('s3-ficha');
+  goStep(3);
+}
+
+function regerarFicha(){
+  if(!_s3.fichaObj) return;
+  if(!construirFichaModelo()) return;
+  renderFichaTabs();
+  renderPainelAssimetrias();
+  renderPreviewVolSemanal();
 }
 
 function mudarDivisaoFicha(idx){
   _s3.divisaoIdx = parseInt(idx) || 0;
   sincronizarFreqGrupos();
-  irParaFicha();
+  if(!construirFichaModelo()) return;
+  renderFichaTabs();
+  renderPainelAssimetrias();
+  renderPreviewVolSemanal();
 }
-function renderPreviewVolSemanal(){
-  const el = $('preview-vol-semanal'); if(!el) return;
+function renderPreviewVolSemanal(targetId){
+  const el = $(targetId || 'preview-vol-semanal'); if(!el) return;
   const f  = _s3.fichaObj; if(!f){ el.innerHTML=''; return; }
   const s  = getActive();
   const obj = selectedObj || getUltimoTreino(s).objetivo || 'Saude';
@@ -2841,11 +2913,6 @@ function renderPreviewVolSemanal(){
     <div style="margin-top:8px;font-size:11px;color:var(--text3);text-align:right">
       Total na semana: <strong style="color:var(--accent);font-family:var(--mono)">${totalSem} séries</strong>
     </div>`;
-}
-
-
-function regerarFicha(){
-  if(_s3.fichaObj) irParaFicha();
 }
 
 
@@ -3047,8 +3114,8 @@ let _treinoEditId = null;
 function novaPrescricao(){
   const s=getActive(); if(!s) return;
   _treinoEditId = criarRascunho(s);
-  selectedObj=''; _modeloSelecionado='';
-  setVal('pr-nivel',''); setVal('pr-frequencia',''); setVal('pr-obs','');
+  selectedObj=''; _modeloSelecionado = PERIODIZACAO_ATIVA ? '' : 'LP';
+  setVal('pr-nivel',''); setVal('pr-frequencia',''); setVal('pr-obs',''); setVal('pr-validade','12sem');
   _s3={seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:null,treinoAtivo:0};
   renderObjGrid(); goStep(1);
   treinosMostrarForm();
@@ -3062,8 +3129,9 @@ function treinosContinuarRascunho(id){
   const s=getActive(); if(!s) return;
   const t=getTreinoPorId(s,id); if(!t) return;
   _treinoEditId = id;
-  selectedObj = t.objetivo||''; _modeloSelecionado = t.modelo||'';
+  selectedObj = t.objetivo||''; _modeloSelecionado = t.modelo || (PERIODIZACAO_ATIVA ? '' : 'LP');
   setVal('pr-nivel', t.nivel||''); setVal('pr-frequencia', t.frequencia||''); setVal('pr-obs', t.obs||'');
+  setVal('pr-validade', t.prazoSemanas||'12sem');
   _s3 = {seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:t._fichaObj||null,treinoAtivo:0};
   renderObjGrid(); goStep(1);
   treinosMostrarForm();
@@ -3075,8 +3143,9 @@ function treinosAbrirAprovado(id){
   const s=getActive(); if(!s) return;
   const t=getTreinoPorId(s,id); if(!t) return;
   _treinoEditId = id;
-  selectedObj = t.objetivo||''; _modeloSelecionado = t.modelo||'';
+  selectedObj = t.objetivo||''; _modeloSelecionado = t.modelo || (PERIODIZACAO_ATIVA ? '' : 'LP');
   setVal('pr-nivel', t.nivel||''); setVal('pr-frequencia', t.frequencia||''); setVal('pr-obs', t.obs||'');
+  setVal('pr-validade', t.prazoSemanas||'12sem');
   _s3 = {seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:t._fichaObj||null,treinoAtivo:0};
   $('ficha-aprovada').textContent = t.treino||'';
   $('aprovado-data').textContent = t.dataAprovacao||'—';
@@ -3157,6 +3226,7 @@ function renderTreinosLista(){
       <th style="padding:8px 10px;color:var(--text3);font-weight:500">Modelo</th>
       <th style="padding:8px 10px;color:var(--text3);font-weight:500">Frequência</th>
       <th style="padding:8px 10px;color:var(--text3);font-weight:500">Status</th>
+      <th style="padding:8px 10px;color:var(--text3);font-weight:500">Vencimento</th>
       <th style="padding:8px 10px;color:var(--text3);font-weight:500;text-align:right">Ações</th>
     </tr></thead><tbody>`;
   lista.forEach(t=>{
@@ -3169,12 +3239,28 @@ function renderTreinosLista(){
     const acao = isAprovado
       ? `<button type="button" onclick="treinosAbrirAprovado(${t.id})" style="font-size:11px;padding:3px 8px;background:var(--bg4);border:1px solid var(--border);color:var(--text2);border-radius:4px;cursor:pointer;margin-right:4px">Ver / Editar</button>`
       : `<button type="button" onclick="treinosContinuarRascunho(${t.id})" style="font-size:11px;padding:3px 8px;background:var(--accent-dim);border:1px solid rgba(0,229,160,.3);color:var(--accent);border-radius:4px;cursor:pointer;margin-right:4px">Continuar</button>`;
+
+    // Vencimento — só informativo (não bloqueia nada), ver getStatusVencimento em treinos-store.js
+    let vencLbl = '—';
+    const st = getStatusVencimento(t);
+    if(st){
+      const semTxt = st.diasRestantes<0
+        ? `${Math.abs(st.semanasRestantes)} sem. atrás`
+        : `${st.semanasRestantes} sem. restante${st.semanasRestantes===1?'':'s'}`;
+      const indicador = {
+        vencido: '🔴 Vencido', proximo: '⚠️ Vencimento próximo', agendar: '🗓️ Agendar avaliação', ok: '',
+      }[st.tier];
+      const cor = {vencido:'var(--red)', proximo:'#ffb400', agendar:'var(--accent)', ok:'var(--text3)'}[st.tier];
+      vencLbl = `<div style="font-size:11px;color:${cor}">${st.dataVencimento} · ${semTxt}</div>${indicador?`<div style="font-size:10px;color:${cor}">${indicador}</div>`:''}`;
+    }
+
     html += `<tr style="border-bottom:1px solid var(--border)">
       <td style="padding:8px 10px">${dataLbl}</td>
       <td style="padding:8px 10px">${objLbl}</td>
       <td style="padding:8px 10px;color:var(--text3)">${t.modelo||'—'}</td>
       <td style="padding:8px 10px">${t.frequencia||'—'}</td>
       <td style="padding:8px 10px">${statusBadge}</td>
+      <td style="padding:8px 10px">${vencLbl}</td>
       <td style="padding:8px 10px;text-align:right;white-space:nowrap">
         ${acao}
         <button type="button" onclick="treinosExcluir(${t.id})" style="font-size:11px;padding:3px 8px;background:var(--red-dim);border:1px solid #fecaca;color:var(--red);border-radius:4px;cursor:pointer">Excluir</button>
@@ -3248,6 +3334,7 @@ function aprovarTreinoMotor(){
   aprovarRascunho(s, _treinoEditId, {
     objetivo:selectedObj, nivel:val('pr-nivel'), frequencia:val('pr-frequencia'),
     modelo:_modeloSelecionado, obs:val('pr-obs')||'',
+    prazoSemanas: val('pr-validade')||'12sem',
     treino, _fichaObj:_s3.fichaObj,
   });
 
