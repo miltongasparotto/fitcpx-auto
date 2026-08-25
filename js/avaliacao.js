@@ -429,6 +429,7 @@ function loadStudentData(s){
   carregarModalidades(a.modalidades||'');
   carregarSuplementos(a.suplementos||'');
   carregarExtras(a.extras||'');
+  if(typeof refreshTreinoMirrors==='function') refreshTreinoMirrors();
 
   // Antropométrica
   const anaAntro = ['peso','altura','gordura','mgorda','mmuscular','mmuscular-pct','osso','osso-pct','residual','residual-pct',
@@ -1447,6 +1448,7 @@ function calcExtras(){
   // Salva os dados no hidden — cálculo de gasto (MET×peso×horas) é feito no Relatório/NUT
   const hidden=$('a-extras');
   if(hidden) hidden.value=JSON.stringify(_extrasData);
+  if(typeof renderResumoTreinoAnamnese==='function') renderResumoTreinoAnamnese();
 }
 
 // calcTMB_TDEE e calcVO2 disponíveis para uso futuro no Relatório/NUT
@@ -1492,6 +1494,7 @@ function onModalChange(){
   const vals = [...document.querySelectorAll('.modal-check:checked')].map(c=>c.value);
   if(hidden) hidden.value = vals.join(' | ');
   onAnamneseChange();
+  if(typeof renderResumoTreinoAnamnese==='function') renderResumoTreinoAnamnese();
 }
 
 function carregarModalidades(valorSalvo){
@@ -1759,6 +1762,37 @@ function onAnamneseChange(){
   calcExtras();
   renderStudentList();
 }
+
+// ─── CAMPOS ESPELHADOS: Anamnese ↔ Histórico de Treino ──────────────────────
+// Nível/Tempo/Consistência/Objetivos aparecem em DUAS subabas por pedido do
+// personal (não quis perder visibilidade em nenhuma). O dado é único
+// (s.anamnese), só a TELA duplica — editar em qualquer um dos dois lugares
+// salva e reflete no outro. Chamado pelo onchange dos campos canônicos
+// (Histórico de Treino, prefixo a-) e dos espelhos (Anamnese, prefixo m-).
+function onAnamneseTreinoChange(){
+  onAnamneseChange();
+  refreshTreinoMirrors();
+}
+
+function refreshTreinoMirrors(){
+  ['nivel','tempo','consistencia'].forEach(k=>{ setVal('m-'+k, val('a-'+k)); });
+  setVal('m-objetivo-ef', val('a-objetivo-ef'));
+  setVal('m-objetivo-sec', val('a-objetivo-sec'));
+  renderResumoTreinoAnamnese();
+}
+
+// Modalidades e atividades extras não são duplicadas como widget (checkbox
+// grid + lista dinâmica são complexos de sincronizar em dois lugares) — a
+// Anamnese mostra um resumo somente-leitura, editável em Histórico de Treino.
+function renderResumoTreinoAnamnese(){
+  const el = $('resumo-modalidades-extras-anamnese'); if(!el) return;
+  const modalidades = val('a-modalidades') || '—';
+  let nExtras = 0;
+  try { nExtras = (JSON.parse(val('a-extras')||'[]')||[]).length; } catch(e){ nExtras = 0; }
+  el.innerHTML = `<div style="font-size:12px;color:var(--text3)">Modalidades: <strong style="color:var(--text2)">${modalidades}</strong></div>
+    <div style="font-size:12px;color:var(--text3);margin-top:4px">Atividades extra-treino cadastradas: <strong style="color:var(--text2)">${nExtras}</strong></div>`;
+}
+
 // ─── SUBABAS DA AVALIAÇÃO ────────────────────────────────────────────────────
 
 const SUBTABS_AVAL = ['anamnese-hist','anamnese-treino','anamnese-antro','anamnese-meta'];
