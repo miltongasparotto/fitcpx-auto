@@ -624,7 +624,7 @@ function atualizarResumoConfigGeral(){
   $('info-freq').textContent      = freq + '/semana';
   $('info-nivel').textContent     = nivelLabel(nivel);
   $('info-sexo').textContent      = sexo;
-  $('info-duracao').textContent   = (s.anamnese?.duracao||60) + ' min';
+  $('info-duracao').textContent   = (val('pr-duracao')||s.anamnese?.duracao||60) + ' min';
 
   const mods2 = calcModificadoresPerfil();
   const intervaloExibido = mods2.intervaloFator > 1.0 && v.intervalo && v.intervalo !== '—'
@@ -2768,9 +2768,9 @@ Eles não serão incluídos na ficha. Continuar assim mesmo?`)) return false;
 
   const params = {
     objetivo: selectedObj || 'Saude', nivel, frequencia: freq,
-    local:        s.anamnese?.local || 'academia',
+    local:        val('pr-local') || s.anamnese?.local || 'academia',
     lesoes:       s.perfil?.lesoes || '',
-    preferencias: s.anamnese?.preferencias || '',
+    preferencias: val('pr-evitar') || s.anamnese?.preferencias || '',
     seriesPorEx: _s3.seriesPorEx,
     divisaoChave: op.chave,
     volPorGrupo: _s3.volPorGrupo,
@@ -3116,6 +3116,8 @@ function novaPrescricao(){
   _treinoEditId = criarRascunho(s);
   selectedObj=''; _modeloSelecionado = PERIODIZACAO_ATIVA ? '' : 'LP';
   setVal('pr-nivel',''); setVal('pr-frequencia',''); setVal('pr-obs',''); setVal('pr-validade','12sem');
+  setVal('pr-objetivo-sec',''); setVal('pr-duracao',''); setVal('pr-horario','');
+  setVal('pr-local',''); setVal('pr-gosta',''); setVal('pr-evitar','');
   _s3={seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:null,treinoAtivo:0};
   renderObjGrid(); goStep(1);
   treinosMostrarForm();
@@ -3132,6 +3134,9 @@ function treinosContinuarRascunho(id){
   selectedObj = t.objetivo||''; _modeloSelecionado = t.modelo || (PERIODIZACAO_ATIVA ? '' : 'LP');
   setVal('pr-nivel', t.nivel||''); setVal('pr-frequencia', t.frequencia||''); setVal('pr-obs', t.obs||'');
   setVal('pr-validade', t.prazoSemanas||'12sem');
+  setVal('pr-objetivo-sec', t.objetivoSec||''); setVal('pr-duracao', t.duracao||'');
+  setVal('pr-horario', t.horario||''); setVal('pr-local', t.local||'');
+  setVal('pr-gosta', t.gosta||''); setVal('pr-evitar', t.evitar||'');
   _s3 = {seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:t._fichaObj||null,treinoAtivo:0};
   renderObjGrid(); goStep(1);
   treinosMostrarForm();
@@ -3146,6 +3151,9 @@ function treinosAbrirAprovado(id){
   selectedObj = t.objetivo||''; _modeloSelecionado = t.modelo || (PERIODIZACAO_ATIVA ? '' : 'LP');
   setVal('pr-nivel', t.nivel||''); setVal('pr-frequencia', t.frequencia||''); setVal('pr-obs', t.obs||'');
   setVal('pr-validade', t.prazoSemanas||'12sem');
+  setVal('pr-objetivo-sec', t.objetivoSec||''); setVal('pr-duracao', t.duracao||'');
+  setVal('pr-horario', t.horario||''); setVal('pr-local', t.local||'');
+  setVal('pr-gosta', t.gosta||''); setVal('pr-evitar', t.evitar||'');
   _s3 = {seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:t._fichaObj||null,treinoAtivo:0};
   $('ficha-aprovada').textContent = t.treino||'';
   $('aprovado-data').textContent = t.dataAprovacao||'—';
@@ -3335,6 +3343,11 @@ function aprovarTreinoMotor(){
     objetivo:selectedObj, nivel:val('pr-nivel'), frequencia:val('pr-frequencia'),
     modelo:_modeloSelecionado, obs:val('pr-obs')||'',
     prazoSemanas: val('pr-validade')||'12sem',
+    // Dados Atuais de Treino (Bloco 3) — o que foi de fato usado nesta
+    // prescrição, que pode ter sido ajustado aqui sem alterar a Anamnese.
+    objetivoSec: val('pr-objetivo-sec')||'', duracao: val('pr-duracao')||'',
+    horario: val('pr-horario')||'', local: val('pr-local')||'',
+    gosta: val('pr-gosta')||'', evitar: val('pr-evitar')||'',
     treino, _fichaObj:_s3.fichaObj,
   });
 
