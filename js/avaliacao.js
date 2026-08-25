@@ -196,19 +196,19 @@ function renderScreenAlunos(){
 
   let lista = students.filter(s=>{
     const p=s.perfil||{}, a=s.anamnese||{};
-    if(busca && !matchTokens(busca, p.nome||'', a.nivel||'', s.prescricao?.objetivo||'')) return false;
+    if(busca && !matchTokens(busca, p.nome||'', a.nivel||'', getUltimoTreino(s).objetivo||'')) return false;
     if(fSexo  && p.sexo!==fSexo) return false;
     if(fNivel && a.nivel!==fNivel) return false;
     if(fObj){
-      const obj = s.prescricao?.objetivo || a.objetivo_ef || '';
+      const obj = getUltimoTreino(s).objetivo || a.objetivo_ef || '';
       if(obj!==fObj) return false;
     }
     if(fModal){
       const mod = (p.modalidade||'').toLowerCase();
       if(!mod.includes(fModal)) return false;
     }
-    if(fPresc==='com' && !s.prescricao?.aprovado) return false;
-    if(fPresc==='sem' && s.prescricao?.aprovado) return false;
+    if(fPresc==='com' && !getUltimoTreino(s).aprovado) return false;
+    if(fPresc==='sem' && getUltimoTreino(s).aprovado) return false;
     return true;
   });
 
@@ -223,8 +223,8 @@ function renderScreenAlunos(){
       return (ord[aa.nivel]||0)-(ord[ab.nivel]||0);
     }
     if(ordem==='objetivo'){
-      const oa=a.prescricao?.objetivo||aa.objetivo_ef||'';
-      const ob=b.prescricao?.objetivo||ab.objetivo_ef||'';
+      const oa=getUltimoTreino(a).objetivo||aa.objetivo_ef||'';
+      const ob=getUltimoTreino(b).objetivo||ab.objetivo_ef||'';
       return oa.localeCompare(ob);
     }
     if(ordem==='idade'){
@@ -238,7 +238,7 @@ function renderScreenAlunos(){
   if(empty) empty.classList.toggle('hidden', lista.length>0);
 
   lista.forEach(s=>{
-    const p=s.perfil||{}, a=s.anamnese||{}, pr=s.prescricao||{};
+    const p=s.perfil||{}, a=s.anamnese||{}, pr=getUltimoTreino(s);
     const card=document.createElement('div');
     card.className='card'; card.style='margin:0;cursor:pointer;transition:box-shadow .15s';
     card.onmouseenter=()=>card.style.boxShadow='0 0 0 2px var(--accent)';
@@ -367,7 +367,7 @@ function abrirSalvarBibliotecaDeAluno(id){
   abrirSalvarBiblioteca();
   // Restore if no prescription
   const s=students.find(x=>x.id===id);
-  if(!s?.prescricao?.aprovado) activeId=prev;
+  if(!s || !getUltimoTreino(s).aprovado) activeId=prev;
 }
 
 
@@ -390,7 +390,7 @@ function selectStudent(id){
 }
 
 function loadStudentData(s){
-  const p=s.perfil, a=s.anamnese, pr=s.prescricao;
+  const p=s.perfil, a=s.anamnese, pr=getUltimoTreino(s);
 
   // Perfil
   setVal('p-nome', p.nome||'');
@@ -515,21 +515,12 @@ function loadStudentData(s){
     });
   }
 
-  // Prescrição
+  // Prescrição — abre na lista de treinos (js/treinos-store.js), não mais
+  // direto num wizard único. selectedObj/pr-* só são preenchidos quando o
+  // personal abre um treino específico (treinosContinuarRascunho/treinosAbrirAprovado).
   selectedObj = pr.objetivo||'';
-  setVal('pr-nivel', pr.nivel||'');
-  setVal('pr-frequencia', pr.frequencia||'');
-  setVal('pr-obs', pr.obs||'');
   renderObjGrid();
-  checkStep1();
-
-  if(pr.aprovado){
-    $('ficha-aprovada').textContent = pr.treino||'';
-    $('aprovado-data').textContent = pr.dataAprovacao||'—';
-    goStep(4, true);
-  } else {
-    goStep(1, true);
-  }
+  if(typeof treinosMostrarLista==='function') treinosMostrarLista();
 
   updateHeader(s);
 }
@@ -537,7 +528,7 @@ function loadStudentData(s){
 // ─── HEADER ───────────────────────────────────────────────────────────────────
 
 function updateHeader(s){
-  const p=s.perfil, a=s.anamnese, pr=s.prescricao;
+  const p=s.perfil, a=s.anamnese, pr=getUltimoTreino(s);
   $('student-header-name').textContent = p.nome||'Aluno';
   let b='';
   if(p.sexo) b+=`<span class="badge badge-blue">${p.sexo}</span>`;
@@ -2604,7 +2595,7 @@ function calcDelta(curId, antId, outId, higherIsBetter){
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 
 function switchTab(name){
-  ['perfil','anamnese','prescricao'].forEach(t=>{
+  ['perfil','anamnese','prescricao','evolucao'].forEach(t=>{
     toggle('panel-'+t, t===name);
     $('tab-'+t).classList.toggle('active', t===name);
   });

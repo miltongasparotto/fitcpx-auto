@@ -2772,7 +2772,7 @@ function renderPreviewVolSemanal(){
   const el = $('preview-vol-semanal'); if(!el) return;
   const f  = _s3.fichaObj; if(!f){ el.innerHTML=''; return; }
   const s  = getActive();
-  const obj = selectedObj || s?.prescricao?.objetivo || 'Saude';
+  const obj = selectedObj || getUltimoTreino(s).objetivo || 'Saude';
 
   // MEV/MAV/MRV por objetivo (Israetel 2019 — Vault REF-Vol)
   const LIMIARES = {
@@ -3026,28 +3026,163 @@ function iniciarConfiguracaoFicha(){ iniciarTelaVolume(); }
 function editarFicha(){
   goStep(3, true);
   const s = getActive();
-  if(!_s3.fichaObj && s?.prescricao?._fichaObj){
+  const treinoAtual = _treinoEditId!=null ? getTreinoPorId(s, _treinoEditId) : null;
+  if(!_s3.fichaObj && treinoAtual?._fichaObj){
     // _s3 (estado em memória) é perdido após reload da página ou troca de aluno —
     // sem isto, "Editar" cairia no else abaixo e reconstruiria do zero (sugestões
     // novas), descartando a ficha estruturada já aprovada e salva no aluno.
-    _s3.fichaObj    = s.prescricao._fichaObj;
+    _s3.fichaObj    = treinoAtual._fichaObj;
     _s3.treinoAtivo = 0;
   }
   if(_s3.fichaObj){ hide('s3-volume'); hide('s3-divisao'); renderFichaTabs(); show('s3-ficha'); }
   else { iniciarTelaVolume(); }
 }
 
+// _treinoEditId: id do item de s.treinos[] que o wizard está preenchendo
+// agora (rascunho novo, rascunho retomado, ou aprovado sendo reeditado).
+// Substitui o antigo "s.prescricao sempre o último" — agora cada treino é
+// um item independente na lista (js/treinos-store.js).
+let _treinoEditId = null;
+
 function novaPrescricao(){
   const s=getActive(); if(!s) return;
-  // NÃO zera s.prescricao aqui — ele guarda o último ciclo APROVADO e só deve
-  // ser sobrescrito quando o ciclo novo for de fato aprovado (aprovarTreinoMotor
-  // já faz essa substituição, preservando o anterior em _fichaObjAnterior).
-  // Zerar aqui fazia "anterior" ficar sempre null a partir do 2º ciclo em diante
-  // — quebrava a comparação de ciclos e o reset cruzado de histórico de Reab.
+  _treinoEditId = criarRascunho(s);
   selectedObj=''; _modeloSelecionado='';
   setVal('pr-nivel',''); setVal('pr-frequencia',''); setVal('pr-obs','');
   _s3={seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:null,treinoAtivo:0};
-  renderObjGrid(); goStep(1); updateHeader(s); renderStudentList();
+  renderObjGrid(); goStep(1);
+  treinosMostrarForm();
+  saveStudent();
+  updateHeader(s); renderStudentList();
+}
+
+// Continua um rascunho já existente (clicado na lista) — reaproveita o id,
+// não cria um segundo rascunho.
+function treinosContinuarRascunho(id){
+  const s=getActive(); if(!s) return;
+  const t=getTreinoPorId(s,id); if(!t) return;
+  _treinoEditId = id;
+  selectedObj = t.objetivo||''; _modeloSelecionado = t.modelo||'';
+  setVal('pr-nivel', t.nivel||''); setVal('pr-frequencia', t.frequencia||''); setVal('pr-obs', t.obs||'');
+  _s3 = {seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:t._fichaObj||null,treinoAtivo:0};
+  renderObjGrid(); goStep(1);
+  treinosMostrarForm();
+  updateHeader(s);
+}
+
+// Reabre um treino já aprovado (ver / editar a partir da lista)
+function treinosAbrirAprovado(id){
+  const s=getActive(); if(!s) return;
+  const t=getTreinoPorId(s,id); if(!t) return;
+  _treinoEditId = id;
+  selectedObj = t.objetivo||''; _modeloSelecionado = t.modelo||'';
+  setVal('pr-nivel', t.nivel||''); setVal('pr-frequencia', t.frequencia||''); setVal('pr-obs', t.obs||'');
+  _s3 = {seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:t._fichaObj||null,treinoAtivo:0};
+  $('ficha-aprovada').textContent = t.treino||'';
+  $('aprovado-data').textContent = t.dataAprovacao||'—';
+  const anterior = getTreinoAnteriorA(s, id);
+  renderComparacaoCiclos(anterior?._fichaObj||null, t._fichaObj, anterior?.dataAprovacao||null);
+  goStep(4, true);
+  treinosMostrarForm();
+  updateHeader(s);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// LISTA DE TREINOS — UI (painel Prescrição). Mesmo padrão de
+// antro-lista-view/antro-form-view (js/avaliacao.js). Dados vêm de
+// js/treinos-store.js.
+// ══════════════════════════════════════════════════════════════════════════
+
+function treinosMostrarLista(){
+  const lv=$('treinos-lista-view'), fv=$('treinos-form-view');
+  if(lv) lv.style.display='block';
+  if(fv) fv.style.display='none';
+  _treinoEditId = null;
+  renderTreinosLista();
+}
+
+function treinosMostrarForm(){
+  const lv=$('treinos-lista-view'), fv=$('treinos-form-view');
+  if(lv) lv.style.display='none';
+  if(fv) fv.style.display='block';
+}
+
+// Botão "+ Adicionar Treino" — se já existe rascunho em andamento, pergunta
+// antes de abrir um segundo (evita lixo de rascunhos abandonados).
+function treinosAdicionar(){
+  const s=getActive(); if(!s) return;
+  const rascunho = getRascunhoAtivo(s);
+  if(rascunho){
+    if(confirm('Já existe um treino em rascunho (iniciado em '+(rascunho.dataCriacao||'—')+'). Continuar de onde parou?')){
+      treinosContinuarRascunho(rascunho.id);
+    }
+    return;
+  }
+  novaPrescricao();
+}
+
+function treinosVoltarLista(){
+  const s=getActive(); if(!s) return;
+  saveStudent();
+  treinosMostrarLista();
+  updateHeader(s);
+}
+
+function treinosExcluir(id){
+  const s=getActive(); if(!s) return;
+  if(!confirm('Excluir este treino? Esta ação não pode ser desfeita.')) return;
+  removerTreino(s, id);
+  saveStudent();
+  renderTreinosLista();
+  updateHeader(s); renderStudentList();
+}
+
+const TREINOS_OBJ_LABEL = {Hip:'Hipertrofia',Forca:'Força',Emagr:'Emagrecimento',Comp:'Composição',
+  Resist:'Resistência',CardioR:'Cardio',Func:'Funcional',Saude:'Saúde',
+  Esport:'Esportivo',Reab:'Reabilitação',Envelhec:'Envelhecimento',Gestacao:'Gestação'};
+
+function renderTreinosLista(){
+  const s=getActive();
+  const cont=$('treinos-lista-tabela'); if(!cont) return;
+  if(!s){ cont.innerHTML=''; return; }
+  const lista = obterTreinosOrdenados(s);
+  if(!lista.length){
+    cont.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text3);font-size:13px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">Nenhum treino criado ainda. Clique em "+ Adicionar Treino" para montar o primeiro.</div>`;
+    return;
+  }
+  let html = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="border-bottom:1px solid var(--border);text-align:left">
+      <th style="padding:8px 10px;color:var(--text3);font-weight:500">Data</th>
+      <th style="padding:8px 10px;color:var(--text3);font-weight:500">Objetivo</th>
+      <th style="padding:8px 10px;color:var(--text3);font-weight:500">Modelo</th>
+      <th style="padding:8px 10px;color:var(--text3);font-weight:500">Frequência</th>
+      <th style="padding:8px 10px;color:var(--text3);font-weight:500">Status</th>
+      <th style="padding:8px 10px;color:var(--text3);font-weight:500;text-align:right">Ações</th>
+    </tr></thead><tbody>`;
+  lista.forEach(t=>{
+    const objLbl = TREINOS_OBJ_LABEL[t.objetivo]||t.objetivo||'—';
+    const isAprovado = t.status===TREINOS_STATUS.APROVADO;
+    const statusBadge = isAprovado
+      ? `<span class="badge badge-green" style="font-size:10px">🟢 Aprovado</span>`
+      : `<span class="badge badge-amber" style="font-size:10px">🟡 Rascunho</span>`;
+    const dataLbl = isAprovado ? (t.dataAprovacao||'—') : (t.dataCriacao||'—');
+    const acao = isAprovado
+      ? `<button type="button" onclick="treinosAbrirAprovado(${t.id})" style="font-size:11px;padding:3px 8px;background:var(--bg4);border:1px solid var(--border);color:var(--text2);border-radius:4px;cursor:pointer;margin-right:4px">Ver / Editar</button>`
+      : `<button type="button" onclick="treinosContinuarRascunho(${t.id})" style="font-size:11px;padding:3px 8px;background:var(--accent-dim);border:1px solid rgba(0,229,160,.3);color:var(--accent);border-radius:4px;cursor:pointer;margin-right:4px">Continuar</button>`;
+    html += `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:8px 10px">${dataLbl}</td>
+      <td style="padding:8px 10px">${objLbl}</td>
+      <td style="padding:8px 10px;color:var(--text3)">${t.modelo||'—'}</td>
+      <td style="padding:8px 10px">${t.frequencia||'—'}</td>
+      <td style="padding:8px 10px">${statusBadge}</td>
+      <td style="padding:8px 10px;text-align:right;white-space:nowrap">
+        ${acao}
+        <button type="button" onclick="treinosExcluir(${t.id})" style="font-size:11px;padding:3px 8px;background:var(--red-dim);border:1px solid #fecaca;color:var(--red);border-radius:4px;cursor:pointer">Excluir</button>
+      </td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+  cont.innerHTML = html;
 }
 
 function fichaObjParaTexto(ficha){
@@ -3090,8 +3225,11 @@ function aprovarTreinoMotor(){
   const s = getActive(); if(!s) return;
   const treino  = fichaObjParaTexto(_s3.fichaObj);
   const data    = new Date().toLocaleDateString('pt-BR');
-  const anterior = s.prescricao?._fichaObj || null; // salva ciclo anterior
-  const dataAprovacaoAnterior = s.prescricao?.dataAprovacao || null; // capturado ANTES do reassign abaixo
+  // ciclo anterior = último treino APROVADO antes deste (não é mais um campo
+  // único _fichaObjAnterior — vem da lista s.treinos, ver treinos-store.js)
+  const ultimoAprovado = getUltimoTreinoAprovado(s);
+  const anterior = ultimoAprovado?._fichaObj || null;
+  const dataAprovacaoAnterior = ultimoAprovado?.dataAprovacao || null;
 
   // Registrar exercícios usados no histórico para diversificação futura
   if(!s.historicoExercicios) s.historicoExercicios = [];
@@ -3106,12 +3244,12 @@ function aprovarTreinoMotor(){
   const exerciciosDoCiclo = _s3.fichaObj.treinos.flatMap(t => t.exercicios);
   registrarHistoricoSeries(s, selectedObj, exerciciosDoCiclo, objetivoAnteriorReal);
 
-  s.prescricao = {
+  if(_treinoEditId==null) _treinoEditId = criarRascunho(s);
+  aprovarRascunho(s, _treinoEditId, {
     objetivo:selectedObj, nivel:val('pr-nivel'), frequencia:val('pr-frequencia'),
     modelo:_modeloSelecionado, obs:val('pr-obs')||'',
-    treino, aprovado:true, dataAprovacao:data, _fichaObj:_s3.fichaObj,
-    _fichaObjAnterior: anterior,
-  };
+    treino, _fichaObj:_s3.fichaObj,
+  });
 
   // Persistência da progressão por 3 fases de Volume da Sessão (vault §10.2-bis) —
   // guarda apenas o registro mais recente (objetivo + fase), não um histórico completo.
@@ -3809,7 +3947,7 @@ function _acompPopularCargas(s, periodId){
     existentes.forEach(c => addCargaAcompRow(c.ex, c.carga, c.reps));
   } else {
     // Default: exercícios da prescrição do aluno se houver
-    const exs = s.prescricao?._fichaObj?.treinos?.flatMap(t=>t.exercicios)||[];
+    const exs = getUltimoTreino(s)._fichaObj?.treinos?.flatMap(t=>t.exercicios)||[];
     const uniq = [...new Set(exs.map(e=>e.nome))].slice(0,8);
     if(uniq.length){ uniq.forEach(n=>addCargaAcompRow(n,'','')); }
     else { addCargaAcompRow('','',''); }

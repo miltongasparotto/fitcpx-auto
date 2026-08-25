@@ -671,10 +671,11 @@ function renderBiblioteca(){
 
     // Compatibility match with active student
     let matchBadge = '';
-    if(s && s.prescricao){
-      const pObj   = s.prescricao.objetivo;
+    const ultimoTreino = s ? getUltimoTreino(s) : {};
+    if(s && ultimoTreino.objetivo){
+      const pObj   = ultimoTreino.objetivo;
       const pNivel = s.anamnese?.nivel||'';
-      const pFreq  = s.prescricao.frequencia||'';
+      const pFreq  = ultimoTreino.frequencia||'';
       const pSexo  = s.perfil?.sexo||'';
       const matchObj  = !b.objetivo || b.objetivo===pObj;
       const matchNv   = !b.nivel    || b.nivel===pNivel;
@@ -740,7 +741,7 @@ function renderBiblioteca(){
 
 function filtrarBibPorAlunoAtivo(){
   const s=getActive(); if(!s) return;
-  const p=s.prescricao||{};
+  const p=getUltimoTreino(s);
   const a=s.anamnese||{};
   const pf=s.perfil||{};
   const sv=(id,val)=>{ const el=$(id); if(el) el.value=val||''; };
@@ -805,9 +806,8 @@ function usarTemplateBib(id){
   const s=getActive();
   if(!s){ alert('Selecione ou crie um aluno primeiro.'); return; }
   if(!confirm(`Aplicar o template "${b.nome}" como prescrição de ${s.perfil?.nome||'este aluno'}?\n\nO template será carregado na ficha aprovada do aluno.`)) return;
-  // Apply as approved prescription
+  // Aplica como um novo treino aprovado na lista (js/treinos-store.js)
   const data = new Date().toLocaleDateString('pt-BR');
-  const anterior = s.prescricao?._fichaObj || null; // preservar cadeia, igual aprovarTreinoMotor
 
   // Aplicar um template também conta como "aprovação" pra efeitos de progressão
   // futura (vault §10.2/§10.2-bis) — senão o próximo ciclo construído pelo wizard
@@ -820,14 +820,13 @@ function usarTemplateBib(id){
     registrarHistoricoSeries(s, b.objetivo, exerciciosDoTemplate, objetivoAnteriorReal);
   }
 
-  s.prescricao = {
+  const novoId = criarRascunho(s);
+  const treinoAplicado = aprovarRascunho(s, novoId, {
     objetivo: b.objetivo||'', nivel: b.nivel||'', frequencia: b.freq||'',
     modelo: b.modelo||'', obs: `Template: ${b.nome}`,
-    treino: b.ficha_texto||b.estrutura||'', aprovado: true,
-    dataAprovacao: data, _fichaObj: b._fichaObj||null,
-    _fichaObjAnterior: anterior,
+    treino: b.ficha_texto||b.estrutura||'', _fichaObj: b._fichaObj||null,
     _fromBiblioteca: true, _bibId: b.id,
-  };
+  });
 
   if(b.objetivo){
     s.ultimaFaseVolSessao = { objetivo: b.objetivo, fase: 'baixa' };
@@ -837,12 +836,7 @@ function usarTemplateBib(id){
   // Navigate to student view
   navGo('student-view');
   selectStudent(s.id);
-  const fa=$('ficha-aprovada');
-  if(fa) fa.textContent = s.prescricao.treino;
-  const ad=$('aprovado-data');
-  if(ad) ad.textContent = data;
-  toggle('presc-step1',false); toggle('presc-step2',false);
-  toggle('presc-step3',false); toggle('presc-step4',true);
+  if(typeof treinosAbrirAprovado==='function') treinosAbrirAprovado(novoId);
   alert(`Template "${b.nome}" aplicado com sucesso para ${s.perfil?.nome||'o aluno'}.`);
 }
 
@@ -852,8 +846,8 @@ function usarTemplateBib(id){
 
 function abrirSalvarBiblioteca(){
   const s = getActive();
-  const p = s?.prescricao;
-  if(!p?.aprovado){ alert('Nenhuma prescrição aprovada para este aluno.'); return; }
+  const p = (typeof _treinoEditId!=='undefined' && _treinoEditId!=null && s) ? getTreinoPorId(s,_treinoEditId) : (s ? getUltimoTreinoAprovado(s) : null);
+  if(!p || p.status!==TREINOS_STATUS.APROVADO){ alert('Nenhuma prescrição aprovada para este aluno.'); return; }
 
   const pf = s.perfil||{};
   const a  = s.anamnese||{};
@@ -900,8 +894,8 @@ function abrirSalvarBiblioteca(){
 
 function confirmarSalvarBiblioteca(){
   const s = getActive();
-  const p = s?.prescricao;
-  if(!p?.aprovado){ alert('Nenhuma prescrição aprovada.'); return; }
+  const p = (typeof _treinoEditId!=='undefined' && _treinoEditId!=null && s) ? getTreinoPorId(s,_treinoEditId) : (s ? getUltimoTreinoAprovado(s) : null);
+  if(!p || p.status!==TREINOS_STATUS.APROVADO){ alert('Nenhuma prescrição aprovada.'); return; }
 
   const gv=id=>$(id)?.value?.trim()||'';
 
@@ -1316,7 +1310,12 @@ function saveStudent(){
 
 function exportMD(){
   const s=getActive(); if(!s) return;
-  const p=s.perfil, a=s.anamnese, pr=s.prescricao;
+  const p=s.perfil, a=s.anamnese;
+  let pr = getUltimoTreino(s);
+  if(typeof _treinoEditId!=='undefined' && _treinoEditId!=null){
+    const aberto = getTreinoPorId(s,_treinoEditId);
+    if(aberto && aberto.status===TREINOS_STATUS.APROVADO) pr = Object.assign({}, aberto, {aprovado:true});
+  }
   let md='# '+  (p.nome||'Aluno')+'\n\n';
   md+='## Perfil\n';
   md+='- Nascimento: '+(p.nascimento||'—')+'\n';
@@ -1366,13 +1365,18 @@ function gerarAquecimentoSessao(treino){
 
 function exportPDF(){
   const s = getActive(); if(!s) return;
-  const f = s.prescricao?._fichaObj;
+  let pr = getUltimoTreino(s);
+  if(typeof _treinoEditId!=='undefined' && _treinoEditId!=null){
+    const aberto = getTreinoPorId(s,_treinoEditId);
+    if(aberto && aberto.status===TREINOS_STATUS.APROVADO) pr = aberto;
+  }
+  const f = pr._fichaObj;
   if(!f){ alert('Aprove a prescrição primeiro para gerar o PDF.'); return; }
   const nome  = s.perfil?.nome || 'Aluno';
-  const data  = s.prescricao?.dataAprovacao || new Date().toLocaleDateString('pt-BR');
+  const data  = pr.dataAprovacao || new Date().toLocaleDateString('pt-BR');
   const nivel = s.anamnese?.nivel || '';
-  const obj   = s.prescricao?.objetivo || '';
-  const modelo= s.prescricao?.modelo || '';
+  const obj   = pr.objetivo || '';
+  const modelo= pr.modelo || '';
 
   // Semanas para tabela de registro de carga
   const semanas = ['Sem 1','Sem 2','Sem 3','Sem 4'];

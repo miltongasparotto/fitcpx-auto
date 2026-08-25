@@ -148,7 +148,7 @@ try{
       quadril_rot_e: 'Normal',
       obs_flex: 'Isquiotibiais com encurtamento moderado bilateral — consistente com queixa de lombar e limitação no terra. Ombro D com leve restrição em overhead — evitar press acima da cabeça no início.',
     },
-    prescricao: {},
+    treinos: [],
     reavaliacao: null,
   };
   students.push(amanda);
@@ -242,7 +242,7 @@ try{
       ombro_flex_d: '', ombro_flex_e: '', quadril_rot_d: '', quadril_rot_e: '',
       obs_flex: '',
     },
-    prescricao: {},
+    treinos: [],
     // Reavaliação — ponto anterior real (28/02/2026), pra comparação de ciclo
     reavaliacao: {
       peso: '61.60',
