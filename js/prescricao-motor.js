@@ -1,6 +1,3 @@
-
-
-
 // ══════════════════════════════════════════════════════
 // MOTOR DE PRESCRIÇÃO FitCPX Auto — Constantes e utilitários
 // ══════════════════════════════════════════════════════
@@ -3132,12 +3129,6 @@ function aprovarTreinoMotor(){
 
   goStep(4);
   updateHeader(s); renderStudentList();
-  toggle('reav-no-presc',false); toggle('reav-form',true);
-  const a = s.anamnese||{};
-  $('reav-ant-peso').textContent    = a.peso||'—';
-  $('reav-ant-gordura').textContent = a.gordura||'—';
-  $('reav-ant-magra').textContent   = a.magra||'—';
-  $('reav-ant-cintura').textContent = a.cintura||'—';
 }
 
 function renderComparacaoCiclos(anterior, atual, dataAprovacaoAnterior){
@@ -3977,4 +3968,3 @@ function gauthTentarAutoLogin(){
     }
   } catch(e){}
 }
-
