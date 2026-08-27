@@ -4260,7 +4260,7 @@ function renderPeriod(){
     card.innerHTML = `
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;gap:8px">
         <div style="flex:1">
-          <div style="font-size:15px;font-weight:700;color:var(--text)">${p.nome}</div>
+          <div style="font-size:15px;font-weight:700;color:var(--text)">${escHTML(p.nome)}</div>
           <div style="font-size:11px;color:var(--text3);margin-top:2px">${p.sigla||''} · ${p.duracao||''} · ${totalSem} semanas mapeadas</div>
         </div>
         <div style="display:flex;gap:5px;flex-shrink:0">

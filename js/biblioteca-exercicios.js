@@ -565,7 +565,7 @@ function renderLocais(){
     card.innerHTML=`
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
         <div>
-          <div style="font-size:14px;font-weight:700;color:var(--text)">${loc.nome}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${escHTML(loc.nome)}</div>
           <div style="font-size:11px;color:var(--text3);margin-top:2px">${loc.tipo}</div>
         </div>
         <div style="display:flex;gap:6px">
@@ -577,7 +577,7 @@ function renderLocais(){
       <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">
         ${loc.equipamentos.map(e=>`<span class="badge badge-gray" style="font-size:10px">${e}</span>`).join('')}
       </div>
-      ${loc.obs?`<div style="font-size:12px;color:var(--text2)">${loc.obs}</div>`:''}
+      ${loc.obs?`<div style="font-size:12px;color:var(--text2)">${escHTML(loc.obs)}</div>`:''}
     `;
     grid.appendChild(card);
   });
@@ -720,7 +720,7 @@ function renderBiblioteca(){
     card.innerHTML=`
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;gap:8px">
         <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">${b.nome}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">${escHTML(b.nome)}</div>
           <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
             <span class="badge badge-green">${objLabel}</span>
             <span class="badge badge-gray">${b.nivel||'—'}</span>
@@ -738,11 +738,11 @@ function renderBiblioteca(){
           <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deletarItem('biblioteca',${b.id})">✕</button>
         </div>
       </div>
-      ${b.uso?`<div style="font-size:12px;margin-bottom:6px"><span style="color:var(--accent);font-weight:600">✅ </span><span style="color:var(--text2)">${b.uso}</span></div>`:''}
-      ${b.contra?`<div style="font-size:12px;margin-bottom:6px"><span style="color:var(--red);font-weight:600">❌ </span><span style="color:var(--text2)">${b.contra}</span></div>`:''}
+      ${b.uso?`<div style="font-size:12px;margin-bottom:6px"><span style="color:var(--accent);font-weight:600">✅ </span><span style="color:var(--text2)">${escHTML(b.uso)}</span></div>`:''}
+      ${b.contra?`<div style="font-size:12px;margin-bottom:6px"><span style="color:var(--red);font-weight:600">❌ </span><span style="color:var(--text2)">${escHTML(b.contra)}</span></div>`:''}
       ${sessoesHtml}
-      ${b.obs?`<div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">${b.obs}</div>`:''}
-      ${b.ref?`<div style="font-size:10px;color:var(--text3);margin-top:4px">📖 ${b.ref}</div>`:''}
+      ${b.obs?`<div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">${escHTML(b.obs)}</div>`:''}
+      ${b.ref?`<div style="font-size:10px;color:var(--text3);margin-top:4px">📖 ${escHTML(b.ref)}</div>`:''}
     `;
     grid.appendChild(card);
   });

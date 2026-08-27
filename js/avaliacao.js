@@ -272,7 +272,7 @@ function renderScreenAlunos(){
     const modal = p.modalidade||'';
     const nivel = a.nivel||'';
     const temPresc = pr.aprovado;
-    const sexoIcon = p.sexo==='M'?'♂':'p.sexo'==='F'?'♀':'';
+    const sexoIcon = p.sexo==='M'?'♂':p.sexo==='F'?'♀':'';
 
     // IMC
     const imc = (a.peso && a.altura) ? (a.peso/((a.altura/100)**2)).toFixed(1) : null;
@@ -298,7 +298,7 @@ function renderScreenAlunos(){
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:8px">
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <div style="font-size:15px;font-weight:700;color:var(--text)">${p.nome||'—'}</div>
+            <div style="font-size:15px;font-weight:700;color:var(--text)">${escHTML(p.nome||'—')}</div>
             ${p.sexo?`<span style="font-size:13px;color:${p.sexo==='M'?'var(--blue)':'var(--amber)'}">${p.sexo==='M'?'♂':'♀'}</span>`:''}
             ${flagHtml}
           </div>
@@ -1183,7 +1183,7 @@ function renderizarTriagem(){
   const resumo=$('triagem-texto'), icone=$('triagem-icone');
   if(icone) icone.textContent=bloqueios.length?'🔴':alertas.length?'🟡':'🔵';
   if(resumo) resumo.innerHTML=
-    `<strong>${p.nome||'Aluno'}</strong> — ${partes.join(' · ')} &nbsp;·&nbsp; `+
+    `<strong>${escHTML(p.nome||'Aluno')}</strong> — ${partes.join(' · ')} &nbsp;·&nbsp; `+
     (podePrescrever
       ?`<span style="color:var(--accent)">✓ Pode prescrever${alertas.length?' com restrições':''}</span>`
       :`<span style="color:#ff5050">✗ Resolver bloqueios antes de prosseguir</span>`);

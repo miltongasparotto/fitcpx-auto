@@ -14,6 +14,22 @@ function setSyncStatus(msg, erro){
   el.textContent = msg;
 }
 
+// BUGFIX 2026-08-27 (auditoria): sanitização de saída — nome de aluno, local
+// de treino, biblioteca de treinos e periodização são texto livre digitado
+// pelo usuário e eram inseridos direto via innerHTML/template literal sem
+// escapar. Um valor tipo <img src=x onerror=...> ficava salvo e executava
+// script assim que o card era renderizado (XSS armazenado). escHTML() sempre
+// que o valor puder ter vindo de um campo de texto livre do usuário.
+function escHTML(str){
+  if(str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
 // ── Exportar / Importar JSON local ───────────────────────────────────────────
 
 function exportarJSON(){
