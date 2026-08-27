@@ -12,7 +12,6 @@ const OBJETIVOS = [
   {code:"Esport",label:"Performance Esportiva",icon:"🏆"},
   {code:"Reab",label:"Reabilitação / Pós-lesão",icon:"🩺"},
   {code:"Envelhec",label:"Envelhecimento Ativo",icon:"🌟"},
-  {code:"Gestacao",label:"Gestação / Pós-parto",icon:"🌸"},
 ];
 
 const MODELOS = {
@@ -27,7 +26,6 @@ const MODELOS = {
   Esport:{Inic:"LP",Inte:"BLO",Avan:"BLO"},
   Reab:{Inic:"LP",Inte:"LP",Avan:"LP"},
   Envelhec:{Inic:"LP",Inte:"LP",Avan:"LP"},
-  Gestacao:{Inic:"LP",Inte:"LP",Avan:"LP"},
 };
 
 // Variáveis de referência por objetivo
@@ -43,7 +41,6 @@ const VARIAVEIS_REF = {
   Esport: {series:"10–20 séries/músculo/sem",reps:"3–10 reps",intensidade:"70–90% 1RM / RPE 7–9",intervalo:"120–240s",tut:"específico por modalidade"},
   Reab:   {series:"6–12 séries/músculo/sem",reps:"10–20 reps",intensidade:"20–50% 1RM / RPE 3–6",intervalo:"90–120s",tut:"lento, ênfase excêntrica"},
   Envelhec:{series:"8–15 séries/músculo/sem",reps:"8–15 reps",intensidade:"40–65% 1RM / RPE 5–7",intervalo:"90–120s",tut:"lento e controlado"},
-  Gestacao:{series:"8–12 séries/músculo/sem",reps:"12–15 reps",intensidade:"40–60% 1RM / RPE 4–6",intervalo:"90–120s",tut:"controlado, sem Valsalva"},
 };
 
 // Templates de estrutura
@@ -155,7 +152,7 @@ function renderStudentList(){
 const OBJ_LABEL_MAP = {
   Hip:'Hipertrofia',Forca:'Força',Emagr:'Emagrecimento',Comp:'Composição',
   Resist:'Resistência',CardioR:'Cardio',Func:'Funcional',Saude:'Saúde',
-  Esport:'Esportivo',Reab:'Reabilitação',Envelhec:'Envelhecimento',Gestacao:'Gestação',
+  Esport:'Esportivo',Reab:'Reabilitação',Envelhec:'Envelhecimento',
 };
 
 function _calcIdadeNum(nasc){
@@ -410,21 +407,18 @@ function loadStudentData(s){
   setVal('p-obs-clinicas', p.obs_clinicas||'');
   setVal('p-menstrual', p.menstrual||'');
   setVal('p-contraceptivo', p.contraceptivo||'');
-  setVal('p-gestacao', p.gestacao||'');
-  setVal('p-trimestre', p.trimestre||'');
-  toggleTrimestre();
   calcIdade();
   setVal('p-menstrual', p.menstrual||'');
   setVal('p-contraceptivo', p.contraceptivo||'');
-  setVal('p-gestacao', p.gestacao||'');
   toggleFeminino();
 
   // Anamnese — campos base
   const anaBase = ['nivel','tempo','consistencia','extras',
    'frequencia','duracao','horario','local','sono','estresse','alcool',
    'pretreino','gosta','preferencias','tabagismo','cirurgias',
-   'lesoes_passadas','motivo_pausa'];
+   'lesoes_passadas','motivo_pausa','gestacao','trimestre'];
   anaBase.forEach(k=>{ setVal('a-'+k, a[k]||''); });
+  toggleTrimestre();
   setVal('a-objetivo-ef', a.objetivo_ef||'');
   setVal('a-objetivo-sec', a.objetivo_sec||'');
   carregarModalidades(a.modalidades||'');
@@ -559,7 +553,6 @@ function onPerfilChange(){
     lesoes:val('p-lesoes'),
     obs_clinicas:val('p-obs-clinicas'),
     menstrual:val('p-menstrual'), contraceptivo:val('p-contraceptivo'),
-    gestacao:val('p-gestacao'), trimestre:val('p-trimestre'),
   };
   $('student-header-name').textContent = s.perfil.nome||'Aluno';
   calcFCMax();
@@ -742,7 +735,7 @@ const TRIAGEM_REGRAS = [
   { tipo:'bloqueio', id:'gestacao-sem-clearance', icone:'🚫',
     label:'Gestante — protocolo específico obrigatório',
     detalhe:'Treino gestacional exige clearance obstétrico. Usar modelo LP adaptado. Evitar Valsalva, decúbito dorsal prolongado (2º/3º trimestre) e impacto alto.',
-    condicao:(p)=>p.gestacao==='Gestante',
+    condicao:(p,a)=>a.gestacao==='Gestante',
   },
 
   // ── ALERTAS ────────────────────────────────────────────────────────────────
@@ -829,7 +822,7 @@ const TRIAGEM_REGRAS = [
   { tipo:'alerta', id:'pos-parto', icone:'⚠',
     label:'Pós-parto (< 6 meses) — restrições específicas',
     detalhe:'Clearance médico recomendado. Atenção a diástase abdominal — evitar crunch e exercícios com aumento de pressão intra-abdominal. Progressão lenta.',
-    condicao:(p)=>p.gestacao==='Pós-parto',
+    condicao:(p,a)=>a.gestacao==='Pós-parto',
   },
   { tipo:'alerta', id:'envelhec', icone:'⚠',
     label:'Faixa etária 50+ — ajustes de volume e intervalos',
@@ -1003,6 +996,34 @@ const FLAGS_PRIORIDADE = {
   'Isquio Encurtado':  e => textoIgual(e.g, 'Isquiossurais') && (e.r === 'TRM' || e.n.toLowerCase().includes('cadeira flexora') || e.n.toLowerCase().includes('flexão de joelho')),
   'Valgo Corretivo':   e => textoIgual(e.g, 'Gluteos') && e.n.toLowerCase().includes('abdução'),
 };
+
+// Regra 2 (esboço 2026-08-26) — condição clínica do aluno → preferência de tipo
+// de exercício e cadeia cinética. NÃO bloqueia nada (quem bloqueia é FLAGS_FILTRO,
+// acima) — só prioriza, dentro do que já é seguro, o exercício mais adequado à
+// condição. Reaproveita os mesmos nomes de flag de FLAGS_FILTRO/extrairFlagsClinicas.
+// Ainda não é exaustivo (esboço funcional pra afinar depois de ver rodando).
+const FLAGS_TIPO_CADEIA = {
+  'Dores nos Joelhos':   { cad: ['CCF'], tp: ['Estabilidade','Mobilidade'] },
+  'Dores Lombares':      { cad: ['CCF'], tp: ['Estabilidade'] },
+  'Dores nos Ombros':    { cad: ['CCA'], tp: ['Estabilidade','Mobilidade'] },
+  'Dores nos Cotovelos': { cad: ['CCF'], tp: [] },
+  'Baixo Impacto':       { cad: [],      tp: ['Estabilidade','Aeróbio'] },
+  'FMS Score Baixo':     { cad: ['CCF'], tp: ['Estabilidade','Mobilidade'] },
+};
+
+// Agrega as preferências de tipo/cadeia de todas as flags clínicas ativas do
+// aluno neste momento. Retorna sets vazios se não houver nenhuma flag relevante.
+function preferenciasTipoCadeia(){
+  const { bloqueios } = extrairFlagsClinicas();
+  const cad = new Set(), tp = new Set();
+  bloqueios.forEach(flag => {
+    const pref = FLAGS_TIPO_CADEIA[flag];
+    if(!pref) return;
+    (pref.cad||[]).forEach(v=>cad.add(v));
+    (pref.tp||[]).forEach(v=>tp.add(v));
+  });
+  return { cad, tp };
+}
 
 function extrairFlagsClinicas(){
   const s = getActive();
@@ -1632,8 +1653,8 @@ function calcIdade(){
 }
 
 function toggleTrimestre(){
-  const g=val('p-gestacao');
-  const sel=$('p-trimestre');
+  const g=val('a-gestacao');
+  const sel=$('a-trimestre');
   if(sel) sel.style.display=(g==='Gestante')?'block':'none';
 }
 
@@ -1708,6 +1729,7 @@ function onAnamneseChange(){
     // Bloco 1 — Histórico de Saúde (triagem)
     sintomas:val('a-sintomas'), tabagismo:val('a-tabagismo'),
     hist_familiar:val('a-hist-familiar'), cirurgias:val('a-cirurgias'),
+    gestacao:val('a-gestacao'), trimestre:val('a-trimestre'),
     // Bloco 2 — Histórico de Experiência com Treino
     lesoes_passadas:val('a-lesoes-passadas'), motivo_pausa:val('a-motivo-pausa'),
     // Bloco 3 — Dados Atuais de Treino (chave pra prescrição, importado automaticamente)
@@ -2352,6 +2374,42 @@ function calcMetaFinal(d, pesoMeta, gorduraPctMeta){
     div.innerHTML=avisoEstimativa;
     body.closest('table').insertAdjacentElement('beforebegin', div.firstChild);
   }
+
+  const deltas = {
+    pesoAtual, pesoMeta, pesoDelta: pesoMeta-pesoAtual,
+    gorduraKgAtual, gorduraKgMeta, gorduraDelta: gorduraKgMeta-gorduraKgAtual,
+    musculoKgAtual, musculoKgMeta, musculoDelta: musculoKgMeta-musculoKgAtual,
+    residualKgAtual, residualMeta, residualDelta: residualMeta-residualKgAtual,
+    musculoInformado: d.musculoInformado,
+  };
+  renderCardDivergenciaMeta(deltas);
+  return deltas;
+}
+
+// Card informativo (não bloqueia) — avisa quando a Meta definida vai numa direção
+// contrária ao objetivo principal do aluno. Tolerância de equilíbrio: 3 kg.
+function renderCardDivergenciaMeta(deltas){
+  const card=$('meta-card-divergencia');
+  if(!card) return;
+  const TOL = 3;
+  const obj = selectedObj;
+  const gd = deltas.gorduraDelta, md = deltas.musculoDelta;
+  const linhas = [];
+  if(obj==='Hip' || obj==='Forca'){
+    const nomeObj = obj==='Hip' ? 'Hipertrofia' : 'Força';
+    if(md<=-TOL) linhas.push(`Meta indica perda de músculo (${md.toFixed(1)} kg) — objetivo é ${nomeObj}, o esperado seria manter ou ganhar músculo.`);
+    if(gd>=TOL) linhas.push(`Meta indica ganho de gordura (+${gd.toFixed(1)} kg) — confirme se é intencional (fase de volume) para o objetivo atual.`);
+  } else if(obj==='Emagr'){
+    if(gd>-TOL) linhas.push(`Meta não indica redução relevante de gordura (${gd>=0?'+':''}${gd.toFixed(1)} kg) — objetivo é Emagrecimento.`);
+    if(md<=-TOL) linhas.push(`Meta também indica perda de músculo (${md.toFixed(1)} kg) — considere preservar massa magra durante o emagrecimento.`);
+  } else if(obj==='Saude'){
+    if(Math.abs(gd)>=TOL) linhas.push(`Meta indica variação relevante de gordura (${gd>=0?'+':''}${gd.toFixed(1)} kg) para um objetivo de Saúde/Manutenção.`);
+    if(Math.abs(md)>=TOL) linhas.push(`Meta indica variação relevante de músculo (${md>=0?'+':''}${md.toFixed(1)} kg) para um objetivo de Saúde/Manutenção.`);
+  }
+  // Reabilitação (Reab): sem checagem de direção — objetivo não é definido por composição corporal.
+  if(!linhas.length){ card.style.display='none'; card.innerHTML=''; return; }
+  card.style.display='block';
+  card.innerHTML = `<div style="display:flex;gap:8px;align-items:flex-start"><span>ℹ️</span><div><strong>Meta x Objetivo:</strong><ul style="margin:4px 0 0;padding-left:18px">${linhas.map(x=>`<li>${x}</li>`).join('')}</ul></div></div>`;
 }
 
 function renderMeta(){
@@ -2359,6 +2417,7 @@ function renderMeta(){
   const m=s.meta||{};
   esconderErroMeta();
   const avisoEl=$('meta-aviso-estimativa'); if(avisoEl) avisoEl.remove();
+  const cardDiv=$('meta-card-divergencia'); if(cardDiv){ cardDiv.style.display='none'; cardDiv.innerHTML=''; }
   // Fonte
   const fonteEl=document.querySelector(`input[name="meta-fonte"][value="${m.fonte||'anterior'}"]`);
   if(fonteEl) fonteEl.checked=true;
@@ -2652,6 +2711,17 @@ function calcDelta(curId, antId, outId, higherIsBetter){
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 
 function switchTab(name){
+  // Sair da aba Prescrição com um ajuste de sessões não salvo (Modelo de
+  // Divisão) pede confirmação antes — sem isso, o ajuste some em silêncio.
+  const abaAtualEhPrescricao = $('tab-prescricao')?.classList.contains('active');
+  if(abaAtualEhPrescricao && name!=='prescricao' && typeof temEdicaoDivisaoNaoSalva==='function' && temEdicaoDivisaoNaoSalva()){
+    confirmarSairEdicaoDivisao(() => switchTabForcado(name));
+    return;
+  }
+  switchTabForcado(name);
+}
+
+function switchTabForcado(name){
   ['perfil','anamnese','prescricao','evolucao'].forEach(t=>{
     toggle('panel-'+t, t===name);
     $('tab-'+t).classList.toggle('active', t===name);
@@ -2672,22 +2742,40 @@ function renderObjGrid(){
     const s=getActive();
     if(s&&s.anamnese&&s.anamnese.objetivo_ef){
       const mapa={
-        'Hipertrofia':'Hip','Emagrecimento':'Emagr','Composição corporal':'Comp',
-        'Força':'Forca','Resistência':'Resist','Saúde':'Saude',
-        'Performance':'Esport','Reabilitação':'Reab'
+        'Hipertrofia':'Hip','Emagrecimento':'Emagr',
+        'Força':'Forca','Saúde':'Saude','Reabilitação':'Reab'
       };
       selectedObj = mapa[s.anamnese.objetivo_ef] || '';
     }
   }
-  const g=$('obj-grid'); g.innerHTML='';
-  OBJETIVOS.forEach(o=>{
-    const d=document.createElement('div');
-    d.className='obj-card'+(selectedObj===o.code?' selected':'');
-    d.innerHTML=`<div class="obj-icon">${o.icon}</div><div class="obj-code">${o.code}</div><div class="obj-label">${o.label}</div>`;
-    d.onclick=()=>{selectedObj=o.code;renderObjGrid();checkStep1();};
-    g.appendChild(d);
-  });
+  const sel=$('pr-objetivo-principal'); if(!sel) return;
+  const valorAtual = selectedObj || sel.value;
+  sel.innerHTML = '<option value="">Selecionar</option>' +
+    OBJETIVOS.map(o=>`<option value="${o.code}">${o.icon} ${o.label}</option>`).join('');
+  sel.value = valorAtual || '';
   renderAnaliseAvaliacao();
+}
+
+// Chamado pelo <select> de Objetivo principal (substitui o antigo obj-grid de cards).
+function onObjetivoPrincipalChange(valor){
+  selectedObj = valor;
+  renderAnaliseAvaliacao();
+  checkStep1();
+  // Objetivo filtra quais Modelos de Divisão aparecem na tela de Distribuição
+  // (ex: não mostrar Full Body Metabólico pra quem escolheu Hipertrofia) —
+  // se o personal já tinha passado por lá e voltou pra trocar o objetivo,
+  // atualiza a lista com o novo filtro.
+  if(typeof _s3!=='undefined' && _s3.divisaoOpcoes && _s3.divisaoOpcoes.length){
+    const freq    = val('pr-frequencia') || '3x';
+    const numDias = parseInt(freq) || 3;
+    const obj     = selectedObj || 'Saude';
+    _s3.divisaoOpcoes    = gerarDivisoesBalanceadas(numDias, obj);
+    _s3._divNumDias      = numDias;
+    _s3._divChaveGeracao = numDias + '|' + obj;
+    _s3.divisaoIdx       = Math.min(_s3.divisaoIdx||0, _s3.divisaoOpcoes.length - 1);
+    _s3._dcEditando      = undefined;
+    if(typeof renderTelaDivisao==='function') renderTelaDivisao();
+  }
 }
 
 // ── Análise avaliação → meta ────────────────────────────────────────────────
@@ -2711,7 +2799,7 @@ function analisarMetaAvaliacao(){
     avisos.push(`% de gordura estimado (${pctGordura.toFixed(1)}%) está acima da faixa saudável — considere Emagrecimento ou Composição Corporal como objetivo principal.`);
   }
 
-  const gestante = (p.gestacao||'').toLowerCase()==='sim';
+  const gestante = a.gestacao==='Gestante';
   if(gestante && !['Saude','Reab','Comp'].includes(selectedObj)){
     avisos.push('Aluna gestante — objetivos de alta intensidade (Força Máxima, Hipertrofia agressiva) não são recomendados sem liberação específica. Priorize Saúde/Manutenção.');
   }
@@ -2809,16 +2897,20 @@ function onNivelOuFrequenciaChange(){
   const jaTemVolume = _s3 && _s3.volPorGrupo && Object.keys(_s3.volPorGrupo).length > 0;
   if(!jaTemVolume) return;
   iniciarTelaVolume();
-  // Se a tela de Divisão também já tinha sido aberta, recarrega as opções com o novo volume.
-  // Mudança real de nível/frequência invalida qualquer edição de divisão em andamento
-  // (a estrutura de sessões pode nem ter o mesmo nº de dias mais).
+  // Volume e Divisão ficam juntos na mesma tela — recarrega as opções de
+  // divisão com o novo volume/frequência. Mudança real de nível/frequência
+  // invalida qualquer edição de divisão em andamento (a estrutura de sessões
+  // pode nem ter o mesmo nº de dias mais).
   if(_s3.divisaoOpcoes && _s3.divisaoOpcoes.length){
     const freq    = val('pr-frequencia') || '3x';
     const numDias = parseInt(freq) || 3;
-    _s3.divisaoOpcoes = gerarDivisoesBalanceadas(numDias);
-    _s3._divNumDias   = numDias;
-    _s3.divisaoIdx    = Math.min(_s3.divisaoIdx||0, _s3.divisaoOpcoes.length - 1);
-    _s3._dcEditando   = undefined;
+    const obj     = selectedObj || 'Saude';
+    _s3.divisaoOpcoes    = gerarDivisoesBalanceadas(numDias, obj);
+    _s3._divNumDias      = numDias;
+    _s3._divChaveGeracao = numDias + '|' + obj;
+    _s3.divisaoIdx       = Math.min(_s3.divisaoIdx||0, _s3.divisaoOpcoes.length - 1);
+    _s3._dcEditando      = undefined;
+    renderTelaDivisao();
   }
 }
 

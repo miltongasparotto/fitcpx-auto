@@ -1137,6 +1137,23 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       </div>
     </div>
 
+    <!-- ══ AVISO: AJUSTE DE SESSÕES NÃO SALVO (Modelo de Divisão) ══ -->
+    <div id="modal-edicao-divisao" class="modal-overlay hidden">
+      <div class="modal" style="width:420px">
+        <div class="modal-title">⚠ Ajuste de sessões não salvo</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:16px">
+          Você ajustou as sessões de um modelo de divisão em "⚙ Ajustar sessões" mas ainda não salvou como modelo reutilizável. Se sair agora, esse ajuste é perdido.
+        </p>
+        <div class="btn-row" style="justify-content:space-between">
+          <button class="btn btn-ghost" onclick="modalDivisaoCancelar()">Cancelar</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-danger" onclick="modalDivisaoDescartar()">Descartar alterações</button>
+            <button class="btn btn-primary" onclick="modalDivisaoSalvar()">Salvar como modelo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
 
     <!-- ══ TELA: EXERCÍCIOS ══ -->
     <div id="screen-exercicios" class="hidden" style="display:flex;flex-direction:column;height:100%;overflow:hidden">
@@ -1421,6 +1438,23 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   </select>
                 </div>
                 <div class="field">
+                  <label>Gestante / Pós-parto</label>
+                  <div style="display:flex;gap:8px">
+                    <select id="a-gestacao" onchange="onAnamneseChange();toggleTrimestre()" style="flex:1">
+                      <option value="">Selecionar</option>
+                      <option value="Não">Não</option>
+                      <option value="Gestante">Gestante</option>
+                      <option value="Pós-parto">Pós-parto (menos de 6 meses)</option>
+                    </select>
+                    <select id="a-trimestre" onchange="onAnamneseChange()" style="display:none;flex:1">
+                      <option value="">Trimestre</option>
+                      <option value="1º trimestre">1º trimestre</option>
+                      <option value="2º trimestre">2º trimestre</option>
+                      <option value="3º trimestre">3º trimestre</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field">
                   <label>Histórico familiar de doença</label>
                   <div id="a-hist-familiar-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 16px">
                     <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="histfam-check" value="Nenhum conhecido" onchange="onHistFamiliarChange(this)"> Nenhum conhecido</label>
@@ -1622,23 +1656,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                       <option value="Implante">Implante subdérmico</option>
                     </select>
                   </div>
-                  <div class="field">
-                    <label>Gestante / Pós-parto</label>
-                    <div style="display:flex;gap:8px">
-                      <select id="p-gestacao" onchange="onPerfilChange();toggleTrimestre()" style="flex:1">
-                        <option value="">Selecionar</option>
-                        <option value="Não">Não</option>
-                        <option value="Gestante">Gestante</option>
-                        <option value="Pós-parto">Pós-parto (menos de 6 meses)</option>
-                      </select>
-                      <select id="p-trimestre" onchange="onPerfilChange()" style="display:none;flex:1">
-                        <option value="">Trimestre</option>
-                        <option value="1º trimestre">1º trimestre</option>
-                        <option value="2º trimestre">2º trimestre</option>
-                        <option value="3º trimestre">3º trimestre</option>
-                      </select>
-                    </div>
-                  </div>
                 </div>
               </div>
 
@@ -1728,11 +1745,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                     <option value="">Selecionar</option>
                     <option value="Hipertrofia">Ganhar massa muscular (hipertrofia)</option>
                     <option value="Emagrecimento">Emagrecer / reduzir gordura</option>
-                    <option value="Composição corporal">Remodelar corpo (recomposição)</option>
                     <option value="Força">Aumentar força máxima</option>
-                    <option value="Resistência">Melhorar resistência muscular</option>
                     <option value="Saúde">Saúde geral e qualidade de vida</option>
-                    <option value="Performance">Performance esportiva</option>
                     <option value="Reabilitação">Reabilitação / retorno pós-lesão</option>
                   </select>
                 </div>
@@ -1740,16 +1754,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   <label>Objetivo secundário <span style="color:var(--text3);font-size:11px">(opcional)</span></label>
                   <select id="a-objetivo-sec" onchange="onAnamneseChange()">
                     <option value="">Nenhum</option>
-                    <option value="Hipertrofia">Ganhar massa muscular (hipertrofia)</option>
-                    <option value="Emagrecimento">Emagrecer / reduzir gordura</option>
-                    <option value="Composição corporal">Remodelar corpo (recomposição)</option>
-                    <option value="Força">Aumentar força máxima</option>
-                    <option value="Resistência">Melhorar resistência muscular</option>
-                    <option value="Saúde">Saúde geral e qualidade de vida</option>
-                    <option value="Performance">Performance esportiva</option>
-                    <option value="Reabilitação">Reabilitação / retorno pós-lesão</option>
-                    <option value="Postura">Melhora postural</option>
-                    <option value="Mobilidade">Mobilidade e flexibilidade</option>
+                    <option value="Recomposição corporal">Recompor o corpo (ganhar músculo e perder gordura)</option>
+                    <option value="Mobilidade">Ganho de mobilidade e flexibilidade</option>
+                    <option value="Resistência muscular">Aumentar resistência muscular</option>
+                    <option value="Resistência cardiorrespiratória">Melhorar resistência cardiorrespiratória (cardio)</option>
+                    <option value="Performance esportiva">Performance esportiva</option>
                   </select>
                 </div>
                 <div class="field">
@@ -2141,6 +2150,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               </tbody>
             </table>
 
+            <div id="meta-card-divergencia" style="display:none;margin-top:14px;padding:10px 14px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);font-size:13px"></div>
+
             <div class="btn-row" style="margin-top:16px">
               <button class="btn btn-primary" onclick="salvarMeta()">Salvar Meta</button>
             </div>
@@ -2166,43 +2177,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
             <!-- ── FORMULÁRIO / FLUXO GUIADO (novo treino ou edição) ── -->
             <div id="treinos-form-view" style="display:none">
             <div style="display:flex;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)">
-              <button type="button" class="btn btn-ghost" onclick="treinosVoltarLista()" style="font-size:12px;padding:6px 12px">← Voltar para lista</button>
+              <button type="button" class="btn btn-ghost" onclick="confirmarSairEdicaoDivisao(treinosVoltarLista)" style="font-size:12px;padding:6px 12px">← Voltar para lista</button>
             </div>
-
-            <!-- ══ PAINEL DE TRIAGEM CLÍNICA ══ -->
-            <div id="triagem-painel" style="display:none;margin-bottom:20px">
-
-              <!-- Resumo de uma linha -->
-              <div id="triagem-resumo" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg4);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:10px;flex-wrap:wrap">
-                <span id="triagem-icone" style="font-size:16px">🔍</span>
-                <span id="triagem-texto" style="font-size:13px;color:var(--text);flex:1"></span>
-                <button onclick="toggleTriagemDetalhe()" id="triagem-toggle-btn" style="font-size:11px;font-family:var(--mono);padding:3px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text2);cursor:pointer">ver detalhes ▾</button>
-              </div>
-
-              <!-- Detalhe expansível -->
-              <div id="triagem-detalhe" style="display:none;display:flex;flex-direction:column;gap:6px">
-
-                <!-- Bloqueios -->
-                <div id="triagem-bloqueios" style="display:none">
-                  <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;color:#ff5050;margin-bottom:4px;letter-spacing:.06em">🔴 Bloqueios — resolver antes de prescrever</div>
-                  <div id="triagem-bloqueios-lista" style="display:flex;flex-direction:column;gap:4px"></div>
-                </div>
-
-                <!-- Alertas -->
-                <div id="triagem-alertas" style="display:none">
-                  <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;color:#ffb400;margin-bottom:4px;letter-spacing:.06em">🟡 Alertas clínicos — ajustes obrigatórios</div>
-                  <div id="triagem-alertas-lista" style="display:flex;flex-direction:column;gap:4px"></div>
-                </div>
-
-                <!-- Contexto -->
-                <div id="triagem-contexto" style="display:none">
-                  <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:4px;letter-spacing:.06em">🔵 Contexto — orienta sem bloquear</div>
-                  <div id="triagem-contexto-lista" style="display:flex;flex-direction:column;gap:4px"></div>
-                </div>
-
-              </div>
-            </div>
-            <!-- /TRIAGEM -->
 
             <div id="presc-warning" class="alert alert-amber hidden">
               <span>⚠</span><div>Preencha o Perfil e a Avaliação antes de gerar a prescrição.</div>
@@ -2219,16 +2195,40 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <div class="step" id="step-4"><div class="step-num">4</div>Aprovação</div>
             </div>
 
-            <!-- STEP 1 -->
+            <!-- STEP 1 — BASE DO TREINO -->
             <div id="presc-step1">
-              <div style="font-family:var(--mono);font-size:13px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">Selecionar Objetivo</div>
+              <div style="font-family:var(--mono);font-size:13px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">Base do Treino</div>
               <div class="alert alert-blue" style="margin-bottom:12px;font-size:13px">
                 <span>ℹ</span>
                 <div id="step1-info">Nível e frequência são importados automaticamente da Avaliação. Confirme ou ajuste abaixo se necessário.</div>
               </div>
               <div id="analise-avaliacao" class="alert alert-amber hidden" style="margin-bottom:12px;flex-direction:column;align-items:flex-start"></div>
-              <div class="obj-grid" id="obj-grid"></div>
-              <div class="flex-row">
+
+              <!-- ── GRUPO 1: OBJETIVO ── -->
+              <div class="section-label">Objetivo</div>
+              <div class="flex-row" style="margin-bottom:4px">
+                <div class="field flex-1">
+                  <label>Objetivo principal</label>
+                  <select id="pr-objetivo-principal" onchange="onObjetivoPrincipalChange(this.value)">
+                    <option value="">Selecionar</option>
+                  </select>
+                </div>
+                <div class="field flex-1">
+                  <label>Objetivo secundário <span style="color:var(--text3);font-size:11px">(opcional)</span></label>
+                  <select id="pr-objetivo-sec">
+                    <option value="">Nenhum</option>
+                    <option value="Recomposição corporal">Recompor o corpo (ganhar músculo e perder gordura)</option>
+                    <option value="Mobilidade">Ganho de mobilidade e flexibilidade</option>
+                    <option value="Resistência muscular">Aumentar resistência muscular</option>
+                    <option value="Resistência cardiorrespiratória">Melhorar resistência cardiorrespiratória (cardio)</option>
+                    <option value="Performance esportiva">Performance esportiva</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- ── GRUPO 2: PERFIL DE TREINO ── -->
+              <div class="section-label" style="margin-top:16px">Perfil de Treino <span style="color:var(--text3);font-size:11px;font-weight:400">importado da Avaliação — ajustar aqui não altera a Avaliação do aluno</span></div>
+              <div class="flex-row" style="margin-bottom:4px">
                 <div class="field flex-1">
                   <label>Nível <span id="nivel-origem" style="font-size:11px;color:var(--accent)"></span></label>
                   <select id="pr-nivel" onchange="onNivelOuFrequenciaChange()">
@@ -2249,27 +2249,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                     <option value="6x">6x por semana</option>
                   </select>
                 </div>
-                <div class="field flex-1">
-                  <label>Objetivo secundário <span style="color:var(--text3);font-size:11px">(da Avaliação, ajustável aqui)</span></label>
-                  <select id="pr-objetivo-sec">
-                    <option value="">Nenhum</option>
-                    <option value="Hipertrofia">Ganhar massa muscular (hipertrofia)</option>
-                    <option value="Emagrecimento">Emagrecer / reduzir gordura</option>
-                    <option value="Composição corporal">Remodelar corpo (recomposição)</option>
-                    <option value="Força">Aumentar força máxima</option>
-                    <option value="Resistência">Melhorar resistência muscular</option>
-                    <option value="Saúde">Saúde geral e qualidade de vida</option>
-                    <option value="Performance">Performance esportiva</option>
-                    <option value="Reabilitação">Reabilitação / retorno pós-lesão</option>
-                    <option value="Postura">Melhora postural</option>
-                    <option value="Mobilidade">Mobilidade e flexibilidade</option>
-                  </select>
-                </div>
               </div>
 
-              <!-- ── DADOS ATUAIS DE TREINO (Bloco 3 da Anamnese) — importados automaticamente, ajustáveis só nesta prescrição ── -->
-              <div class="section-label" style="margin-top:16px">Dados Atuais de Treino <span style="color:var(--text3);font-size:11px;font-weight:400">importado da Anamnese — ajustar aqui não altera a Anamnese do aluno</span></div>
-              <div class="grid-4" style="gap:12px;margin-bottom:4px">
+              <!-- ── GRUPO 3: ROTINA DE TREINO ── -->
+              <div class="section-label" style="margin-top:16px">Rotina de Treino <span style="color:var(--text3);font-size:11px;font-weight:400">importado da Anamnese — ajustar aqui não altera a Anamnese do aluno</span></div>
+              <div class="grid-3" style="gap:12px;margin-bottom:4px">
                 <div class="field">
                   <label>Duração por sessão</label>
                   <select id="pr-duracao">
@@ -2302,6 +2286,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                     <option value="híbrido">Híbrido (academia + casa)</option>
                   </select>
                 </div>
+              </div>
+
+              <!-- ── GRUPO 4: PREFERÊNCIAS E RESTRIÇÕES ── -->
+              <div class="section-label" style="margin-top:16px">Preferências e Restrições</div>
+              <div class="grid-2" style="gap:12px;margin-bottom:4px">
                 <div class="field">
                   <label>Preferência de exercícios</label>
                   <select id="pr-gosta">
@@ -2316,7 +2305,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                     <option value="Exercícios com peso livre">Prefere peso livre</option>
                   </select>
                 </div>
-                <div class="field" style="grid-column:1/-1">
+                <div class="field">
                   <label>Exercícios ou movimentos a evitar</label>
                   <select id="pr-evitar">
                     <option value="">Nenhum a evitar</option>
@@ -2330,7 +2319,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   </select>
                 </div>
               </div>
-              <div class="section-label" style="margin-top:16px">Validade & Observações</div>
+
+              <!-- ── GRUPO 5: VIGÊNCIA ── -->
+              <div class="section-label" style="margin-top:16px">Vigência</div>
               <div class="grid-2" style="gap:12px;margin-bottom:16px">
                 <div class="field">
                   <label>Validade do treino <span style="color:var(--text3);font-size:11px">(vencimento — só informativo)</span></label>
@@ -2365,26 +2356,68 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 </div>
               </div>
 
+              <!-- ══ RELATÓRIO DA BASE — diagnóstico do sistema (bloqueios/alertas/contexto: dores, lesões, assimetrias) ══ -->
+              <div class="section-label" style="margin-top:4px">Relatório da Base <span style="color:var(--text3);font-size:11px;font-weight:400">identificado automaticamente a partir do Perfil e da Avaliação</span></div>
+              <div id="triagem-painel" style="display:none;margin-bottom:16px">
+
+                <!-- Resumo de uma linha -->
+                <div id="triagem-resumo" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg4);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:10px;flex-wrap:wrap">
+                  <span id="triagem-icone" style="font-size:16px">🔍</span>
+                  <span id="triagem-texto" style="font-size:13px;color:var(--text);flex:1"></span>
+                  <button onclick="toggleTriagemDetalhe()" id="triagem-toggle-btn" style="font-size:11px;font-family:var(--mono);padding:3px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text2);cursor:pointer">ver detalhes ▾</button>
+                </div>
+
+                <!-- Detalhe expansível -->
+                <div id="triagem-detalhe" style="display:none;display:flex;flex-direction:column;gap:6px">
+
+                  <!-- Bloqueios -->
+                  <div id="triagem-bloqueios" style="display:none">
+                    <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;color:#ff5050;margin-bottom:4px;letter-spacing:.06em">🔴 Bloqueios — resolver antes de prescrever</div>
+                    <div id="triagem-bloqueios-lista" style="display:flex;flex-direction:column;gap:4px"></div>
+                  </div>
+
+                  <!-- Alertas -->
+                  <div id="triagem-alertas" style="display:none">
+                    <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;color:#ffb400;margin-bottom:4px;letter-spacing:.06em">🟡 Alertas clínicos — ajustes obrigatórios</div>
+                    <div id="triagem-alertas-lista" style="display:flex;flex-direction:column;gap:4px"></div>
+                  </div>
+
+                  <!-- Contexto (assimetrias, condições que orientam sem bloquear) -->
+                  <div id="triagem-contexto" style="display:none">
+                    <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:4px;letter-spacing:.06em">🔵 Contexto — orienta sem bloquear</div>
+                    <div id="triagem-contexto-lista" style="display:flex;flex-direction:column;gap:4px"></div>
+                  </div>
+
+                </div>
+              </div>
+              <!-- /RELATÓRIO DA BASE -->
+
               <div class="btn-row">
                 <button class="btn btn-primary" id="btn-step1-next" disabled onclick="goStep(2)">Próximo →</button>
               </div>
             </div>
 
-            <!-- STEP 2: distribuição (volume → divisão → resumo) -->
+            <!-- STEP 2: distribuição (volume + divisão, lado a lado, sempre em sincronia) → Exercícios -->
             <div id="presc-step2" class="hidden">
               <div class="btn-row" style="margin-bottom:14px">
-                <button class="btn btn-ghost" onclick="goStep(1)">← Configurações Gerais</button>
+                <button class="btn btn-ghost" onclick="confirmarSairEdicaoDivisao(() => goStep(1))">← Configurações Gerais</button>
               </div>
 
-              <!-- ── TELA A: VOLUME & MAPA ───────────────────────── -->
-              <div id="s3-volume">
+              <div class="alert alert-blue" style="margin-bottom:14px;font-size:13px">
+                <span>ℹ</span>
+                <div>Defina o volume por grupo muscular e escolha o modelo de divisão — os dois se ajustam ao vivo: mudar o volume recalcula o encaixe de cada modelo; trocar de modelo mostra quanto do volume definido cada sessão realmente comporta. Só são exibidos modelos compatíveis com o objetivo escolhido na tela anterior.</div>
+              </div>
+
+              <!-- ── CAIXA 1: VOLUME POR GRUPO MUSCULAR ───────────────────────── -->
+              <div id="s3-volume" style="border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);margin-bottom:14px;overflow:hidden">
                 <div id="step2-perfil-ctx-anchor"></div>
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer" onclick="toggleVolumeCaixa()">
+                  <span id="vol-collapse-icone" style="font-size:12px;color:var(--text3);transition:transform .15s">▾</span>
                   <div style="flex:1">
                     <div class="section-label" style="margin-bottom:2px">Volume por Grupo Muscular</div>
-                    <div style="font-size:13px;color:var(--text3)">Defina o volume antes de distribuir os treinos. O mapa reflete o estado em tempo real.</div>
+                    <div style="font-size:13px;color:var(--text3)">Já calculado pelo sistema a partir do objetivo, nível e sexo — ajuste se necessário.</div>
                   </div>
-                  <div style="display:flex;align-items:center;gap:8px">
+                  <div style="display:flex;align-items:center;gap:8px" onclick="event.stopPropagation()">
                     <span style="font-size:13px;color:var(--text3)">Sér/exercício (padrão):</span>
                     <div style="display:flex;align-items:center">
                       <button id="btn-series-menos" style="width:22px;height:28px;background:var(--bg2);border:1px solid var(--border);border-radius:3px 0 0 3px;color:var(--text2);font-size:13px;cursor:pointer;line-height:1;padding:0">−</button>
@@ -2395,52 +2428,44 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   </div>
                 </div>
 
-                <div style="display:flex;gap:14px;align-items:flex-start">
-                  <!-- Tabela de grupos -->
-                  <div style="flex:1;min-width:0">
-                    <table class="treino-table" id="vol-tabela" style="font-size:13px">
-                      <thead>
-                        <tr>
-                          <th style="width:40px;text-align:center">On/Off</th>
-                          <th>Grupo Muscular</th>
-                          <th style="text-align:center">Sér/sem mín</th>
-                          <th style="text-align:center">Sér/sem máx</th>
-                          <th style="text-align:center">Sér/exercício</th>
-                          <th style="text-align:center;color:var(--accent)">Exercícios</th>
-                          <th style="text-align:center">MEV–MRV</th>
-                          <th style="text-align:center">Status</th>
-                          <th style="text-align:center;font-size:11px;color:var(--text3)" title="Exercícios disponíveis após filtros clínicos">🔍 Filtro</th>
-                          <th style="width:28px"></th>
-                        </tr>
-                      </thead>
-                      <tbody id="vol-tbody"></tbody>
-                    </table>
+                <div id="vol-collapse-body" style="padding:0 14px 14px">
+                  <table class="treino-table" id="vol-tabela" style="font-size:13px">
+                    <thead>
+                      <tr>
+                        <th style="width:40px;text-align:center">On/Off</th>
+                        <th>Grupo Muscular</th>
+                        <th style="text-align:center">Sér/sem mín</th>
+                        <th style="text-align:center">Sér/sem máx</th>
+                        <th style="text-align:center">Sér/exercício</th>
+                        <th style="text-align:center;color:var(--accent)">Exercícios</th>
+                        <th style="text-align:center">MEV–MRV</th>
+                        <th style="text-align:center">Status</th>
+                        <th style="text-align:center;font-size:11px;color:var(--text3)" title="Exercícios disponíveis após filtros clínicos">🔍 Filtro</th>
+                        <th style="width:28px"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="vol-tbody"></tbody>
+                  </table>
+
+                  <!-- Legenda de cores inline -->
+                  <div style="display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap;padding:8px 10px;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border)">
+                    <span style="font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:.08em">STATUS DO VOLUME:</span>
+                    <div style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text3)"><div style="width:8px;height:8px;border-radius:2px;background:#333;border:1px solid #444"></div>OFF</div>
+                    <div style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text3)"><div style="width:8px;height:8px;border-radius:2px;background:#ef4444"></div>Crítico — fora da faixa recuperável</div>
+                    <div style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text3)"><div style="width:8px;height:8px;border-radius:2px;background:#f97316"></div>Aceitável — próximo ao limite</div>
+                    <div style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text3)"><div style="width:8px;height:8px;border-radius:2px;background:#22c55e"></div>Ideal — dentro da faixa ótima</div>
+                    <div style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text3)"><div style="width:8px;height:8px;border-radius:2px;background:#ef4444"></div>Acima MRV — risco de overtraining</div>
                   </div>
-
-
-                </div>
-
-                <!-- Legenda de cores inline -->
-                <div style="display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap;padding:8px 10px;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border)">
-                  <span style="font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:.08em">STATUS DO VOLUME:</span>
-                  <div style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text3)"><div style="width:8px;height:8px;border-radius:2px;background:#333;border:1px solid #444"></div>OFF</div>
-                  <div style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text3)"><div style="width:8px;height:8px;border-radius:2px;background:#ef4444"></div>Crítico — fora da faixa recuperável</div>
-                  <div style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text3)"><div style="width:8px;height:8px;border-radius:2px;background:#f97316"></div>Aceitável — próximo ao limite</div>
-                  <div style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text3)"><div style="width:8px;height:8px;border-radius:2px;background:#22c55e"></div>Ideal — dentro da faixa ótima</div>
-                  <div style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text3)"><div style="width:8px;height:8px;border-radius:2px;background:#ef4444"></div>Acima MRV — risco de overtraining</div>
-                </div>
-                <div class="btn-row">
-                  <button class="btn btn-ghost" onclick="goStep(1)">← Configurações Gerais</button>
-                  <button class="btn btn-primary" onclick="irParaDivisao()">Distribuir Treinos →</button>
                 </div>
               </div>
 
-              <!-- ── TELA B: DIVISÃO (baseada no volume) ─────────── -->
-              <div id="s3-divisao" class="hidden">
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
-                  <div class="section-label" style="margin-bottom:0;flex:1">Distribuição de Treinos</div>
+              <!-- ── CAIXA 2: MODELOS DE DIVISÃO (filtrados pelo objetivo, ajustados ao volume acima) ─────────── -->
+              <div id="s3-divisao" style="border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);margin-bottom:16px;overflow:hidden">
+                <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer" onclick="toggleDivisaoCaixa()">
+                  <span id="div-collapse-icone" style="font-size:12px;color:var(--text3);transition:transform .15s">▾</span>
+                  <div class="section-label" style="margin-bottom:0;flex:1">Modelo de Divisão</div>
                   <!-- Limite de séries por sessão -->
-                  <div style="display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;flex-shrink:0">
+                  <div style="display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;flex-shrink:0" onclick="event.stopPropagation()">
                     <span style="font-size:13px;color:var(--text3)">Limite séries/sessão:</span>
                     <button id="btn-lim-menos" style="width:20px;height:22px;background:var(--bg2);border:1px solid var(--border);border-radius:3px 0 0 3px;color:var(--text2);font-size:13px;cursor:pointer;padding:0;line-height:1">−</button>
                     <input type="number" id="lim-sessao" min="4" max="60"
@@ -2452,42 +2477,26 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   </div>
                 </div>
 
-                <div class="alert alert-blue" style="margin-bottom:10px;font-size:13px">
-                  <span>ℹ</span>
-                  <div id="s3-div-info">O sistema calculou a distribuição mais equilibrada com base no volume definido.</div>
-                </div>
-
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:6px">
-                    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Modelos disponíveis</div>
-                    <div style="display:flex;gap:6px">
-                      <button class="btn btn-ghost btn-sm" onclick="abrirNovaDivisaoRapida()" style="font-size:11px" title="Cria uma divisão com sessões vazias pra você distribuir os grupos manualmente — não salva nada por padrão">⚡ Divisão Rápida</button>
-                      <button class="btn btn-ghost btn-sm" onclick="abrirNovaDivisaoCompleta()" style="font-size:11px" title="Formulário completo pra catalogar um modelo reutilizável, pré-preenchido com o perfil atual">+ Nova Divisão (modelo)</button>
-                    </div>
+                <div id="div-collapse-body" style="padding:0 14px 14px">
+                  <div class="alert alert-blue" style="margin-bottom:10px;font-size:13px">
+                    <span>ℹ</span>
+                    <div id="s3-div-info">Modelos compatíveis com o objetivo escolhido, ordenados pelo que melhor equilibra o volume definido acima entre as sessões.</div>
                   </div>
-                  <div id="divisao-opcoes" style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px"></div>
 
-                <div class="btn-row">
-                  <button class="btn btn-ghost" onclick="voltarVolume()">← Volume</button>
-                  <button class="btn btn-primary" onclick="montarFichaModelo()">Ver Resumo →</button>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:6px">
+                      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Modelos disponíveis</div>
+                      <div style="display:flex;gap:6px">
+                        <button class="btn btn-ghost btn-sm" onclick="abrirNovaDivisaoRapida()" style="font-size:11px" title="Cria uma divisão com sessões vazias pra você distribuir os grupos manualmente — não salva nada por padrão">⚡ Divisão Rápida</button>
+                        <button class="btn btn-ghost btn-sm" onclick="abrirNovaDivisaoCompleta()" style="font-size:11px" title="Formulário completo pra catalogar um modelo reutilizável (com objetivos compatíveis), pré-preenchido com o perfil atual">+ Nova Divisão (modelo)</button>
+                      </div>
+                    </div>
+                    <div id="divisao-opcoes" style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px"></div>
                 </div>
               </div>
 
-              <!-- ── TELA C: RESUMO DA DISTRIBUIÇÃO (visão geral antes de avançar) ── -->
-              <div id="s3-resumo" class="hidden">
-                <div class="section-label">Modelo de Treino Pronto</div>
-                <div class="alert alert-green" style="margin-bottom:12px;font-size:13px">
-                  <span>✓</span>
-                  <div id="resumo-dist-texto">Distribuição e volume configurados. Revise antes de avançar para a seleção de exercícios.</div>
-                </div>
-                <div id="resumo-dist-detalhe" style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap">
-                  <div><div class="param-key">Divisão</div><div class="param-val" id="resumo-divisao-label">—</div></div>
-                  <div><div class="param-key">Volume</div><div class="param-val" id="resumo-vol-label">—</div></div>
-                </div>
-                <div id="resumo-vol-semanal"></div>
-                <div class="btn-row">
-                  <button class="btn btn-ghost" onclick="voltarDivisaoDoResumo()">← Ajustar Distribuição</button>
-                  <button class="btn btn-primary" onclick="avancarParaExercicios()">Avançar para Exercícios →</button>
-                </div>
+              <div class="btn-row" id="s3-vd-btnrow">
+                <button class="btn btn-ghost" onclick="confirmarSairEdicaoDivisao(() => goStep(1))">← Configurações Gerais</button>
+                <button class="btn btn-primary" onclick="montarFichaModelo()">Avançar para Exercícios →</button>
               </div>
             </div>
 

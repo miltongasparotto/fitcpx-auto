@@ -146,13 +146,19 @@ const DIVISOES = {
 const PORCOES = {
   Peitoral:    ['Superior','Médio','Inferior',null],
   Triceps:     ['Longa Porção','Lateral',null],
-  Biceps:      ['Cabeça Longa','Cabeça Curta',null],
+  // Bíceps e Reto Abdominal: pesquisa (2026-08) não sustenta ativação
+  // independente por feixe o suficiente pra justificar ranking de porção —
+  // não diferenciar, mas o motor tenta variar o exercício via critério de
+  // padrão de movimento/impacto articular (ver sortearExercicioC4).
+  Biceps:      [null],
   Deltoide:    ['Anterior','Medial','Posterior'],
-  Gluteos:     ['Máximo','Médio',null],
+  // Glúteo Mínimo adicionado (pesquisa 2026-08): abdução + rotação interna de
+  // quadril ativa bem o Mínimo e também recruta o Médio.
+  Gluteos:     ['Máximo','Médio','Mínimo',null],
   Quadriceps:  [null],
   Isquiossurais:[null],
   Latissimo:   [null],
-  RetoAbdominal:['Superior','Inferior',null],
+  RetoAbdominal:[null],
   Obliquo:     [null],
   Panturrilhas:[null],
   Trapezio:    [null],
@@ -286,36 +292,73 @@ function sortearExercicio(pool, jaUsados){
   return disponivel[Math.floor(Math.random() * disponivel.length)];
 }
 
-// ── Camada 4 — Sorteio com priorização por assimetria ─────────────────────────
-// Versão expandida: respeita prioridades clínicas, pesa exercícios prioritários
-// x3 na rolagem, garantindo maior chance de seleção sem excluir os demais
+// ── Camada 4 — Sorteio ponderado ───────────────────────────────────────────
+// Fase E (redesenho geral, 2026-08-27): todos os fatores de peso viraram um
+// único score por exercício, somado (não mais duplicações encadeadas umas em
+// cima das outras). Cada exercício entra no pool ponderado repetido conforme
+// o próprio score — assim dá pra calibrar cada fator isoladamente, mexendo só
+// num número aqui, sem afetar os outros. Valores abaixo são o ponto de
+// partida (mantêm a proporção que já estava rodando); ajustar aqui conforme
+// o Milton for vendo o resultado na prática.
+const PESO_SORTEIO = {
+  novo:  2,  // exercício nunca prescrito pra esse aluno
+  visto: 1,  // exercício já usado em algum ciclo anterior
+  prioridadeClinica: 2, // bônus quando o exercício é prioritário por uma flag clínica (assimetria etc.)
+  tipoCadeia:        1, // bônus quando combina com a preferência de tipo/cadeia da condição clínica (item 16)
+  variedadePad:      1, // bônus quando traz um padrão de movimento ainda não usado neste treino (item 19)
+  base:              1, // bônus quando é exercício base/referência (item 20 — campo `base`, hoje zerado)
+  eficienciaMax:     3, // teto do bônus contínuo de eficiência (Fase F) — multiplicado pelo "aperto" da sessão
+};
 
-function sortearExercicioC4(pool, jaUsados, musculo){
+function sortearExercicioC4(pool, jaUsados, musculo, exerciciosTreino, aperto){
   const { prioridades } = extrairFlagsClinicas();
+  const prefTipoCadeia = preferenciasTipoCadeia();
   const s = getActive();
   const historico = new Set(s?.historicoExercicios || []);
+
+  // Variedade dentro do treino baseada em característica do exercício: tipo de
+  // movimentação (campo `pad`). Ângulo já é coberto separadamente pelo filtro
+  // de porção (PORCOES/filtrarExerciciosFicha) nos grupos que têm essa
+  // informação; comprimento muscular (alongado/encurtado) ainda não existe no
+  // banco — fica pra quando esse campo for criado. `imp` (impacto articular) é
+  // classificação de risco, não característica de variabilidade — não entra aqui.
+  const padsUsadosTreino = new Set((exerciciosTreino||[]).map(e=>e._pad).filter(Boolean));
+  const trazVariedade = (e) => e.pad && !padsUsadosTreino.has(e.pad);
+
+  // Prioritário clínico (flags Camada 4 — assimetria etc.)
+  const isPrio = (e) => prioridades.some(p => { const fn=FLAGS_PRIORIDADE[p]; return fn && fn(e); });
+
+  // Combina com a condição clínica do aluno (tipo ou cadeia preferida — item 16).
+  const combinaComCondicao = (e) => prefTipoCadeia.tp.has(e.tp) || prefTipoCadeia.cad.has(e.cad);
+
+  // Eficiência (Fase F): multiarticular + atinge grupo muscular secundário
+  // (campo `gs`) rende mais estímulo por série — vale mais quando a sessão
+  // está apertada em relação ao tempo disponível. Bônus contínuo, escala com
+  // `aperto` (0 = sessão cabe tranquila, cresce conforme fica mais apertada).
+  const eficiente = (e) => e.art === 'Multiarticular' && !!(e.gs && String(e.gs).trim());
 
   // 1. Filtrar já usados nesta sessão
   const todos = pool.filter(e => !jaUsados.has(e.n));
   if(!todos.length) return pool[Math.floor(Math.random() * pool.length)] || null;
 
-  // 2. Separar por histórico: novos (nunca usados) vs já vistos em ciclos anteriores
-  const novos   = todos.filter(e => !historico.has(e.n));
-  const vistos  = todos.filter(e =>  historico.has(e.n));
+  // 2. Score por exercício — soma de todos os fatores, sem duplicação encadeada.
+  const scoreDe = (e) => {
+    let score = historico.has(e.n) ? PESO_SORTEIO.visto : PESO_SORTEIO.novo;
+    if(isPrio(e))            score += PESO_SORTEIO.prioridadeClinica;
+    if(combinaComCondicao(e)) score += PESO_SORTEIO.tipoCadeia;
+    if(trazVariedade(e))      score += PESO_SORTEIO.variedadePad;
+    if(e.base === true)       score += PESO_SORTEIO.base;
+    if(aperto>0 && eficiente(e)) score += aperto * PESO_SORTEIO.eficienciaMax;
+    return score;
+  };
 
-  // 3. Separar prioritários clínicos (flags Camada 4)
-  const isPrio = (e) => prioridades.some(p => { const fn=FLAGS_PRIORIDADE[p]; return fn && fn(e); });
+  // 3. Montar pool ponderado repetindo cada exercício conforme seu score.
+  const ponderado = [];
+  todos.forEach(e => {
+    const n = Math.max(1, Math.round(scoreDe(e)));
+    for(let i=0; i<n; i++) ponderado.push(e);
+  });
 
-  // 4. Construir pool ponderado:
-  //    novos+prioritário = 4x | novos+normal = 2x | vistos+prioritário = 2x | vistos+normal = 1x
-  const ponderado = [
-    ...novos.filter(isPrio),  ...novos.filter(isPrio),  ...novos.filter(isPrio),  ...novos.filter(isPrio),
-    ...novos.filter(e=>!isPrio(e)), ...novos.filter(e=>!isPrio(e)),
-    ...vistos.filter(isPrio), ...vistos.filter(isPrio),
-    ...vistos.filter(e=>!isPrio(e)),
-  ];
-
-  // Se pool ficou vazio (todos os novos foram filtrados de alguma forma), usa todos
   const final = ponderado.length ? ponderado : todos;
   return final[Math.floor(Math.random() * final.length)];
 }
@@ -693,6 +736,10 @@ function renderModeloCards(nivel, sexo, mods){
 
 function fillStep3(){
   iniciarTelaVolume();
+  // Volume e Divisão ficam na mesma tela, lado a lado — gera as opções de
+  // divisão junto com a tabela de volume, em vez de esperar um clique em
+  // "Distribuir Treinos →" (essa navegação não existe mais).
+  irParaDivisao();
   // Listeners dos botões +/- do campo séries/ex padrão
   const btnM = $('btn-series-menos');
   const btnP = $('btn-series-mais');
@@ -832,8 +879,12 @@ function iniciarTelaVolume(){
   });
 
   renderTabelaVolumeGlobal();
+  // Volume e Divisão ficam juntos na mesma tela (ver irParaDivisao, chamado
+  // logo depois em fillStep3) — não esconde mais 's3-divisao' aqui, senão a
+  // caixa de Modelos de Divisão desaparece assim que o volume é recalculado.
   show('s3-volume');
-  hide('s3-divisao');
+  show('s3-divisao');
+  show('s3-vd-btnrow');
   hide('s3-ficha');
 }
 
@@ -1046,6 +1097,7 @@ function toggleGrupo(id){
     vg.sem    = Math.round((vg.semMin + vg.semMax) / 2);
   }
   renderTabelaVolumeGlobal();
+  recalcularCargasDivisoes();
 }
 
 function atualizarNumEx(){
@@ -1059,6 +1111,7 @@ function resetSeriesGlobal(){
     if(_s3.volPorGrupo[id]) _s3.volPorGrupo[id].serEx = novo;
   });
   renderTabelaVolumeGlobal();
+  recalcularCargasDivisoes();
 }
 
 function resetarLinhaGrupo(id){
@@ -1083,10 +1136,12 @@ function resetarLinhaGrupo(id){
   if(inpMax) inpMax.value = vg.semMax;
   if(inpEx)  inpEx.value  = _s3.seriesPorEx;
   atualizarLinhaTabela(id);
+  recalcularCargasDivisoes();
 }
 
 function resetarVolumes(){
   iniciarTelaVolume();
+  recalcularCargasDivisoes();
 }
 
 function atualizarVolGrupo(id, campo, valor){
@@ -1096,6 +1151,7 @@ function atualizarVolGrupo(id, campo, valor){
   // Recalcula semMid
   vg.sem = Math.round(((vg.semMin || 0) + (vg.semMax || 0)) / 2);
   atualizarLinhaTabela(id);
+  recalcularCargasDivisoes();
 }
 
 function atualizarLinhaTabela(id){
@@ -1202,7 +1258,7 @@ function getVolumeSessaoPorFase(faixaMin, faixaMax, fase){
   }
 }
 
-function getDivisoesDisponiveis(numDias){
+function getDivisoesDisponiveis(numDias, objetivo){
   const mapa = {
     2:[
       {nome:'Full Body A/B',               treinos:['A — Empurrar+Core','B — Puxar+Pernas'],                                              chave:2},
@@ -1211,7 +1267,8 @@ function getDivisoesDisponiveis(numDias){
     3:[
       {nome:'Push / Pull / Legs (PPL)',     treinos:['A — Peito·Tríceps·Ombro','B — Pernas','C — Costas·Bíceps·Core'],                    chave:3},
       {nome:'Full Body A/B/A',             treinos:['A — Ênf. Superior Emp.','B — Ênf. Inferior','A — Ênf. Superior Pux.'],               chave:'3b'},
-      {nome:'Full Body Metabólico',        treinos:['A — Metabólico (MMSS+Core)','B — Metabólico (MMII+Core)','A — Metabólico (Full)'],   chave:'3c'},
+      {nome:'Full Body Metabólico',        treinos:['A — Metabólico (MMSS+Core)','B — Metabólico (MMII+Core)','A — Metabólico (Full)'],   chave:'3c',
+        objetivos_compativeis:['Emagr','Comp','CardioR']},
     ],
     4:[
       {nome:'Upper / Lower × 2',           treinos:['A — Sup. Emp.','B — Inferior','C — Sup. Pux.','D — Inf.+Core'],                      chave:'4b'},
@@ -1243,10 +1300,19 @@ function getDivisoesDisponiveis(numDias){
       treinos: d.dias.map(dia => (dia.label||'Treino') + (dia.enfase ? ' — '+dia.enfase : '')),
       chave,
       _libId: d.id,
+      objetivos_compativeis: d.objetivos_compativeis || [],
     });
   });
 
-  return base;
+  // ── Filtro por objetivo ────────────────────────────────────────────────
+  // Um modelo sem objetivos_compativeis definido (ou array vazio) é considerado
+  // genérico/universal — a maioria das divisões (PPL, Upper/Lower, Full Body
+  // clássico) é só um "contêiner" de sessões, serve pra qualquer objetivo.
+  // Só filtramos modelos que foram explicitamente marcados como específicos
+  // (ex: Full Body Metabólico → Emagrecimento/Composição/Cardio), pra não
+  // esconder, por exemplo, um Push/Pull/Legs de quem escolheu Hipertrofia.
+  if(!objetivo) return base;
+  return base.filter(op => !op.objetivos_compativeis || !op.objetivos_compativeis.length || op.objetivos_compativeis.includes(objetivo));
 }
 
 // Converte um item de LIBS.distribuicao (nomes de grupo com acento, ex: "Reto Abdominal")
@@ -1672,24 +1738,28 @@ function calcSeriesSessaoExibida(sessaoGrupos, limSessao, divisao, ti){
   return { ...calc, grupos, totalAlvo, estourou, pct };
 }
 
+// Prepara a caixa "Modelos de Divisão" — chamada junto com iniciarTelaVolume()
+// ao entrar no step 2, já que Volume e Divisão agora vivem na mesma tela,
+// lado a lado, e não são mais telas navegáveis separadamente (voltarVolume/
+// irParaDivisao existiam quando eram sub-telas alternadas; hoje as duas caixas
+// ficam sempre visíveis e sincronizadas).
 function irParaDivisao(){
   const s       = getActive(); if(!s) return;
   const freq    = val('pr-frequencia') || s.anamnese?.frequencia || '3x';
   const numDias = parseInt(freq) || 3;
+  const obj     = selectedObj || 'Saude';
 
-  // Preserva edições de divisão em andamento (dc*) ao apenas voltar pra esta tela —
-  // só gera opções do zero na primeira visita ou quando o nº de sessões mudou de fato.
-  // Sem isso, qualquer ida-e-volta entre Volume↔Divisão descartava o ajuste feito.
-  const jaTinhaOpcoes = _s3.divisaoOpcoes && _s3.divisaoOpcoes.length && _s3._divNumDias === numDias;
+  // Preserva edições de divisão em andamento (dc*) ao apenas re-entrar nesta
+  // tela — só gera opções do zero na primeira visita, ou quando o nº de
+  // sessões ou o objetivo (que filtra quais modelos aparecem) mudou de fato.
+  const chaveGeracao = numDias + '|' + obj;
+  const jaTinhaOpcoes = _s3.divisaoOpcoes && _s3.divisaoOpcoes.length && _s3._divChaveGeracao === chaveGeracao;
   if(!jaTinhaOpcoes){
-    _s3.divisaoOpcoes = gerarDivisoesBalanceadas(numDias);
-    _s3._divNumDias   = numDias;
-    _s3.divisaoIdx    = Math.min(_s3.divisaoIdx||0, _s3.divisaoOpcoes.length - 1);
+    _s3.divisaoOpcoes     = gerarDivisoesBalanceadas(numDias, obj);
+    _s3._divNumDias       = numDias;
+    _s3._divChaveGeracao  = chaveGeracao;
+    _s3.divisaoIdx        = Math.min(_s3.divisaoIdx||0, _s3.divisaoOpcoes.length - 1);
   }
-
-  hide('s3-volume');
-  show('s3-divisao');
-  hide('s3-ficha');
 
   requestAnimationFrame(() => {
     // Reseta limSessao se mudou objetivo/nível
@@ -1712,8 +1782,31 @@ function irParaDivisao(){
   });
 }
 
-function gerarDivisoesBalanceadas(numDias){
-  const templates = getDivisoesDisponiveis(numDias);
+// Recalcula média/desvio de cada modelo de divisão já listado, sem regerar a
+// lista nem reordenar os cards — chamado toda vez que o volume por grupo muda
+// (Grupo 1 alimentando a Tela de Divisão ao vivo, sem precisar de um botão
+// "Avançar"). Reordenar aqui bagunçaria a posição dos cards enquanto o
+// personal ainda está ajustando os números.
+function recalcularCargasDivisoes(){
+  if(!_s3.divisaoOpcoes || !_s3.divisaoOpcoes.length) return;
+  const lim = _s3.limSessao || calcLimSessaoRecomendado();
+  _s3.divisaoOpcoes.forEach(op => {
+    const divisao = DIVISOES_TEMPLATES[op.chave];
+    if(!divisao) return;
+    const cargasSessao = divisao.default.map(sessaoGrupos =>
+      calcSeriesSessaoOuZerado(sessaoGrupos, lim, divisao).totalAlvo
+    );
+    const media  = cargasSessao.reduce((a,b) => a+b, 0) / cargasSessao.length;
+    const desvio = Math.sqrt(cargasSessao.reduce((s,v) => s + Math.pow(v-media,2), 0) / cargasSessao.length);
+    op.cargasSessao = cargasSessao;
+    op.media  = Math.round(media);
+    op.desvio = Math.round(desvio*10)/10;
+  });
+  renderTelaDivisao();
+}
+
+function gerarDivisoesBalanceadas(numDias, objetivo){
+  const templates = getDivisoesDisponiveis(numDias, objetivo || selectedObj || 'Saude');
   const lim = _s3.limSessao || calcLimSessaoRecomendado();
   return templates.map(op => {
     const divisao = DIVISOES_TEMPLATES[op.chave] || DIVISOES[numDias];
@@ -1969,6 +2062,15 @@ function renderTelaDivisao(){
   const LABEL = {};
   GRUPOS_MAPA.forEach(({id,label}) => { LABEL[id] = label; });
 
+  // Índice do menor desvio ATUAL — não é sempre o índice 0: a lista só é
+  // ordenada uma vez, na geração (gerarDivisoesBalanceadas). Depois disso o
+  // volume muda ao vivo (recalcularCargasDivisoes) sem reordenar os cards —
+  // pra não saltar a posição enquanto o personal ainda está ajustando — então
+  // o selo "EQUILIBRADO" precisa ser recalculado à parte, sempre no card que
+  // de fato tem o menor desvio no momento, mesmo que não seja mais o primeiro.
+  let idxEquilibrado = 0;
+  opcoes.forEach((op, i) => { if((op.desvio||0) < (opcoes[idxEquilibrado].desvio||0)) idxEquilibrado = i; });
+
   opcoes.forEach((op, i) => {
     const sel     = (i === _s3.divisaoIdx);
     const numDias = parseInt(val('pr-frequencia')||'3') || 3;
@@ -2011,7 +2113,7 @@ function renderTelaDivisao(){
       (gruposOff.length ? '<div style="margin-top:3px;font-size:10px;color:var(--amber)">⚠ Parcial: ' + gruposOff.map(g=>LABEL[g]||g).join(', ') + ' OFF</div>' : '');
 
     const badgeEl = document.createElement('div');
-    if(i===0) badgeEl.innerHTML = '<span style="font-size:10px;color:var(--accent);background:var(--accent-dim);padding:2px 7px;border-radius:4px;border:1px solid rgba(0,229,160,.3);font-weight:700">↑ EQUILIBRADO</span>';
+    if(i===idxEquilibrado) badgeEl.innerHTML = '<span style="font-size:10px;color:var(--accent);background:var(--accent-dim);padding:2px 7px;border-radius:4px;border:1px solid rgba(0,229,160,.3);font-weight:700">↑ EQUILIBRADO</span>';
 
     // Edit button for each divisão card — abre o formulário completo da biblioteca
     // (objetivo, nível, bloqueios, critérios). Pensado pra CATALOGAR um modelo formal.
@@ -2041,6 +2143,22 @@ function renderTelaDivisao(){
     });
 
     header.appendChild(radioEl); header.appendChild(infoEl); header.appendChild(badgeEl); header.appendChild(dcBtn); header.appendChild(editBtn);
+    // Excluir — só pra modelos que o personal pode de fato descartar: um modelo
+    // salvo na biblioteca (op._libId) ou uma "Divisão rápida" nunca salva
+    // (chave 'rapida-...'). Modelos padrão do sistema (PPL, Upper/Lower etc.,
+    // vêm do "mapa" fixo em getDivisoesDisponiveis) nunca têm esse botão.
+    if(podeExcluirDivisaoOpcao(op)){
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn btn-ghost btn-sm';
+      delBtn.style.cssText = 'font-size:11px;padding:3px 8px;flex-shrink:0;color:var(--red)';
+      delBtn.textContent = '🗑';
+      delBtn.title = op._libId != null ? 'Excluir este modelo da biblioteca' : 'Excluir esta divisão rápida (não salva)';
+      delBtn.addEventListener('click', function(e){
+        e.stopPropagation();
+        excluirDivisaoOpcaoStep2(i);
+      });
+      header.appendChild(delBtn);
+    }
     header.dataset.idx = i;
     header.addEventListener('click', function(){
       _s3.divisaoIdx = parseInt(this.dataset.idx);
@@ -2072,7 +2190,14 @@ function renderTelaDivisao(){
       minibars.appendChild(d);
     });
 
-    // Accordion toggle
+    // Accordion toggle — o estado aberto/fechado de cada card é guardado em
+    // _s3._divExpandido (por índice), não só em memória do DOM: sem isso, o
+    // card fechava sozinho toda vez que renderTelaDivisao() re-renderizava
+    // (ex: ajustar o volume, selecionar outro card) porque o estado inicial
+    // era decidido só por dcAtivo. Guardando à parte, vários cards podem
+    // ficar abertos ao mesmo tempo pra comparação, e o botão realmente fecha.
+    if(!_s3._divExpandido) _s3._divExpandido = {};
+    const expandido = dcAtivo || !!_s3._divExpandido[i];
     const accToggle = document.createElement('div');
     accToggle.style.cssText = 'border-top:1px solid var(--border)';
     const btnExpand = document.createElement('button');
@@ -2081,21 +2206,26 @@ function renderTelaDivisao(){
       'width:100%;padding:7px 14px;background:transparent;border:none;cursor:pointer;' +
       'text-align:left;display:flex;align-items:center;gap:6px;font-size:11px;' +
       'font-family:var(--mono);color:var(--text3);letter-spacing:.05em;font-weight:600';
-    btnExpand.innerHTML = '<span id="acc-arrow-' + i + '">' + (dcAtivo ? '▼' : '▶') + '</span> VER DISTRIBUIÇÃO DOS TREINOS';
+    btnExpand.innerHTML = '<span id="acc-arrow-' + i + '">' + (expandido ? '▼' : '▶') + '</span> '
+      + (expandido ? 'OCULTAR DISTRIBUIÇÃO DOS TREINOS' : 'VER DISTRIBUIÇÃO DOS TREINOS');
     btnExpand.addEventListener('click', function(e){
       e.stopPropagation();
-      const body  = $('acc-body-' + this.dataset.accIdx);
-      const arrow = $('acc-arrow-' + this.dataset.accIdx);
+      const idx = parseInt(this.dataset.accIdx);
+      const body  = $('acc-body-' + idx);
+      const arrow = $('acc-arrow-' + idx);
       const open  = body.style.display !== 'none';
-      body.style.display = open ? 'none' : 'block';
-      arrow.textContent  = open ? '▶' : '▼';
+      const novoAberto = !open;
+      _s3._divExpandido[idx] = novoAberto;
+      body.style.display = novoAberto ? 'block' : 'none';
+      arrow.textContent  = novoAberto ? '▼' : '▶';
+      this.lastChild.textContent = ' ' + (novoAberto ? 'OCULTAR DISTRIBUIÇÃO DOS TREINOS' : 'VER DISTRIBUIÇÃO DOS TREINOS');
     });
     accToggle.appendChild(btnExpand);
 
     // Accordion body
     const accBody = document.createElement('div');
     accBody.id = 'acc-body-' + i;
-    accBody.style.cssText = 'display:' + (dcAtivo ? 'block' : 'none') + ';padding:10px 12px;background:var(--bg4);border-top:1px solid var(--border)';
+    accBody.style.cssText = 'display:' + (expandido ? 'block' : 'none') + ';padding:10px 12px;background:var(--bg4);border-top:1px solid var(--border)';
 
     // ── Resumo semanal: soma de todas as sessões ────────────────────────────
     const volAtualPorGrupo = {};
@@ -2671,26 +2801,185 @@ function sincronizarFreqGrupos(){
 }
 
 // "← Distribuição" a partir do step 3 (Exercícios) — cruza de volta pro
-// step 2, direto na tela de divisão (já com a ficha montada preservada).
+// step 2, com Volume e Divisão (caixas empilhadas) visíveis de novo.
 function voltarDivisao(){
   goStep(2, true);
-  hide('s3-volume'); hide('s3-resumo');
-  show('s3-divisao');
-}
-
-function voltarVolume(){
-  hide('s3-divisao');
-  hide('s3-resumo');
   renderTabelaVolumeGlobal();
+  renderTelaDivisao();
   show('s3-volume');
+  show('s3-divisao');
+  show('s3-vd-btnrow');
 }
 
-// "← Ajustar Distribuição" a partir da tela de resumo — mesma etapa
-// (step 2), só troca qual sub-tela interna aparece.
-function voltarDivisaoDoResumo(){
-  hide('s3-resumo');
-  show('s3-divisao');
+// Colapsa/expande a caixa de Volume por Grupo Muscular (a tabela + legenda) —
+// os controles do cabeçalho (sér/exercício, reset) continuam sempre visíveis.
+function toggleVolumeCaixa(){
+  const body  = $('vol-collapse-body');
+  const icone = $('vol-collapse-icone');
+  if(!body) return;
+  const aberto = body.style.display !== 'none';
+  body.style.display = aberto ? 'none' : 'block';
+  if(icone) icone.style.transform = aberto ? 'rotate(-90deg)' : 'rotate(0deg)';
 }
+
+// Colapsa/expande a caixa de Modelo de Divisão inteira (info + modelos
+// disponíveis + cards) — mesmo padrão da caixa de Volume acima. O controle de
+// Limite séries/sessão fica no cabeçalho, sempre visível mesmo recolhida.
+function toggleDivisaoCaixa(){
+  const body  = $('div-collapse-body');
+  const icone = $('div-collapse-icone');
+  if(!body) return;
+  const aberto = body.style.display !== 'none';
+  body.style.display = aberto ? 'none' : 'block';
+  if(icone) icone.style.transform = aberto ? 'rotate(-90deg)' : 'rotate(0deg)';
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// GUARDA DE EDIÇÃO NÃO SALVA — "⚙ Ajustar sessões" no Modelo de Divisão
+// ══════════════════════════════════════════════════════════════════════════
+// Um card ajustado em "⚙ Ajustar sessões" aponta seu op.chave pra um clone de
+// trabalho (DIVISOES_TEMPLATES['edit-'+i], ver dcToggleEdicao) — isso só vira
+// permanente se o personal usar "Salvar como modelo". Até lá, op._chaveOriginal
+// fica marcado (é o rótulo de "existe ajuste não salvo aqui"); sair da tela,
+// trocar de aba ou fechar o navegador sem isso descartava o ajuste em silêncio.
+
+// Converte o id interno de grupo (GRUPOS_MAPA) pro nome usado no formulário de
+// Nova Divisão / editor de biblioteca (GRUPOS_MUSCULARES, com acentos) — as
+// duas listas de grupos do sistema não usam a mesma grafia.
+const GRUPOMAPA_PARA_MUSCULAR_DISPLAY = {
+  Peitoral:'Peitoral', Latissimo:'Latíssimo', Deltoide:'Deltóide', Triceps:'Tríceps',
+  Biceps:'Bíceps', Quadriceps:'Quadríceps', Isquiossurais:'Isquiossurais', Gluteos:'Glúteos',
+  Panturrilhas:'Panturrilhas', RetoAbdominal:'Reto Abdominal', Obliquo:'Oblíquo', Trapezio:'Trapézio',
+};
+
+function temEdicaoDivisaoNaoSalva(){
+  return !!(typeof _s3!=='undefined' && _s3 && _s3.divisaoOpcoes && _s3.divisaoOpcoes.some(op => op._chaveOriginal));
+}
+
+// ── Excluir modelo de divisão (biblioteca ou "rápida" não salva) ────────────
+// Nunca permite excluir modelo padrão do sistema (PPL, Upper/Lower etc.) —
+// só existem duas formas legítimas de exclusão: (1) modelo que o personal
+// salvou de verdade na biblioteca (op._libId setado por getDivisoesDisponiveis
+// ao mesclar LIBS.distribuicao), ou (2) uma "Divisão rápida" (chave
+// 'rapida-...') que nunca chegou a ser salva — só existe nesta sessão.
+function podeExcluirDivisaoOpcao(op){
+  return !!(op && (op._libId != null || String(op.chave||'').startsWith('rapida-')));
+}
+
+function excluirDivisaoOpcaoStep2(i){
+  const op = _s3.divisaoOpcoes[i]; if(!op) return;
+  if(!podeExcluirDivisaoOpcao(op)){
+    alert('Modelos padrão do sistema não podem ser excluídos.');
+    return;
+  }
+  if(op._libId != null){
+    // Modelo de verdade na biblioteca — reaproveita o fluxo de confirmação
+    // padrão (deletarItem/confirmarDeletar em biblioteca-exercicios.js), que já
+    // trata a exclusão definitiva do LIBS.distribuicao. O card some desta tela
+    // também, via hook em confirmarDeletar (não duplicar lógica de exclusão aqui).
+    deletarItem('distribuicao', op._libId);
+    return;
+  }
+  // Divisão rápida — nunca foi salva, então uma confirmação simples já basta.
+  if(!confirm('Excluir esta divisão rápida da lista? Ela não foi salva como modelo, então não pode ser recuperada.')) return;
+  removerDivisaoOpcaoDaLista(i);
+}
+
+// Remove um card da lista em memória (_s3.divisaoOpcoes) e reindexa os estados
+// que dependem de índice (accordion aberto/fechado, edição leve em andamento).
+function removerDivisaoOpcaoDaLista(i){
+  const op = _s3.divisaoOpcoes[i]; if(!op) return;
+  delete DIVISOES_TEMPLATES[op.chave];
+  _s3.divisaoOpcoes.splice(i, 1);
+  if(_s3._dcEditando === i) _s3._dcEditando = undefined;
+  else if(_s3._dcEditando > i) _s3._dcEditando--;
+  if(_s3.divisaoIdx >= _s3.divisaoOpcoes.length) _s3.divisaoIdx = Math.max(0, _s3.divisaoOpcoes.length - 1);
+  else if(_s3.divisaoIdx > i) _s3.divisaoIdx--;
+  const novoExpandido = {};
+  Object.keys(_s3._divExpandido || {}).forEach(k => {
+    const idx = parseInt(k);
+    if(idx < i) novoExpandido[idx] = _s3._divExpandido[k];
+    else if(idx > i) novoExpandido[idx-1] = _s3._divExpandido[k];
+  });
+  _s3._divExpandido = novoExpandido;
+  renderTelaDivisao();
+}
+
+// Reverte o(s) card(s) ajustado(s) pro chave original (template de sistema ou
+// modelo salvo) e descarta o clone de trabalho 'edit-i'.
+function descartarEdicaoDivisao(){
+  if(!_s3 || !_s3.divisaoOpcoes) return;
+  _s3.divisaoOpcoes.forEach((op, i) => {
+    if(op._chaveOriginal){
+      delete DIVISOES_TEMPLATES['edit-' + i];
+      op.chave = op._chaveOriginal;
+      delete op._chaveOriginal;
+    }
+  });
+  _s3._dcEditando = undefined;
+  recalcularCargasDivisoes();
+}
+
+// Ponto de saída genérico: qualquer navegação que abandone a tela de
+// Distribuição (voltar, trocar de aba, ir pra lista) passa por aqui. Sem
+// ajuste pendente, executa direto; com ajuste pendente, pergunta antes.
+let _pendingNavAposDescarte = null;
+
+function confirmarSairEdicaoDivisao(fn){
+  if(!temEdicaoDivisaoNaoSalva()){ fn(); return; }
+  _pendingNavAposDescarte = fn;
+  $('modal-edicao-divisao')?.classList.remove('hidden');
+}
+
+function modalDivisaoCancelar(){
+  $('modal-edicao-divisao')?.classList.add('hidden');
+  _pendingNavAposDescarte = null;
+}
+
+function modalDivisaoDescartar(){
+  descartarEdicaoDivisao();
+  $('modal-edicao-divisao')?.classList.add('hidden');
+  const fn = _pendingNavAposDescarte; _pendingNavAposDescarte = null;
+  if(fn) fn();
+}
+
+// "Salvar como modelo" — abre o formulário completo de Nova Divisão já
+// pré-preenchido com as sessões exatamente como foram ajustadas em "⚙ Ajustar
+// sessões", pra virar um modelo reutilizável de verdade em vez de se perder.
+// A navegação pendente (_pendingNavAposDescarte) só é retomada depois que o
+// personal efetivamente salvar no modal (ver hook em biblioteca-exercicios.js)
+// — cancelar o modal deixa o personal de volta na tela de Distribuição.
+function modalDivisaoSalvar(){
+  $('modal-edicao-divisao')?.classList.add('hidden');
+  const idx = (_s3.divisaoOpcoes||[]).findIndex(op => op._chaveOriginal);
+  if(idx < 0) return;
+  const op = _s3.divisaoOpcoes[idx];
+  const divisaoEditada = DIVISOES_TEMPLATES[op.chave];
+  abrirNovaDivisaoCompleta();
+  if(divisaoEditada){
+    const dias = divisaoEditada.default.map((sessaoGrupos, i) => ({
+      label: (divisaoEditada.label && divisaoEditada.label[i]) || ('Treino ' + String.fromCharCode(65+i)),
+      grupos: sessaoGrupos.map(x => GRUPOMAPA_PARA_MUSCULAR_DISPLAY[x.g]).filter(Boolean),
+      enfase: '',
+    }));
+    const diasWrap = $('distrib-dias-wrap');
+    if(diasWrap) diasWrap.innerHTML = '';
+    dias.forEach(dia => addDiaDistrib(dia));
+    const nomeEl = $('distrib-nome');
+    if(nomeEl && !nomeEl.value) nomeEl.value = (op.nome||'').replace(/^★\s*/, '') + ' (ajustado)';
+  }
+}
+
+// Fechar a guia/navegador com um ajuste pendente também avisa — esse é o
+// único ponto que o app não controla via modal próprio (é o navegador quem
+// mostra o aviso nativo de "sair da página?").
+window.addEventListener('beforeunload', function(e){
+  if(temEdicaoDivisaoNaoSalva()){
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
+  }
+});
 
 // ── TELA C: FICHA ─────────────────────────────────────────────────────────────
 
@@ -2775,6 +3064,10 @@ Eles não serão incluídos na ficha. Continuar assim mesmo?`)) return false;
     divisaoChave: op.chave,
     volPorGrupo: _s3.volPorGrupo,
     sessionDataByTreino,
+    // Fase F — tempo estimado de treino: tempo disponível por sessão, usado
+    // pra estimar o quão "apertada" a sessão vai ficar (ver `aperto` em
+    // gerarFichaMotorV2) e favorecer exercícios mais eficientes quando necessário.
+    duracaoDisponivel: parseInt(val('pr-duracao')) || parseInt(s.anamnese?.duracao) || 60,
   };
 
   _s3.fichaObj    = gerarFichaMotorV2(params);
@@ -2796,31 +3089,25 @@ Eles não serão incluídos na ficha. Continuar assim mesmo?`)) return false;
   return true;
 }
 
-// Preenche o resumo da tela "Modelo de Treino Pronto" (visão geral antes de
-// avançar pra seleção de exercícios).
-function renderResumoDistribuicao(){
-  const op  = _s3.divisaoOpcoes[_s3.divisaoIdx] || _s3.divisaoOpcoes[0];
-  const lbl = $('resumo-divisao-label'); if(lbl) lbl.textContent = op ? op.nome : '—';
-  const vol = $('resumo-vol-label');
-  if(vol) vol.textContent = _s3.seriesPorEx + ' sér/ex · desvio ±' + (op && op.desvio !== undefined ? op.desvio : 0) + 's';
-  renderPreviewVolSemanal('resumo-vol-semanal');
-}
-
-// Botão "Ver Resumo →" da tela de Divisão (step 2) — monta a ficha e mostra
-// a visão geral antes de avançar de fato pro step de Exercícios.
+// Botão "Avançar para Exercícios →" da tela de Distribuição (step 2) — monta
+// a ficha a partir do volume+divisão escolhidos e já cruza direto pro step de
+// Exercícios (a tela de resumo intermediária foi removida: escolhido o
+// modelo, não há necessidade de mais uma tela de confirmação no meio).
 function montarFichaModelo(){
   if(!construirFichaModelo()) return;
-  renderResumoDistribuicao();
-  hide('s3-volume'); hide('s3-divisao');
-  show('s3-resumo');
+  avancarParaExercicios();
 }
 
-// Botão "Avançar para Exercícios →" da tela de resumo — cruza de fato pro
-// step 3, renderizando a ficha de exercícios já montada.
+// Cruza de fato pro step 3, renderizando a ficha de exercícios já montada.
 function avancarParaExercicios(){
   renderFichaTabs();
   renderPainelAssimetrias();
   renderPreviewVolSemanal();
+  // 's3-ficha' fica com display:none sempre que a tela de Volume é (re)inicializada
+  // (ver iniciarTelaVolume) — sem reexibir aqui, a Tela C escondia isso por trás de
+  // si mesma; removida a Tela C (ver montarFichaModelo), ninguém mais tornava esta
+  // div visível de novo e o Step 3 aparecia em branco.
+  show('s3-ficha');
   goStep(3);
 }
 
@@ -2942,25 +3229,82 @@ function renderTreinoAtivo(){
   ).join(' &nbsp;·&nbsp; ');
   const totalSessao = Object.values(volSessao).reduce((a,b)=>a+b,0);
 
+  // Fase F — tempo estimado de treino: informativo, ao lado do total de séries.
+  const tempoEstimado = calcularTempoEstimadoTreino(treino);
+  const duracaoAlvoMin = f.duracaoAlvoMin || 60;
+  const difMin = tempoEstimado.minutos - duracaoAlvoMin;
+  const corTempo = Math.abs(difMin) <= 5 ? 'var(--text3)' : (difMin > 0 ? '#ffb400' : 'var(--text3)');
+  const tempoHtml = `<span style="font-family:var(--mono);font-size:10px;color:${corTempo}" title="Estimativa — soma tempo de execução e descanso dos exercícios desta sessão">⏱ ~${tempoEstimado.minutos} min (alvo: ${duracaoAlvoMin} min)${difMin>5?` — ${difMin} min acima do combinado`:''}</span>`;
+
+  // ── Bloco de Aquecimento — RASCUNHO ──────────────────────────────────────
+  // Gerado automaticamente a partir das articulações dos exercícios principais
+  // desta sessão (ver gerarAquecimentoArticular). Fica separado, ANTES da parte
+  // principal — não conta série/volume, é preparação. Fichas antigas (salvas
+  // antes desse recurso existir) não têm `.aquecimento` — trata como vazio.
+  const aquecimento = treino.aquecimento || [];
+  const aquecimentoHtml = aquecimento.length ? `
+    <div style="margin-bottom:14px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">🔥 Aquecimento — específico da sessão (rascunho)</div>
+        <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="regerarAquecimentoTreinoAtivo()">🔄 Sortear de novo</button>
+      </div>
+      <table class="treino-table" style="margin:0">
+        <thead><tr><th>Articulação</th><th>Mobilização</th><th>Duração</th></tr></thead>
+        <tbody>
+          ${aquecimento.map(a => `<tr>
+            <td style="font-size:11px;color:var(--text3)">${a.artic}</td>
+            <td style="font-size:12px">${a.nome}${a.url?` <a href="${a.url}" target="_blank" style="font-size:9px;color:var(--accent);text-decoration:none" title="Ver vídeo">▶</a>`:''}</td>
+            <td style="font-size:11px;color:var(--text2)">${a.duracao}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : `
+    <div style="margin-bottom:14px;font-size:11px;color:var(--text3);font-style:italic">Sem aquecimento sugerido para esta sessão (nenhuma articulação identificada ou sem mobilização compatível nos filtros atuais).</div>`;
+
   cont.innerHTML = `
+    ${aquecimentoHtml}
     <div style="padding:8px 0 6px;border-bottom:1px solid var(--border);margin-bottom:8px">
-      <div style="font-size:11px;color:var(--text2);margin-bottom:4px">${treino.label} — <strong style="color:var(--accent)">${totalSessao} séries totais</strong></div>
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">💪 Parte Principal</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:4px">${treino.label} — <strong style="color:var(--accent)">${totalSessao} séries totais</strong> &nbsp;·&nbsp; ${tempoHtml}</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">${resumo}</div>
     </div>
     <table class="treino-table">
-      <thead><tr><th>#</th><th>Músculo</th><th>Porção</th><th>Exercício <span style="color:var(--text3);font-weight:400;font-size:10px">(↕ trocar)</span></th><th>Séries</th><th>Reps</th><th>Intensidade</th><th>Intervalo</th></tr></thead>
+      <thead><tr><th>#</th><th>Músculo</th><th>Porção</th><th>Exercício <span style="color:var(--text3);font-weight:400;font-size:10px">(↕ trocar)</span></th><th>Séries</th><th>Reps</th><th>Intensidade</th><th>Intervalo</th><th>Bi/Tri-set</th></tr></thead>
       <tbody id="tbody-treino"></tbody>
     </table>`;
 
   const tbody = $('tbody-treino');
+  const gruposInfo = _computarGruposExercicios(treino.exercicios);
   treino.exercicios.forEach((ex, rowIdx) => {
     const tr = document.createElement('tr');
+    const info = gruposInfo[rowIdx];
+    // Grupo (bi-set/tri-set): borda colorida na lateral esquerda da linha marca
+    // visualmente que ela pertence a um bloco vinculado, igual ao badge 1/2, 2/2
+    // que o FitCpx real mostra — sem isso não dá pra registrar treino com
+    // exercícios combinados (o personal digita tudo separado e perde a intenção).
+    if(info) tr.style.borderLeft = '3px solid ' + _corGrupo(info.grupoIdx);
+    const badgeGrupo = info
+      ? `<span style="font-size:9px;font-weight:700;color:#fff;background:${_corGrupo(info.grupoIdx)};padding:1px 6px;border-radius:10px;margin-right:5px">${info.pos}/${info.total}</span>`
+      : '';
     // Nota clínica inline se existir
     const notaHtml = ex.nota_clinica
       ? `<div style="font-size:10px;color:#ffb400;margin-top:3px;line-height:1.4">${ex.nota_clinica}</div>`
       : '';
+    const podeSubir = rowIdx > 0;
+    const podeDescer = rowIdx < treino.exercicios.length - 1;
+    const vinculadoProximo = !!ex._vinculadoProximo;
     tr.innerHTML = `
-      <td style="font-family:var(--mono);color:var(--text3)">${rowIdx+1}</td>
+      <td style="font-family:var(--mono);color:var(--text3)">
+        <div style="display:flex;align-items:center;gap:2px">
+          ${badgeGrupo}<span>${rowIdx+1}</span>
+        </div>
+        <div style="display:flex;gap:2px;margin-top:3px">
+          <button class="tbtn" title="Subir" style="font-size:9px;padding:1px 5px;${podeSubir?'':'opacity:.3;cursor:default'}"
+            ${podeSubir?`onclick="moverExercicio(${_s3.treinoAtivo},${rowIdx},-1)"`:'disabled'}>▲</button>
+          <button class="tbtn" title="Descer" style="font-size:9px;padding:1px 5px;${podeDescer?'':'opacity:.3;cursor:default'}"
+            ${podeDescer?`onclick="moverExercicio(${_s3.treinoAtivo},${rowIdx},1)"`:'disabled'}>▼</button>
+        </div>
+      </td>
       <td style="font-size:11px">${ex.musculo.replace('Isquiossurais','Isquio').replace('RetoAbdominal','Abd').replace('Panturrilhas','Pant')}</td>
       <td style="font-size:10px;color:var(--text3)">${ex.porcao||'—'}</td>
       <td>
@@ -2982,9 +3326,122 @@ function renderTreinoAtivo(){
         onfocus="this.style.borderColor='var(--accent2)';this.style.background='var(--bg4)'"
         onblur="this.style.borderColor='transparent';this.style.background='transparent';atualizarCampo(${_s3.treinoAtivo},${rowIdx},'reps',this.value)"></td>
       <td style="font-size:11px;color:var(--text2)">${ex.intensidade}</td>
-      <td style="font-size:11px;color:var(--text2)">${ex.intervalo}</td>`;
+      <td style="font-size:11px;color:var(--text2)">${ex.intervalo}</td>
+      <td>
+        ${podeDescer ? `<button class="tbtn" style="font-size:9px;padding:2px 7px;white-space:nowrap;${vinculadoProximo?'background:var(--accent-dim);color:var(--accent);border-color:var(--accent)':''}"
+            title="${vinculadoProximo?'Desagrupar do exercício de baixo':'Agrupar com o exercício de baixo (bi-set/tri-set)'}"
+            onclick="toggleVinculoProximo(${_s3.treinoAtivo},${rowIdx})">${vinculadoProximo?'✂ Desagrupar':'🔗 Agrupar ↓'}</button>` : ''}
+      </td>`;
     tbody.appendChild(tr);
   });
+}
+
+// ── Agrupamento de exercícios (bi-set / tri-set) — RASCUNHO ────────────────
+// Modelo: cada exercício pode ter `_vinculadoProximo=true`, o que significa
+// "este exercício forma um bloco combinado com o PRÓXIMO da lista". Um grupo
+// é, portanto, uma sequência contígua de exercícios encadeados assim — não
+// existe um "id de grupo" salvo à parte, é só a posição + o flag, igual à
+// forma como o personal pensa: "esses dois eu fiz um atrás do outro, sem
+// descanso entre eles". Mover um exercício de posição (▲▼) pode alterar a
+// que grupo ele pertence, já que o vínculo é sempre com quem está imediatamente
+// ao lado — comportamento aceito por ora, é o suficiente pra um rascunho.
+function _computarGruposExercicios(exercicios){
+  const membroInfo = {};
+  let grupoAtual = null, grupoIdx = -1;
+  exercicios.forEach((ex, i) => {
+    if(grupoAtual === null) grupoAtual = [i];
+    else grupoAtual.push(i);
+    const ultimoDoTreino = i === exercicios.length - 1;
+    if(!ex._vinculadoProximo || ultimoDoTreino){
+      if(grupoAtual.length > 1){
+        grupoIdx++;
+        grupoAtual.forEach((idx, pos) => { membroInfo[idx] = { pos: pos+1, total: grupoAtual.length, grupoIdx }; });
+      }
+      grupoAtual = null;
+    }
+  });
+  return membroInfo;
+}
+
+const _CORES_GRUPO = ['#f5a623','#4a90d9','#9b59b6','#2ecc71','#e74c3c','#1abc9c'];
+function _corGrupo(idx){ return _CORES_GRUPO[idx % _CORES_GRUPO.length]; }
+
+// ── Tempo estimado de treino (Fase F) ───────────────────────────────────────
+// Calcula com os exercícios JÁ escolhidos (usa `_tempoRep`/`_uni` guardados na
+// geração — ver gerarFichaMotorV2). Não precisa ser exato, precisa ser útil:
+// dá uma referência de quanto a sessão deve durar frente ao tempo disponível
+// que o aluno informou.
+
+// Extrai a média de uma faixa tipo "10–15", "60–90s", "15+" (abre mão do "+").
+function parseFaixaMedia(str){
+  if(!str) return 0;
+  const nums = String(str).replace(',', '.').match(/[\d.]+/g);
+  if(!nums || !nums.length) return 0;
+  const valores = nums.map(Number);
+  return valores.reduce((a,b)=>a+b, 0) / valores.length;
+}
+
+const TEMPO_ISOMETRICO_PADRAO_SEG = 60; // "usa 60 segundos por enquanto, depois refino" — banco ainda não tem seg/rep pra isométricos
+const TEMPO_TROCA_UNILATERAL_SEG  = 30; // fixo, interno — não aparece pro personal/aluno, só entra no cálculo
+
+// Segundos de execução de UMA série do exercício (reps × seg/rep, ou o padrão
+// isométrico; soma o tempo de troca de lado se for unilateral).
+function _tempoExecucaoPorSerie(ex){
+  const reps = parseFaixaMedia(ex.reps);
+  const tempoRep = String(ex._tempoRep||'');
+  let t;
+  if(tempoRep.toLowerCase().includes('isomet')){
+    t = TEMPO_ISOMETRICO_PADRAO_SEG;
+  } else {
+    const segPorRep = parseFloat(tempoRep) || 4; // fallback se o exercício não tiver `tempo` cadastrado
+    t = reps * segPorRep;
+  }
+  if(ex._uni) t += TEMPO_TROCA_UNILATERAL_SEG;
+  return t;
+}
+
+// Tempo total estimado do treino, em segundos e minutos. Bi-set/tri-set
+// (`_vinculadoProximo`, ver _computarGruposExercicios): soma a execução de
+// cada exercício do bloco, mas o descanso só entra UMA vez por rodada, ao
+// final do bloco — não descanso individual por exercício.
+function calcularTempoEstimadoTreino(treino){
+  if(!treino?.exercicios?.length) return { segundos: 0, minutos: 0 };
+  const gruposInfo = _computarGruposExercicios(treino.exercicios);
+  let totalSegundos = 0;
+  let i = 0;
+  while(i < treino.exercicios.length){
+    const info = gruposInfo[i];
+    if(info && info.pos === 1){
+      const membros = treino.exercicios.slice(i, i + info.total);
+      const series = Math.max(...membros.map(m => parseInt(m.series) || 1));
+      const tempoExecucaoRodada = membros.reduce((acc, m) => acc + _tempoExecucaoPorSerie(m), 0);
+      const descansoMedio = membros.reduce((acc, m) => acc + parseFaixaMedia(m.intervalo), 0) / membros.length;
+      totalSegundos += series * tempoExecucaoRodada + Math.max(0, series - 1) * descansoMedio;
+      i += info.total;
+    } else {
+      const ex = treino.exercicios[i];
+      const series = parseInt(ex.series) || 1;
+      totalSegundos += series * _tempoExecucaoPorSerie(ex) + Math.max(0, series - 1) * parseFaixaMedia(ex.intervalo);
+      i++;
+    }
+  }
+  return { segundos: Math.round(totalSegundos), minutos: Math.round(totalSegundos / 60) };
+}
+
+function toggleVinculoProximo(ti, rowIdx){
+  const treino = _s3.fichaObj?.treinos[ti]; if(!treino) return;
+  const ex = treino.exercicios[rowIdx]; if(!ex || rowIdx >= treino.exercicios.length-1) return;
+  ex._vinculadoProximo = !ex._vinculadoProximo;
+  renderTreinoAtivo();
+}
+
+function moverExercicio(ti, rowIdx, direcao){
+  const treino = _s3.fichaObj?.treinos[ti]; if(!treino) return;
+  const alvo = rowIdx + direcao;
+  if(alvo < 0 || alvo >= treino.exercicios.length) return;
+  const arr = treino.exercicios;
+  [arr[rowIdx], arr[alvo]] = [arr[alvo], arr[rowIdx]];
+  renderTreinoAtivo();
 }
 
 function abrirListaExercicios(ti, rowIdx, musculo, porcaoStr){
@@ -3079,13 +3536,48 @@ function abrirListaExercicios(ti, rowIdx, musculo, porcaoStr){
 }
 
 function selecionarExercicio(ti, rowIdx, nome, listId){
-  if(_s3.fichaObj?.treinos[ti]) _s3.fichaObj.treinos[ti].exercicios[rowIdx].nome = nome;
+  const treino = _s3.fichaObj?.treinos[ti];
+  if(treino){
+    treino.exercicios[rowIdx].nome = nome;
+    // Trocar o exercício principal pode trocar a articulação envolvida (ex:
+    // trocar "Supino Reto" por "Crucifixo" muda de Cotovelo+Ombro pra só Ombro)
+    // — sem atualizar _artic e regerar o aquecimento, ele ficaria desatualizado
+    // em relação ao que a sessão de fato vai treinar.
+    const dbEx = DB_EXERCICIOS.find(e => e.n === nome);
+    treino.exercicios[rowIdx]._artic = dbEx?.artic || '';
+    regerarAquecimentoTreino(ti);
+    renderTreinoAtivo(); // re-render completo: precisa refletir o aquecimento recalculado, não só o nome trocado
+    return;
+  }
   const el = $(`ex-nome-${ti}-${rowIdx}`); if(el) el.textContent = nome;
   const listEl = $(listId); if(listEl) listEl.classList.add('hidden');
 }
 
 function atualizarCampo(ti, rowIdx, campo, valor){
   if(_s3.fichaObj?.treinos[ti]) _s3.fichaObj.treinos[ti].exercicios[rowIdx][campo] = valor;
+}
+
+// Recalcula o aquecimento de UMA sessão a partir das articulações dos
+// exercícios principais que estão nela agora (usado após trocar um exercício
+// pelo ↕, ou pelo botão "Sortear de novo" no bloco de aquecimento).
+function regerarAquecimentoTreino(ti){
+  const f = _s3.fichaObj; if(!f || !f.treinos[ti]) return;
+  const treino = f.treinos[ti];
+  const s = getActive();
+  const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
+  const local = val('pr-local') || s?.anamnese?.local || 'academia';
+  const resistPermitida = LOCAL_RESIST[local] || LOCAL_RESIST['academia'];
+  const contraindicacoes = [
+    s?.perfil?.lesoes || '', s?.perfil?.condicoes || '', val('pr-evitar') || s?.anamnese?.preferencias || '',
+  ].filter(Boolean).join(' ');
+  const articsTreino = new Set();
+  treino.exercicios.forEach(ex => { (ex._artic||'').split('|').forEach(a => { a = a.trim(); if(a) articsTreino.add(a); }); });
+  treino.aquecimento = gerarAquecimentoArticular(articsTreino, resistPermitida, nivel, contraindicacoes);
+}
+
+function regerarAquecimentoTreinoAtivo(){
+  regerarAquecimentoTreino(_s3.treinoAtivo);
+  renderTreinoAtivo();
 }
 
 function iniciarConfiguracaoFicha(){ iniciarTelaVolume(); }
@@ -3495,10 +3987,59 @@ function lerSessionDataDOM(cardIdx, ti, sessaoGrupos){
   return sessionData;
 }
 
+// ── Aquecimento automático (rascunho — a refinar) ───────────────────────────
+// Ideia central: o aquecimento não é genérico, é ESPECÍFICO da sessão — olha
+// pra articulação (campo `artic` do banco: Ombro, Quadril, Joelho, Cotovelo,
+// Lombar, etc.) de cada exercício PRINCIPAL já escolhido pra essa sessão, e
+// busca 1 mobilização por articulação envolvida, dentro do mesmo pool de
+// recursos/nível/contraindicação do treino principal — usa exatamente os 36
+// exercícios tp:"Mobilidade" do banco, que hoje já existem mas são excluídos
+// da parte principal (ver _NOM_EXCLUI_PRESCRICAO) e não eram usados em lugar
+// nenhum. Não força mobilização se não existir nenhuma pra aquela articulação
+// dentro dos filtros — melhor um aquecimento mais curto do que forçar um
+// exercício fora de nível/recurso/contraindicação.
+const ORDEM_ARTIC_AQUECIMENTO = ['Lombar','Quadril','Joelho','Tornozelo','Arco Plantar','Tórax','Escápula','Ombro','Cotovelo','Punho'];
+const _TETO_ITENS_AQUECIMENTO = 5; // teto propositalmente baixo — aquecimento não pode virar treino paralelo
+
+function gerarAquecimentoArticular(articsTreino, resistPermitida, nivel, contraindicacoes){
+  if(!articsTreino || !articsTreino.size) return [];
+  const usados = new Set();
+  const itens  = [];
+  const ordenadas = [...articsTreino].sort((a,b) => ORDEM_ARTIC_AQUECIMENTO.indexOf(a) - ORDEM_ARTIC_AQUECIMENTO.indexOf(b));
+
+  ordenadas.forEach(artic => {
+    let pool = DB_EXERCICIOS.filter(e =>
+      e.tp === 'Mobilidade' &&
+      (e.artic||'').split('|').map(x=>x.trim()).includes(artic) &&
+      resistPermitida.includes(e.r) &&
+      nivelOk(e.nv, nivelLabel(nivel)) &&
+      !usados.has(e.n)
+    );
+    if(contraindicacoes){
+      const semCi = pool.filter(e => {
+        if(!e.ci) return true;
+        const ciEx = e.ci.toLowerCase(), ciAluno = contraindicacoes.toLowerCase();
+        return !ciEx.split(' | ').some(c => ciAluno.includes(c.split(' ')[0].toLowerCase()));
+      });
+      if(semCi.length) pool = semCi;
+    }
+    if(!pool.length) return; // sem mobilização disponível pra essa articulação nesses filtros — pula
+    const ex = pool[motorRand(0, pool.length-1)];
+    usados.add(ex.n);
+    itens.push({
+      artic, nome: ex.n,
+      duracao: ex.tempo || '30–45s',
+      url: ex.url || '',
+    });
+  });
+
+  return itens.slice(0, _TETO_ITENS_AQUECIMENTO);
+}
+
 function gerarFichaMotorV2(params){
   const {objetivo, nivel, frequencia, local, lesoes, preferencias,
          seriesPorEx, volPorGrupo, divisaoChave,
-         sessionDataByTreino} = params;  // ← sessionDataByTreino: [{g,numEx,serEx}][] por sessão
+         sessionDataByTreino, duracaoDisponivel} = params;  // ← sessionDataByTreino: [{g,numEx,serEx}][] por sessão
 
   const numDias = parseInt(frequencia)||3;
   const divisao = (divisaoChave !== undefined && DIVISOES_TEMPLATES[divisaoChave])
@@ -3611,6 +4152,26 @@ function gerarFichaMotorV2(params){
       }
     }
 
+    // ── Fase F — tempo estimado de treino: estima o quanto essa sessão vai
+    // apertar em relação ao tempo disponível, ANTES de escolher os exercícios
+    // (só temos reps/descanso de referência do objetivo nesse ponto, ainda não
+    // o segundo/repetição real de cada exercício — por isso usa uma média
+    // aproximada só pra essa estimativa prévia; o cálculo fino, com os
+    // exercícios já escolhidos, é feito depois em calcularTempoEstimadoTreino).
+    const SEG_POR_REP_ESTIMATIVA = 4.5; // média aproximada do banco (4s/rep é o valor mais comum)
+    const repsMedioObjetivo      = parseFaixaMedia(repsRef);
+    const descansoMedioObjetivo  = parseFaixaMedia(descRef);
+    const totalSeriesPlanejadas    = sessaoGrupos.reduce((acc, sd) => acc + sd.serSessao, 0);
+    const totalExerciciosPlanejados = sessaoGrupos.reduce((acc, sd) => acc + sd.numEx, 0);
+    const segundosPlanejados = totalSeriesPlanejadas*(repsMedioObjetivo*SEG_POR_REP_ESTIMATIVA)
+      + Math.max(0, totalSeriesPlanejadas-totalExerciciosPlanejados)*descansoMedioObjetivo;
+    const segundosDisponiveis = (duracaoDisponivel||60)*60;
+    // "Aperto": 0 = sessão cabe tranquila no tempo disponível; cresce conforme o
+    // planejado passa do disponível. Usado como bônus contínuo (não por limiar)
+    // pra exercícios eficientes (multiarticular + atinge grupo secundário) no
+    // sorteio — quanto mais apertada a sessão, mais o motor favorece eficiência.
+    const aperto = segundosDisponiveis>0 ? Math.max(0, (segundosPlanejados-segundosDisponiveis)/segundosDisponiveis) : 0;
+
     // ── Gerar exercícios respeitando sessaoGrupos ──────────────────────────
     sessaoGrupos.forEach(({ g: musculo, numEx, serEx: seriesFinal }) => {
       if(numEx < 1) return;
@@ -3624,7 +4185,7 @@ function gerarFichaMotorV2(params){
         if(pool.length === 0) pool = filtrarExerciciosFicha(musculo, null, resistPermitida, nivel, contraindicacoes);
         if(pool.length === 0) continue; // sem exercício disponível — pular
 
-        const ex = sortearExercicioC4(pool, jaUsados, musculo);
+        const ex = sortearExercicioC4(pool, jaUsados, musculo, exerciciosTreino, aperto);
         if(ex){
           jaUsados.add(ex.n);
           const nota = gerarNotaAssimetria(musculo);
@@ -3633,19 +4194,37 @@ function gerarFichaMotorV2(params){
             series: seriesFinal, reps: repsRef,
             intensidade: intensRef, intervalo: descRef,
             nota_clinica: nota || '',
+            _artic: ex.artic || '', // guarda a(s) articulação(ões) do exercício escolhido —
+            // não aparece na ficha, é só o insumo pra montar o aquecimento da sessão logo abaixo.
+            _pad: ex.pad || '', // insumo pro bônus de variedade por tipo de movimentação (Fase C) — não aparece na ficha.
+            _tempoRep: ex.tempo || '', _uni: ex.uni || 0, // insumo pro cálculo de tempo estimado (Fase F) — não aparece na ficha.
           });
         }
       }
     });
 
+    // ── Aquecimento automático da sessão ────────────────────────────────────
+    // Gerado A PARTIR dos exercícios principais já escolhidos acima — não é um
+    // bloco fixo por grupo muscular, é literalmente "quais articulações essa
+    // sessão específica vai exigir", então muda sessão a sessão e aluno a aluno.
+    // Fica de fora de `exercicios` (não soma séries, não entra no cálculo de
+    // volume/MEV-MAV-MRV) — é preparação, não é a parte que ele registra carga.
+    const articsTreino = new Set();
+    exerciciosTreino.forEach(ex => {
+      (ex._artic||'').split('|').forEach(a => { a = a.trim(); if(a) articsTreino.add(a); });
+    });
+    const aquecimento = gerarAquecimentoArticular(articsTreino, resistPermitida, nivel, contraindicacoes);
+
     treinos.push({
       label: divisao.label[ti] || `Treino ${String.fromCharCode(65+ti)}`,
+      aquecimento,
       exercicios: exerciciosTreino,
     });
   });
 
   return { objetivo, nivel, frequencia, local, seriesPorEx,
-           treinos, dataGeracao: new Date().toLocaleDateString('pt-BR') };
+           treinos, dataGeracao: new Date().toLocaleDateString('pt-BR'),
+           duracaoAlvoMin: duracaoDisponivel||60 };
 }
 
 

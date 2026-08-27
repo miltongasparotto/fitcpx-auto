@@ -12,9 +12,22 @@ try{
   }
 }catch(e){}
 
+// Contas de teste (Amanda/Thaís) são sempre a versão mais atual do código —
+// sem isso, o registro salvo no localStorage de uma sessão anterior nunca era
+// SUBSTITUÍDO, só ACUMULADO: toda vez que a página recarregava, este arquivo
+// empurrava outra cópia com o MESMO id (9999999999/9999999998) pra dentro de
+// `students`; assim que qualquer ação disparava um save (que persiste o array
+// inteiro em localStorage['acm-students']), as cópias idênticas iam junto —
+// foi isso que deixou a Thaís triplicada. Antes de semear de novo, remove
+// qualquer entrada existente com o mesmo id, garantindo só 1 cópia sempre.
+function _removerAlunoTeste(id){
+  students = students.filter(s => s.id !== id);
+}
+
 // ─── ALUNO DE TESTE ───────────────────────────────────────────────────────────
 (function(){
   if(!location.search.includes('demo')) return; // seed só roda com ?demo na URL
+  _removerAlunoTeste(9999999999);
   const amanda = {
     id: 9999999999,
     perfil: {
@@ -34,10 +47,10 @@ try{
       obs_clinicas: 'Histórico de dor lombar leve em 2022 — resolvida sem cirurgia. Médico liberou treino sem restrições desde jan/2023. Nega alergias e doenças crônicas.',
       menstrual: 'Regular',
       contraceptivo: 'Pílula',
-      gestacao: 'Não',
-      trimestre: '',
     },
     anamnese: {
+      gestacao: 'Não',
+      trimestre: '',
       // Anamnese — histórico
       nivel: 'Inte',
       tempo: '2–4 anos',
@@ -152,22 +165,24 @@ try{
     reavaliacao: null,
   };
   students.push(amanda);
+  try{ localStorage.setItem('acm-students', JSON.stringify(students)); }catch(e){}
   renderStudentList();
   navGo('alunos');
 })();
 
 // ─── ALUNA DE TESTE 2 — DADOS REAIS (Thaís) ────────────────────────────────────
 (function(){
+  _removerAlunoTeste(9999999998);
   const thais = {
     id: 9999999998,
     perfil: {
       nome: 'Thaís Helena Leão Feitosa',
-      nascimento: '1997-04-10',
+      nascimento: '1997-04-03', // dado real (print cadastro FitCpx) — corrigido, estava 04-10
       sexo: 'F',
       atividade: 'moderadamente_ativo',
       profissao: '',
       tempo_sentado: '',
-      whatsapp: '',
+      whatsapp: '(44) 99880-0175', // dado real (print cadastro FitCpx)
       modalidade: 'presencial',
       liberacao: 'sim',
       condicoes: 'Nenhuma',
@@ -177,11 +192,14 @@ try{
       obs_clinicas: '',
       menstrual: 'Regular',
       contraceptivo: '',
-      gestacao: 'Não',
-      trimestre: '',
     },
     anamnese: {
-      nivel: 'Inte',
+      gestacao: 'Não',
+      trimestre: '',
+      // nivel/frequencia atualizados pro dado real do último treino registrado
+      // (14/06/2026, ficha "06 - Julho") — mais recente que a avaliação de
+      // 06/06/2026 usada antes, que ainda estava com nível Intermediário/4x.
+      nivel: 'Avan',
       tempo: '',
       consistencia: '',
       modalidades: 'Musculação',
@@ -193,7 +211,7 @@ try{
       pretreino: '',
       objetivo_ef: 'Composição corporal',
       objetivo_sec: '',
-      frequencia: '4x',
+      frequencia: '5x',
       duracao: '60',
       horario: '',
       local: 'academia',
@@ -210,13 +228,14 @@ try{
       mmuscular: '21.6',
       osso: '8.8',
       residual: '28.0',
-      cintura: '',
-      quadril: '',
-      abdomen: '',
-      braco_d: '', braco_e: '', braco_d_cont: '', braco_e_cont: '',
-      coxa_d: '', coxa_e: '', pant_d: '', pant_e: '',
+      // Perimetria (cm) — dado real (print avaliação FitCpx, 06/06/2026)
+      cintura: '66.00',
+      quadril: '97.50',
+      abdomen: '75.60',
+      braco_d: '24.60', braco_e: '25.70', braco_d_cont: '28.40', braco_e_cont: '28.00',
+      coxa_d: '58.40', coxa_e: '57.30', pant_d: '36.10', pant_e: '35.80',
       fc: '',
-      obs_antro: 'Dado real — avaliação de bioimpedância (relatório externo, 06/06/2026). IMC 24,1.',
+      obs_antro: 'Dado real — avaliação de bioimpedância (relatório externo/FitCpx, 06/06/2026). IMC 24,1.',
 
       fms_ohsa: '', fms_ohsa_flag: '',
       fms_slsq: '', fms_slsq_flag: '',
@@ -242,18 +261,186 @@ try{
       ombro_flex_d: '', ombro_flex_e: '', quadril_rot_d: '', quadril_rot_e: '',
       obs_flex: '',
     },
-    treinos: [],
+    // Histórico de avaliações antropométricas — é ISSO que a tela "Avaliação →
+    // Antropométrica" lista (s.avaliacoesAntro), não os campos soltos em
+    // anamnese/reavaliacao acima (que só espelham o ponto mais recente pros
+    // motores de cálculo). Sem isso a lista aparecia vazia mesmo com os dados
+    // preenchidos. Dois pontos reais (prints FitCpx): 28/02/2026 e 06/06/2026.
+    // Campos calculados (imc/magra/residual/rcq) computados com a mesma fórmula
+    // do app (Peso−Gordura−Músculo−Óssea pra residual, já que Músculo foi
+    // medido nos dois pontos — bate com o print real). Pescoço/Tórax/Antebraço
+    // ficaram de fora por não terem campo próprio na ficha.
+    avaliacoesAntro: [
+      {
+        id: 1740718800000,
+        data_avaliacao: '2026-02-28',
+        responsavel: 'Milton Gasparotto Junior',
+        peso: '61.60', altura: '160',
+        mgorda: '15.1', gordura: '24.5',
+        mmuscular: '21.8', mmuscular_pct: '35.4',
+        osso: '8.8', osso_pct: '14.3',
+        ombro: '100.60', cintura: '65.80', abdomen: '80.00', quadril: '100.40',
+        braco_d: '24.70', braco_e: '25.20', braco_d_cont: '28.00', braco_e_cont: '28.20',
+        coxa_d: '58.90', coxa_e: '59.00', pant_d: '36.50', pant_e: '36.50',
+        obs_antro: 'Dado real — avaliação de bioimpedância (relatório externo/FitCpx, 28/02/2026).',
+        imc: '24.1', imc_class: 'Peso normal',
+        magra: '46.5', magra_pct: '75.5',
+        residual: '15.9', residual_pct: '25.8',
+        rcq: '0.66', rcq_class: 'Baixo risco',
+      },
+      {
+        id: 1749168000000,
+        data_avaliacao: '2026-06-06',
+        responsavel: 'Milton Gasparotto Junior',
+        peso: '61.80', altura: '160',
+        mgorda: '14.0', gordura: '22.6',
+        mmuscular: '21.6', mmuscular_pct: '35.0',
+        osso: '8.8', osso_pct: '14.2',
+        ombro: '99.90', cintura: '66.00', abdomen: '75.60', quadril: '97.50',
+        braco_d: '24.60', braco_e: '25.70', braco_d_cont: '28.40', braco_e_cont: '28.00',
+        coxa_d: '58.40', coxa_e: '57.30', pant_d: '36.10', pant_e: '35.80',
+        obs_antro: 'Dado real — avaliação de bioimpedância (relatório externo/FitCpx, 06/06/2026).',
+        imc: '24.1', imc_class: 'Peso normal',
+        magra: '47.8', magra_pct: '77.3',
+        residual: '17.4', residual_pct: '28.2',
+        rcq: '0.68', rcq_class: 'Baixo risco',
+      },
+    ],
+    // Último treino registrado — dado real (print FitCpx, ficha "06 - Julho",
+    // aprovada 14/06/2026 por Milton Gasparotto Junior). Carga/reps/intervalo
+    // abaixo são os valores REGISTRADOS de fato, não uma sugestão do motor —
+    // por isso 'intensidade'/'intervalo' aqui guardam carga em kg e descanso
+    // em segundos (dado real), em vez da faixa %1RM que o motor de sugestão usa.
+    treinos: [{
+      id: 1749907687000,
+      status: 'aprovado',
+      objetivo: 'Hip',
+      nivel: 'Avan',
+      frequencia: '5x',
+      modelo: '★ 06 - Julho (dado real — FitCpx)',
+      obs: 'Importado de prints do FitCpx real pra testar o sistema com dado fiel. Professor: Milton Gasparotto Junior.',
+      treino: '',
+      dataCriacao: '14/06/2026',
+      dataAprovacao: '14/06/2026',
+      _fichaObj: {
+        objetivo: 'Hip', nivel: 'Avan', frequencia: '5x', local: 'academia', seriesPorEx: 4,
+        dataGeracao: '14/06/2026',
+        treinos: [
+          { label: 'Treino A — Costas + Ombros', exercicios: [
+            { musculo:'Latíssimo', porcao:'Geral', nome:'Pull Down com Pegada Pronada em Pé - Cross', series:4, reps:'12', intensidade:'20kg', intervalo:'80s' },
+            { musculo:'Latíssimo', porcao:'Geral', nome:'Remada Inclinada com Pegada Aberta Pronada - Barra', series:4, reps:'12', intensidade:'20kg', intervalo:'80s' },
+            { musculo:'Latíssimo', porcao:'Geral', nome:'Puxada Alta com Pegada Fechada Neutra', series:4, reps:'12', intensidade:'30kg', intervalo:'80s' },
+            { musculo:'Deltóide', porcao:'Posterior', nome:'Crucifixo Invertido - Voador', series:4, reps:'12', intensidade:'15kg', intervalo:'80s' },
+            { musculo:'Deltóide', porcao:'Anterior', nome:'Elevação Frontal em Pé com Pegada Neutra - Halter', series:4, reps:'12', intensidade:'12kg', intervalo:'80s' },
+            { musculo:'Deltóide', porcao:'Medial', nome:'Elevação Lateral em Pé - Halter', series:4, reps:'12', intensidade:'14kg', intervalo:'80s' },
+          ]},
+          { label: 'Treino B — Posterior de Coxa + Abdômen', exercicios: [
+            { musculo:'Isquiossurais', porcao:'Geral', nome:'Flexão de Joelho Deitado - Mesa Flexora', series:6, reps:'12', intensidade:'20kg', intervalo:'80s' },
+            { musculo:'Glúteos', porcao:'Geral', nome:'Ponte com Pés no Banco', series:2, reps:'12', intensidade:'0kg', intervalo:'80s' },
+            { musculo:'Isquiossurais', porcao:'Geral', nome:'Stiff Unilateral - Halter Duplo', series:4, reps:'12', intensidade:'14kg', intervalo:'80s' },
+            { musculo:'Reto Abdominal', porcao:'Superior', nome:'Abdominal Supra Curto - Anilha', series:4, reps:'20', intensidade:'5kg', intervalo:'80s' },
+            { musculo:'Reto Abdominal', porcao:'Geral', nome:'Abdominal Militar', series:4, reps:'30', intensidade:'0kg', intervalo:'80s' },
+          ]},
+          { label: 'Treino C — Quadríceps + Oblíquos', exercicios: [
+            { musculo:'Quadríceps', porcao:'Geral', nome:'Agachamento - Smith', series:4, reps:'12', intensidade:'30kg', intervalo:'80s' },
+            { musculo:'Quadríceps', porcao:'Geral', nome:'Agachamento - Hack', series:4, reps:'12', intensidade:'40kg', intervalo:'80s' },
+            { musculo:'Quadríceps', porcao:'Geral', nome:'Leg Press 45°', series:4, reps:'12', intensidade:'120kg', intervalo:'80s' },
+            { musculo:'Quadríceps', porcao:'Geral', nome:'Extensão de Joelho Sentado - Cadeira Extensora', series:4, reps:'12', intensidade:'70kg', intervalo:'80s' },
+            { musculo:'Oblíquo', porcao:'Geral', nome:'Abdominal Militar V com Toque nos Pés Alternado', series:4, reps:'12', intensidade:'0kg', intervalo:'80s' },
+            { musculo:'Oblíquo', porcao:'Geral', nome:'Prancha Lateral', series:4, reps:'60', intensidade:'0kg', intervalo:'80s' },
+          ]},
+          { label: 'Treino D — Ombro + Peitoral + Bíceps + Tríceps', exercicios: [
+            { musculo:'Deltóide', porcao:'Geral', nome:'Desenvolvimento Pronado em Pé - Barra', series:4, reps:'12', intensidade:'16kg', intervalo:'80s' },
+            { musculo:'Peitoral', porcao:'Geral', nome:'Crucifixo Reto - Voador', series:4, reps:'12', intensidade:'30kg', intervalo:'80s' },
+            { musculo:'Bíceps', porcao:'Geral', nome:'Rosca Direta com Giro em Pé - Halter', series:3, reps:'12', intensidade:'16kg', intervalo:'80s' },
+            { musculo:'Bíceps', porcao:'Geral', nome:'Rosca Direta com Pegada Supinada em Pé - Cross e Barra', series:3, reps:'12', intensidade:'20kg', intervalo:'80s' },
+            { musculo:'Tríceps', porcao:'Geral', nome:'Tríceps Francês em Pé - Halter', series:3, reps:'12', intensidade:'10kg', intervalo:'80s' },
+            { musculo:'Tríceps', porcao:'Geral', nome:'Tríceps Polia Alta com Pegada Pronada - Cross e Barra V', series:3, reps:'12', intensidade:'30kg', intervalo:'80s' },
+          ]},
+          { label: 'Treino E — Glúteos', exercicios: [
+            { musculo:'Glúteos', porcao:'Geral', nome:'Agachamento Sumo - Halter', series:4, reps:'12', intensidade:'30kg', intervalo:'80s' },
+            { musculo:'Glúteos', porcao:'Geral', nome:'Afundo Búlgaro - Halter Duplo', series:4, reps:'12', intensidade:'16kg', intervalo:'80s' },
+            { musculo:'Glúteos', porcao:'Geral', nome:'Elevação de Quadril - Gaiola para Elevação Pélvica', series:4, reps:'12', intensidade:'80kg', intervalo:'80s' },
+            { musculo:'Glúteos', porcao:'Médio', nome:'Abdução de Quadril em Pé - Cross', series:4, reps:'12', intensidade:'10kg', intervalo:'80s' },
+            { musculo:'Glúteos', porcao:'Médio', nome:'Abdução de Quadril Sentado com Tronco Alto - Cadeira Abdutora', series:4, reps:'12', intensidade:'35kg', intervalo:'80s' },
+          ]},
+        ],
+      },
+    }, {
+      // Segundo treino real registrado — dado real (print FitCpx, ficha
+      // "03 - MAR - FEM.INT.5X.HIP", criada 17/02/2026, anterior ao "06 -
+      // Julho" acima). Trazido pra testar comparação entre dois treinos reais
+      // da mesma aluna. Aqui os exercícios vêm com bi-set/tri-set REAIS
+      // (badges 1/2·2/2 e 1/3·2/3·3/3 no print) — reproduzidos via
+      // `_vinculadoProximo` no exercício que abre cada bloco.
+      id: 1771286373000,
+      status: 'aprovado',
+      objetivo: 'Hip',
+      nivel: 'Inte',
+      frequencia: '5x',
+      modelo: '★ 03 - MAR - FEM.INT.5X.HIP (dado real — FitCpx)',
+      obs: 'Importado de prints do FitCpx real pra testar o sistema com dado fiel, incluindo agrupamentos bi-set/tri-set. Professor: Milton Gasparotto Junior.',
+      treino: '',
+      dataCriacao: '17/02/2026',
+      dataAprovacao: '17/02/2026',
+      _fichaObj: {
+        objetivo: 'Hip', nivel: 'Inte', frequencia: '5x', local: 'academia', seriesPorEx: 4,
+        dataGeracao: '17/02/2026',
+        treinos: [
+          { label: 'Treino A — Glúteos + P. Coxa', exercicios: [
+            { musculo:'Glúteos', porcao:'Geral', nome:'Elevação de Quadril no Banco - Barra e Mini Band', series:4, reps:'12', intensidade:'80kg', intervalo:'80s', _vinculadoProximo:true },
+            { musculo:'Glúteos', porcao:'Médio', nome:'Abdução de Quadril Sentado - Mini Band', series:4, reps:'20', intensidade:'30kg', intervalo:'80s' },
+            { musculo:'Glúteos', porcao:'Geral', nome:'Afundo Búlgaro - Halter Duplo', series:4, reps:'12', intensidade:'20kg', intervalo:'80s', _vinculadoProximo:true },
+            { musculo:'Isquiossurais', porcao:'Geral', nome:'Stiff Unilateral - Halter Duplo', series:4, reps:'15', intensidade:'14kg', intervalo:'80s' },
+            { musculo:'Isquiossurais', porcao:'Geral', nome:'Flexão de Joelho Deitado - Mesa Flexora', series:4, reps:'12', intensidade:'25kg', intervalo:'80s', _vinculadoProximo:true },
+            { musculo:'Glúteos', porcao:'Geral', nome:'Ponte Isométrica com Pés no Banco', series:4, reps:'45', intensidade:'0kg', intervalo:'80s' },
+          ]},
+          { label: 'Treino B — Ombros + Abdômen', exercicios: [
+            { musculo:'Deltóide', porcao:'Geral', nome:'Desenvolvimento Pronado Sentado - Barra', series:4, reps:'12', intensidade:'14kg', intervalo:'80s', _vinculadoProximo:true },
+            { musculo:'Reto Abdominal', porcao:'Inferior', nome:'Abdominal Infra Pernas Estendidas com Apoio', series:4, reps:'20', intensidade:'0kg', intervalo:'80s' },
+            { musculo:'Deltóide', porcao:'Medial', nome:'Elevação Lateral em Pé - Halter', series:4, reps:'12', intensidade:'14kg', intervalo:'80s', _vinculadoProximo:true },
+            { musculo:'Reto Abdominal', porcao:'Superior', nome:'Abdominal Supra Curto com Braços Alongados', series:4, reps:'20', intensidade:'0kg', intervalo:'80s' },
+            { musculo:'Deltóide', porcao:'Anterior', nome:'Elevação Frontal em Pé com Pegada Neutra - Halter', series:4, reps:'12', intensidade:'10kg', intervalo:'80s', _vinculadoProximo:true },
+            { musculo:'Reto Abdominal', porcao:'Geral', nome:'Canoinha Isométrica Estendida', series:4, reps:'90', intensidade:'0kg', intervalo:'80s' },
+          ]},
+          { label: 'Treino C — Quadríceps + Panturrilha', exercicios: [
+            { musculo:'Quadríceps', porcao:'Geral', nome:'Agachamento - Barra', series:4, reps:'12', intensidade:'34kg', intervalo:'80s', _vinculadoProximo:true },
+            { musculo:'Quadríceps', porcao:'Geral', nome:'Recuo Alternado - Halter', series:4, reps:'24', intensidade:'14kg', intervalo:'80s' },
+            { musculo:'Quadríceps', porcao:'Geral', nome:'Extensão de Joelho Sentado - Cadeira Extensora', series:4, reps:'12', intensidade:'70kg', intervalo:'80s' },
+            { musculo:'Quadríceps', porcao:'Geral', nome:'Passada - Halter', series:4, reps:'24', intensidade:'14kg', intervalo:'80s' },
+            { musculo:'Panturrilhas', porcao:'Geral', nome:'Elevação de Panturrilha - Hack', series:4, reps:'20', intensidade:'100kg', intervalo:'80s' },
+          ]},
+          { label: 'Treino D — Costas + Bíceps', exercicios: [
+            { musculo:'Latíssimo', porcao:'Geral', nome:'Puxada Alta com Pegada Fechada Neutra', series:4, reps:'12', intensidade:'25kg', intervalo:'80s', _vinculadoProximo:true },
+            { musculo:'Bíceps', porcao:'Geral', nome:'Rosca Direta com Pegada Supinada em Pé - Barra', series:4, reps:'12', intensidade:'6kg', intervalo:'80s' },
+            { musculo:'Latíssimo', porcao:'Geral', nome:'Remada Baixa na Polia com Pegada Fechada Neutra', series:4, reps:'12', intensidade:'25kg', intervalo:'80s', _vinculadoProximo:true },
+            { musculo:'Bíceps', porcao:'Geral', nome:'Rosca Direta com Giro Sentado - Halter', series:4, reps:'12', intensidade:'12kg', intervalo:'80s' },
+            { musculo:'Latíssimo', porcao:'Geral', nome:'Pull Down com Pegada Neutra em Pé - Super Band', series:4, reps:'15', intensidade:'10kg', intervalo:'80s', _vinculadoProximo:true },
+            { musculo:'Deltóide', porcao:'Posterior', nome:'Crucifixo Invertido - Voador', series:4, reps:'15', intensidade:'15kg', intervalo:'80s' },
+          ]},
+          { label: 'Treino E — Inferior', exercicios: [
+            { musculo:'Glúteos', porcao:'Geral', nome:'Coice em Quatro Apoios com Caneleira', series:4, reps:'20', intensidade:'10kg', intervalo:'80s', _vinculadoProximo:true },
+            { musculo:'Quadríceps', porcao:'Geral', nome:'Extensão de Joelho Sentado - Cadeira Extensora', series:4, reps:'20', intensidade:'70kg', intervalo:'80s', _vinculadoProximo:true },
+            { musculo:'Isquiossurais', porcao:'Geral', nome:'Flexão de Joelho Deitado - Mesa Flexora', series:4, reps:'20', intensidade:'25kg', intervalo:'80s' },
+            { musculo:'Quadríceps', porcao:'Geral', nome:'Passada - Halter', series:4, reps:'20', intensidade:'14kg', intervalo:'80s', _vinculadoProximo:true },
+            { musculo:'Glúteos', porcao:'Geral', nome:'Agachamento Sumo - Halter', series:4, reps:'20', intensidade:'30kg', intervalo:'80s', _vinculadoProximo:true },
+            { musculo:'Quadríceps', porcao:'Geral', nome:'Agachamento Frontal - Halter Simples', series:4, reps:'20', intensidade:'16kg', intervalo:'80s' },
+          ]},
+        ],
+      },
+    }],
     // Reavaliação — ponto anterior real (28/02/2026), pra comparação de ciclo
     reavaliacao: {
       peso: '61.60',
       gordura: '24.5',
       magra: '46.5',
-      cintura: '',
-      analise: 'Avaliação anterior real (28/02/2026): peso 61,60kg, gordura 24,5% (15,1kg), músculo 35,4% (21,8kg), óssea 14,3% (8,8kg), residual 25,8% (15,9kg). Terceiro ponto real disponível: 29/11/2025 — peso 60,40kg, gordura 23,7% (14,3kg), músculo 35,4% (21,4kg), óssea 14,6% (8,8kg), residual 26,2% (15,8kg).',
+      cintura: '65.80', // dado real (print avaliação FitCpx, 28/02/2026)
+      analise: 'Avaliação anterior real (28/02/2026): peso 61,60kg, gordura 24,5% (15,1kg), músculo 35,4% (21,8kg), óssea 14,3% (8,8kg), residual 25,8% (15,9kg), MCM 75,5% (46,5kg). Perimetria: abdômen 80,00 | quadril 100,40cm; braço 24,70/25,20 (D/E) | braço cont. 28,00/28,20 | coxa 58,90/59,00 | panturrilha 36,50/36,50. Terceiro ponto real disponível: 29/11/2025 — peso 60,40kg, gordura 23,7% (14,3kg), músculo 35,4% (21,4kg), óssea 14,6% (8,8kg), residual 26,2% (15,8kg).',
       decisao: '',
       data: '28/02/2026',
     },
   };
   students.push(thais);
+  try{ localStorage.setItem('acm-students', JSON.stringify(students)); }catch(e){}
   renderStudentList();
 })();
