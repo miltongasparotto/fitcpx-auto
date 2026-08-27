@@ -1,77 +1,9 @@
-// ── Login / Logout ────────────────────────────────────────────────────────────
-
-function iniciarLoginGoogle(){
-  if(!GAUTH.tokenClient){
-    // Scripts ainda carregando — aguardar
-    setSyncStatus('Aguardando Google...', false);
-    setTimeout(()=>{
-      if(GAUTH.tokenClient) iniciarLoginGoogle();
-      else setSyncStatus('Erro ao carregar Google. Recarregue a página.', true);
-    }, 2000);
-    return;
-  }
-  GAUTH.tokenClient.requestAccessToken({ prompt: 'consent' });
-}
-
-async function gauthTokenCallback(resp){
-  if(resp.error){ setSyncStatus('Erro no login: '+resp.error, true); return; }
-
-  GAUTH.token = resp.access_token;
-  gapi.client.setToken({ access_token: resp.access_token });
-
-  // Buscar perfil do usuário
-  try {
-    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: 'Bearer ' + resp.access_token }
-    });
-    GAUTH.user = await r.json();
-  } catch(e){ GAUTH.user = { name: 'Usuário', picture: '' }; }
-
-  // Salvar sessão
-  localStorage.setItem('fitcpx_gauth', JSON.stringify({
-    token: GAUTH.token,
-    user: GAUTH.user,
-    fileId: GAUTH.driveFileId,
-  }));
-
-  gauthAtualizarUI(true);
-  setSyncStatus('Logado! Buscando dados...', false);
-  await carregarDoDrive(false);
-}
-
-function deslogarGoogle(){
-  if(GAUTH.token) google.accounts.oauth2.revoke(GAUTH.token);
-  GAUTH.token = null;
-  GAUTH.user = null;
-  GAUTH.driveFileId = null;
-  localStorage.removeItem('fitcpx_gauth');
-  gauthAtualizarUI(false);
-  setSyncStatus('', false);
-}
-
-function gauthAtualizarUI(logado){
-  const btnLogin    = $('btn-google-login');
-  const userInfo    = $('google-user-info');
-  const cloudActs   = $('cloud-actions');
-
-  if(logado && GAUTH.user){
-    if(btnLogin)  btnLogin.style.display  = 'none';
-    if(userInfo)  {
-      userInfo.style.display = 'flex';
-      const av = $('google-avatar');
-      const nm = $('google-username');
-      if(av) av.src = GAUTH.user.picture || '';
-      if(nm) nm.textContent = GAUTH.user.given_name || GAUTH.user.name || 'Usuário';
-    }
-    if(cloudActs) cloudActs.style.display = 'flex';
-  } else {
-    if(btnLogin)  btnLogin.style.display  = 'flex';
-    if(userInfo)  userInfo.style.display  = 'none';
-    if(cloudActs) cloudActs.style.display = 'none';
-  }
-}
-
-// ── Sincronização com Drive ───────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+// UTILITÁRIOS DE UI + NAVEGAÇÃO — FitCPX Auto
+// (arquivo mantém o nome legado "integracao-google.js"; a integração com o
+//  Google Drive foi removida em 2026-08-27 — ver item 25 do doc de decisões.
+//  setSyncStatus() segue usada pelo Supabase em js/supabase-auth.js.)
+// ══════════════════════════════════════════════════════════════════════════
 
 function setSyncStatus(msg, erro){
   const el = $('sync-status');
@@ -80,137 +12,6 @@ function setSyncStatus(msg, erro){
   el.style.display = 'block';
   el.style.color = erro ? '#ff5050' : 'var(--text3)';
   el.textContent = msg;
-}
-
-async function buscarFileIdNoDrive(){
-  // Procura o arquivo fitcpx-dados.json no appDataFolder do Drive
-  const resp = await fetch(
-    `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${GAUTH.DRIVE_FILE_NAME}'&fields=files(id,name,modifiedTime)`,
-    { headers: { Authorization: 'Bearer ' + GAUTH.token } }
-  );
-  const data = await resp.json();
-  if(data.files && data.files.length > 0){
-    return data.files[0].id;
-  }
-  return null;
-}
-
-async function carregarDoDrive(silencioso){
-  if(!GAUTH.token){ if(!silencioso) setSyncStatus('Faça login primeiro.', true); return; }
-  try {
-    if(!silencioso) setSyncStatus('☁ Buscando dados no Drive...', false);
-
-    // Encontrar arquivo
-    let fileId = GAUTH.driveFileId || await buscarFileIdNoDrive();
-
-    if(!fileId){
-      if(!silencioso) setSyncStatus('Nenhum dado no Drive ainda. Salve para criar.', false);
-      setTimeout(()=>setSyncStatus('',false), 3000);
-      return;
-    }
-
-    GAUTH.driveFileId = fileId;
-    salvarSessaoLocal();
-
-    // Baixar conteúdo
-    const resp = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-      { headers: { Authorization: 'Bearer ' + GAUTH.token } }
-    );
-    const dados = await resp.json();
-
-    // Merge: carregar alunos do Drive
-    if(dados.students && Array.isArray(dados.students)){
-      students = dados.students;
-      activeId = dados.activeId || (students[0]?.id ?? null);
-      renderStudentList();
-      if(activeId) loadStudentData(getActive());
-      setSyncStatus('✓ Dados carregados do Drive', false);
-      setTimeout(()=>setSyncStatus('',false), 3000);
-    } else {
-      if(!silencioso){ setSyncStatus('Arquivo encontrado mas sem dados válidos.', false); setTimeout(()=>setSyncStatus('',false),3000); }
-    }
-  } catch(e){
-    if(!silencioso){ setSyncStatus('Erro ao carregar: '+e.message, true); setTimeout(()=>setSyncStatus('',false),5000); }
-  }
-}
-
-async function salvarNoDrive(){
-  if(!GAUTH.token){ setSyncStatus('Faça login para salvar no Drive.', true); return; }
-
-  const btnDrive = $('btn-drive-save');
-  if(btnDrive) btnDrive.textContent = '☁ Salvando...';
-  setSyncStatus('☁ Salvando no Drive...', false);
-
-  try {
-    const payload = JSON.stringify({
-      students,
-      activeId,
-      versao: '1.3',
-      salvoEm: new Date().toISOString(),
-    });
-
-    let fileId = GAUTH.driveFileId || await buscarFileIdNoDrive();
-
-    if(fileId){
-      // Atualizar arquivo existente (PATCH)
-      await fetch(
-        `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
-        {
-          method: 'PATCH',
-          headers: {
-            Authorization: 'Bearer ' + GAUTH.token,
-            'Content-Type': 'application/json',
-          },
-          body: payload,
-        }
-      );
-    } else {
-      // Criar arquivo novo no appDataFolder
-      const meta = JSON.stringify({
-        name: GAUTH.DRIVE_FILE_NAME,
-        parents: ['appDataFolder'],
-      });
-      const form = new FormData();
-      form.append('metadata', new Blob([meta], {type:'application/json'}));
-      form.append('file', new Blob([payload], {type:'application/json'}));
-      const resp = await fetch(
-        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-        { method: 'POST', headers: { Authorization: 'Bearer ' + GAUTH.token }, body: form }
-      );
-      const data = await resp.json();
-      fileId = data.id;
-      GAUTH.driveFileId = fileId;
-      salvarSessaoLocal();
-    }
-
-    const agora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
-    setSyncStatus(`✓ Salvo no Drive às ${agora}`, false);
-    setTimeout(()=>setSyncStatus('',false), 4000);
-  } catch(e){
-    setSyncStatus('Erro ao salvar: '+e.message, true);
-  } finally {
-    if(btnDrive) btnDrive.textContent = '☁ Drive';
-  }
-}
-
-function salvarSessaoLocal(){
-  localStorage.setItem('fitcpx_gauth', JSON.stringify({
-    token: GAUTH.token,
-    user: GAUTH.user,
-    fileId: GAUTH.driveFileId,
-  }));
-}
-
-// ── Auto-save: salva no Drive 3s após qualquer alteração ─────────────────────
-let _driveAutoSaveTimer = null;
-function driveAutoSave(){
-  if(!GAUTH.token) return;
-  clearTimeout(_driveAutoSaveTimer);
-  _driveAutoSaveTimer = setTimeout(()=>{
-    setSyncStatus('☁ Sincronizando...', false);
-    salvarNoDrive();
-  }, 3000);
 }
 
 // ── Exportar / Importar JSON local ───────────────────────────────────────────
@@ -254,8 +55,8 @@ function importarJSON(event){
       if(activeId) loadStudentData(getActive());
       setSyncStatus(`✓ ${qtd} aluno(s) importado(s)`, false);
       setTimeout(()=>setSyncStatus('',false), 4000);
-      // Se logado, salvar no Drive também
-      if(GAUTH.token) salvarNoDrive();
+      // Mantém dados sincronizados com o Supabase após importar
+      supaAutoSave();
     } catch(err){
       alert('Erro ao ler o arquivo: ' + err.message);
     }
@@ -263,27 +64,6 @@ function importarJSON(event){
   reader.readAsText(file);
   event.target.value = ''; // reset input
 }
-
-// ── Inicializar quando os scripts do Google carregarem ───────────────────────
-
-window.addEventListener('load', ()=>{
-  // Aguardar scripts externos
-  let tentativas = 0;
-  const aguardar = setInterval(()=>{
-    tentativas++;
-    const gapiOk = typeof gapi !== 'undefined';
-    const gisOk  = typeof google !== 'undefined' && google.accounts;
-    if(gapiOk || gisOk) gauthInit();
-    if((gapiOk && gisOk) || tentativas > 20) clearInterval(aguardar);
-  }, 300);
-});
-
-// Hook: chamar driveAutoSave após cada alteração de dado
-const _origOnPerfilChange    = onPerfilChange;
-const _origOnAnamneseChange  = onAnamneseChange;
-onPerfilChange   = function(){ _origOnPerfilChange();   driveAutoSave(); };
-onAnamneseChange = function(){ _origOnAnamneseChange(); driveAutoSave(); };
-
 
 // ══════════════════════════════════════════════════════════════════════════
 // NAVEGAÇÃO LATERAL — telas de biblioteca

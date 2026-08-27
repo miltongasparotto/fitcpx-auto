@@ -4489,7 +4489,7 @@ function editarPeriod(id){
 }
 
 // ── Salvar modelo ─────────────────────────────────────────────────────────────
-function salvarPeriod(){
+function coletarPeriodDoForm(){
   const idVal = $('period-edit-id').value;
   const getChecked = (sel) => [...document.querySelectorAll(sel+' input[type=checkbox]:checked')].map(c=>c.value);
   const cbFreq = ['2x','3x','4x','5x','6x'].filter(f => {
@@ -4525,7 +4525,7 @@ function salvarPeriod(){
     acao:     r.querySelector('.regra-acao')?.value.trim()||'',
   })).filter(r => r.criterio);
 
-  const novo = {
+  return {
     id: idVal ? parseInt(idVal) : Date.now(),
     nome:          $('period-nome').value.trim()||'Modelo sem nome',
     sigla:         $('period-sigla').value,
@@ -4552,18 +4552,21 @@ function salvarPeriod(){
     criterios:     $('period-criterios').value.trim(),
     acionamentos:  $('period-acionamentos').value.trim(),
   };
-
+}
+function gravarPeriod(novo){
   if(!LIBS.periodizacao) LIBS.periodizacao = [];
-  if(idVal){
-    const idx = LIBS.periodizacao.findIndex(x=>x.id===novo.id);
-    if(idx>=0) LIBS.periodizacao[idx]=novo; else LIBS.periodizacao.push(novo);
-  } else {
-    LIBS.periodizacao.push(novo);
-  }
+  const idx = LIBS.periodizacao.findIndex(x=>x.id===novo.id);
+  if(idx>=0) LIBS.periodizacao[idx]=novo; else LIBS.periodizacao.push(novo);
   saveLibs(LIBS);
+}
+function salvarPeriod(){
+  gravarPeriod(coletarPeriodDoForm());
   fecharModalPeriod();
   renderPeriod();
 }
+// Autosave — mesmo padrão dos modais de Biblioteca. Cobre também as linhas de
+// mesociclo/semana e regras adicionadas dinamicamente (delegação de evento).
+attachAutosave('modal-period', coletarPeriodDoForm, (novo) => { $('period-edit-id').value = novo.id; gravarPeriod(novo); });
 
 // ══ Acompanhamento de Carga ═══════════════════════════════════════════════════
 
@@ -4705,83 +4708,33 @@ function calcularProgressao(){
   $('acomp-progressao-wrap').style.display='block';
 }
 
-function salvarAcompPeriod(){
+function coletarAcompDoForm(){
   const sId     = parseInt($('acomp-aluno-sel').value)||0;
   const periodId= parseInt($('acomp-period-sel').value)||0;
-  const s = students.find(x=>x.id===sId);
-  if(!s||!periodId){ alert('Selecione aluno e modelo antes de salvar.'); return; }
+  if(!sId || !periodId) return null; // ainda não dá pra identificar o registro
   const cargas = [...$('acomp-cargas-body').querySelectorAll('div')].map(r=>({
     ex:    r.querySelector('.acomp-ex')?.value.trim()||'',
     carga: parseFloat(r.querySelector('.acomp-carga')?.value)||0,
     reps:  parseInt(r.querySelector('.acomp-reps')?.value)||0,
   })).filter(c=>c.ex);
+  return {sId, periodId, cargas};
+}
+function gravarAcomp(dado){
+  const s = students.find(x=>x.id===dado.sId); if(!s) return;
   if(!s.acomp_period) s.acomp_period={};
-  s.acomp_period[periodId] = { cargas, data: new Date().toLocaleDateString('pt-BR') };
+  s.acomp_period[dado.periodId] = { cargas: dado.cargas, data: new Date().toLocaleDateString('pt-BR') };
   // Não usa saveStudent(): s vem do dropdown (acomp-aluno-sel), pode ser diferente
   // do aluno ativo (activeId) na tela principal, ou não haver nenhum ativo agora.
   try{ localStorage.setItem('acm-students', JSON.stringify(students)); }catch(e){}
-  driveAutoSave();
+  supaAutoSave();
+}
+function salvarAcompPeriod(){
+  const dado = coletarAcompDoForm();
+  if(!dado){ alert('Selecione aluno e modelo antes de salvar.'); return; }
+  gravarAcomp(dado);
   $('modal-acomp-period').classList.add('hidden');
   alert('Acompanhamento salvo! ✓');
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-// GOOGLE AUTH + DRIVE — FitCPX Auto
-// ══════════════════════════════════════════════════════════════════════════════
-
-const GAUTH = {
-  CLIENT_ID: '175753605665-qgci1gfo3o4co7r9j76voh94pmlq4klo.apps.googleusercontent.com',
-  SCOPES: 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file',
-  DRIVE_FILE_NAME: 'fitcpx-dados.json',
-  DRIVE_FOLDER: 'FitCPX-Auto',
-
-  // Estado
-  token: null,
-  user: null,
-  driveFileId: null,
-  tokenClient: null,
-  gapiReady: false,
-  gisReady: false,
-};
-
-// ── Inicialização ─────────────────────────────────────────────────────────────
-
-function gauthInit(){
-  // Carregar GAPI
-  if(typeof gapi !== 'undefined'){
-    gapi.load('client', async ()=>{
-      await gapi.client.init({});
-      GAUTH.gapiReady = true;
-      gauthTentarAutoLogin();
-    });
-  }
-
-  // Configurar token client (GIS)
-  if(typeof google !== 'undefined' && google.accounts){
-    GAUTH.tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: GAUTH.CLIENT_ID,
-      scope: GAUTH.SCOPES,
-      callback: gauthTokenCallback,
-    });
-    GAUTH.gisReady = true;
-    gauthTentarAutoLogin();
-  }
-}
-
-function gauthTentarAutoLogin(){
-  // Tenta restaurar sessão salva no localStorage
-  const salvo = localStorage.getItem('fitcpx_gauth');
-  if(!salvo) return;
-  try {
-    const { token, user, fileId } = JSON.parse(salvo);
-    if(token && user){
-      GAUTH.token = token;
-      GAUTH.user = user;
-      GAUTH.driveFileId = fileId || null;
-      if(GAUTH.gapiReady) gapi.client.setToken({ access_token: token });
-      gauthAtualizarUI(true);
-      // Tentar carregar dados do Drive silenciosamente
-      carregarDoDrive(true);
-    }
-  } catch(e){}
-}
+// Autosave — mesmo padrão dos demais modais; não faz nada até aluno+modelo
+// estarem selecionados (coletarAcompDoForm retorna null nesse caso).
+attachAutosave('modal-acomp-period', coletarAcompDoForm, gravarAcomp);

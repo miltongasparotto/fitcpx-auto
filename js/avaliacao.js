@@ -120,6 +120,31 @@ const val = id => $(id) ? $(id).value : '';
 const setVal = (id, v) => { if($(id)) $(id).value = v || ''; };
 const getActive = () => students.find(s => s.id === activeId);
 
+// ─── AUTOSAVE GENÉRICO (evita perda de dados ao trocar de aba/tela/fechar) ────
+// Registra um listener por delegação de evento (input/change) na raiz de um
+// formulário/modal — cobre inclusive campos adicionados dinamicamente depois
+// (linhas de mesociclo, cargas de acompanhamento etc.), sem precisar de
+// oninput/onchange manual em cada input. Debounced pra não gravar a cada tecla.
+// coletarFn() lê o formulário e retorna os dados prontos (ou null/undefined se
+// não há dados suficientes ainda — nesse caso não grava nada). gravarFn(dado)
+// persiste de fato (localStorage/saveLibs/saveStudent).
+function attachAutosave(containerId, coletarFn, gravarFn, debounceMs){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  let timer = null;
+  const rodar = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      try{
+        const dado = coletarFn();
+        if(dado) gravarFn(dado);
+      }catch(e){ console.error('Autosave falhou em #'+containerId+':', e); }
+    }, debounceMs || 400);
+  };
+  el.addEventListener('input', rodar, true);
+  el.addEventListener('change', rodar, true);
+}
+
 // ─── MODAL ────────────────────────────────────────────────────────────────────
 
 function showModal(){ show('modal-overlay'); setTimeout(()=>$('modal-nome').focus(),50); }
@@ -353,7 +378,7 @@ function confirmarDeletarAluno(id){
   // Não usa saveStudent() aqui: se o aluno excluído era o ativo, activeId fica null e
   // getActive() retornaria undefined, abortando o save sem persistir a exclusão.
   try{ localStorage.setItem('acm-students', JSON.stringify(students)); }catch(e){}
-  driveAutoSave();
+  supaAutoSave();
   renderScreenAlunos();
 }
 
@@ -557,6 +582,7 @@ function onPerfilChange(){
   $('student-header-name').textContent = s.perfil.nome||'Aluno';
   calcFCMax();
   renderStudentList();
+  saveStudent(); // BUGFIX 2026-08-27: sem isso, edições de Perfil nunca eram persistidas (só ficavam em memória)
 }
 
 // ── Flexibilidade ─────────────────────────────────────────────────────────────
@@ -1787,6 +1813,7 @@ function onAnamneseChange(){
   calcIMC(); calcRCQ();
   calcExtras();
   renderStudentList();
+  saveStudent(); // BUGFIX 2026-08-27: sem isso, edições de Anamnese nunca eram persistidas (só ficavam em memória)
 }
 
 // ─── NOVOS CAMPOS DE TRIAGEM (Bloco 1 — Histórico de Saúde) ─────────────────
@@ -1956,6 +1983,26 @@ function antroSalvarAvaliacao(){
   saveStudent();
   antroMostrarLista();
 }
+
+// Autosave do formulário de avaliação (Nova/Editar) — grava um rascunho a cada
+// edição, com o mesmo id da avaliação em edição (ou um novo id na primeira vez
+// que Peso+Altura ficam preenchidos). Não substitui os requisitos de
+// "💾 Salvar Avaliação" (que exige Gordura/Músculo também) — só garante que o
+// que já foi digitado não se perca se o personal trocar de aba/tela antes de
+// clicar em Salvar.
+function autosalvarAvaliacaoAtual(){
+  const s=getActive(); if(!s) return null;
+  if(!val('a-peso') || !val('a-altura')) return null; // dados insuficientes pra identificar o registro
+  if(!s.avaliacoesAntro) s.avaliacoesAntro = [];
+  const snap = antroSnapshotAtual();
+  snap.responsavel = (typeof _supaUser!=='undefined' && _supaUser?.email) || 'Modo teste (local)';
+  if(!_antroEditId) _antroEditId = Date.now();
+  const idx = s.avaliacoesAntro.findIndex(r=>r.id===_antroEditId);
+  if(idx>=0) s.avaliacoesAntro[idx] = Object.assign({}, s.avaliacoesAntro[idx], snap);
+  else { snap.id=_antroEditId; s.avaliacoesAntro.push(snap); }
+  return true;
+}
+attachAutosave('antro-form-view', autosalvarAvaliacaoAtual, () => saveStudent());
 
 function antroExcluirAvaliacao(id){
   const s=getActive(); if(!s) return;
@@ -2244,6 +2291,7 @@ function onMetaFonteChange(){
   toggle('meta-manual-bloco', manual);
   esconderErroMeta();
   atualizarBadgeFonte();
+  salvarMeta(); // autosave — evita perder a escolha de fonte ao trocar de aba
 }
 
 function onMetaManualChange(){
@@ -2251,6 +2299,7 @@ function onMetaManualChange(){
   $('meta-manual-musculo-label').textContent = kg?'Músculo (kg) — opcional':'Músculo (%) — opcional';
   $('meta-manual-gordura-label').innerHTML = kg?'<b>Gordura (kg) *</b>':'<b>Gordura (%) *</b>';
   atualizarBadgeFonte();
+  salvarMeta(); // autosave — evita perder os dados manuais digitados ao trocar de aba
 }
 
 function atualizarBadgeFonte(){
@@ -2271,7 +2320,7 @@ function mostrarErroMeta(msg){
 // Nível de meta selecionado no dropdown → preenche IMC/Peso/%Gordura de referência
 function onMetaNivelChange(){
   const nivel = val('meta-nivel');
-  if(!nivel || nivel==='personalizado'){ toggle('meta-personalizado-badge', nivel==='personalizado'); return; }
+  if(!nivel || nivel==='personalizado'){ toggle('meta-personalizado-badge', nivel==='personalizado'); salvarMeta(); return; }
   toggle('meta-personalizado-badge', false);
   const sexo=metaSexo(), faixa=metaFaixaEtaria();
   const imc = REF_IMC[sexo][faixa][nivel];
@@ -2279,6 +2328,7 @@ function onMetaNivelChange(){
   setVal('meta-imc', imc);
   setVal('meta-gordura-pct', gordura);
   recalcPesoDeImc();
+  salvarMeta(); // autosave — evita perder o Nível/IMC/Peso/%Gordura ao trocar de aba
 }
 
 function alturaMetros(){
@@ -2304,13 +2354,16 @@ function recalcImcDePeso(){
 function onMetaPesoChange(){
   recalcImcDePeso();
   if(val('meta-nivel')!=='personalizado'){ setVal('meta-nivel','personalizado'); toggle('meta-personalizado-badge', true); }
+  salvarMeta(); // autosave — evita perder o Peso alvo editado ao trocar de aba
 }
 function onMetaImcChange(){
   recalcPesoDeImc();
   if(val('meta-nivel')!=='personalizado'){ setVal('meta-nivel','personalizado'); toggle('meta-personalizado-badge', true); }
+  salvarMeta(); // autosave — evita perder o IMC alvo editado ao trocar de aba
 }
 function onMetaGorduraChange(){
   if(val('meta-nivel')!=='personalizado'){ setVal('meta-nivel','personalizado'); toggle('meta-personalizado-badge', true); }
+  salvarMeta(); // autosave — evita perder a %Gordura alvo editada ao trocar de aba
 }
 
 // Botão "Calcular" — valida obrigatórios e só então roda o cálculo final.

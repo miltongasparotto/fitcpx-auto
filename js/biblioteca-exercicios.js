@@ -610,20 +610,29 @@ function editarLocal(id){
   $('modal-local').classList.remove('hidden');
 }
 
-function salvarLocal(){
+function coletarLocalDoForm(){
   const id_val = $('local-edit-id').value;
   const equips = [...$('local-equip-wrap').querySelectorAll('input[type=checkbox]:checked')].map(cb=>cb.value);
-  const novo={
+  return {
     id: id_val ? parseInt(id_val) : Date.now(),
     nome:$('local-nome').value.trim()||'Sem nome',
     tipo:$('local-tipo').value,
     equipamentos:equips,
     obs:$('local-obs').value.trim(),
   };
-  if(id_val){ const idx=LIBS.locais.findIndex(l=>l.id===novo.id); if(idx>=0) LIBS.locais[idx]=novo; else LIBS.locais.push(novo); }
-  else LIBS.locais.push(novo);
-  saveLibs(LIBS); fecharModalLocal(); renderLocais();
 }
+function gravarLocal(novo){
+  const idx=LIBS.locais.findIndex(l=>l.id===novo.id);
+  if(idx>=0) LIBS.locais[idx]=novo; else LIBS.locais.push(novo);
+  saveLibs(LIBS);
+}
+function salvarLocal(){
+  gravarLocal(coletarLocalDoForm());
+  fecharModalLocal(); renderLocais();
+}
+// Autosave — grava a cada edição no modal, mesmo sem clicar em "Salvar"; fixa o
+// id no campo oculto na primeira gravação pra não duplicar nas próximas.
+attachAutosave('modal-local', coletarLocalDoForm, (novo) => { $('local-edit-id').value = novo.id; gravarLocal(novo); });
 
 // ══════════════════════════════════════════════════════════════════════════
 // BIBLIOTECA DE TREINOS
@@ -972,9 +981,9 @@ function editarBib(id){
   preencherModalBib(b); $('modal-bib').classList.remove('hidden');
 }
 
-function salvarBib(){
+function coletarBibDoForm(){
   const id_val=$('bib-edit-id').value;
-  const novo={
+  return {
     id:id_val?parseInt(id_val):Date.now(),
     nome:$('bib-nome').value.trim()||'Sem nome',
     objetivo:$('bib-obj').value, nivel:$('bib-nivel').value, freq:$('bib-freq').value,
@@ -982,10 +991,18 @@ function salvarBib(){
     crit_ex:$('bib-crit-ex').value.trim(), estrutura:$('bib-estrutura').value.trim(),
     obs:$('bib-obs').value.trim(),
   };
-  if(id_val){ const idx=LIBS.biblioteca.findIndex(x=>x.id===novo.id); if(idx>=0) LIBS.biblioteca[idx]=novo; else LIBS.biblioteca.push(novo); }
-  else LIBS.biblioteca.push(novo);
-  saveLibs(LIBS); fecharModalBib(); renderBiblioteca();
 }
+function gravarBib(novo){
+  const idx=LIBS.biblioteca.findIndex(x=>x.id===novo.id);
+  if(idx>=0) LIBS.biblioteca[idx]=novo; else LIBS.biblioteca.push(novo);
+  saveLibs(LIBS);
+}
+function salvarBib(){
+  gravarBib(coletarBibDoForm());
+  fecharModalBib(); renderBiblioteca();
+}
+// Autosave — mesmo padrão do modal Local.
+attachAutosave('modal-bib', coletarBibDoForm, (novo) => { $('bib-edit-id').value = novo.id; gravarBib(novo); });
 
 // ══════════════════════════════════════════════════════════════════════════
 // DISTRIBUIÇÃO
@@ -1075,7 +1092,13 @@ function renderDistrib(){
 const GRUPOS_MUSCULARES = ["Quadríceps", "Isquiossurais", "Glúteos", "Glúteos (Máximo)", "Glúteos (Médio)", "Adutores", "Iliopsoas", "Panturrilhas", "Flexores do Pé", "Peitoral", "Peitoral (Superior)", "Peitoral (Médio)", "Peitoral (Inferior)", "Latíssimo", "Trapézio", "Rombóides", "Deltóide", "Deltóide (Anterior)", "Deltóide (Medial)", "Deltóide (Posterior)", "Bíceps", "Tríceps", "Antebraços", "Reto Abdominal", "Oblíquo", "Transverso do Abdômen", "Quadrado Lombar"];
 
 function abrirModalDistrib(){ preencherModalDistrib(null); $('modal-distrib').classList.remove('hidden'); }
-function fecharModalDistrib(){ $('modal-distrib').classList.add('hidden'); }
+function fecharModalDistrib(){
+  $('modal-distrib').classList.add('hidden');
+  // Cancelar o formulário sem salvar não deve executar uma navegação que
+  // estava esperando o salvamento (ver modalDivisaoSalvar/confirmarSairEdicaoDivisao)
+  // — o personal continua na tela de Distribuição com o ajuste ainda pendente.
+  if(typeof _pendingNavAposDescarte!=='undefined') _pendingNavAposDescarte = null;
+}
 
 function preencherModalDistrib(d){
   $('distrib-edit-id').value=d?d.id:'';
@@ -1264,7 +1287,16 @@ function confirmarDeletar(){
   closeDelModal();
   if(colecao==='locais')       renderLocais();
   if(colecao==='biblioteca')   renderBiblioteca();
-  if(colecao==='distribuicao') renderDistrib();
+  if(colecao==='distribuicao'){
+    renderDistrib();
+    // Se esse mesmo modelo também estava listado na tela de Distribuição (Step 2)
+    // de uma prescrição em andamento, tira o card de lá também — senão ele some
+    // da biblioteca mas fica "fantasma" na tela onde o personal estava escolhendo.
+    if(typeof _s3!=='undefined' && _s3?.divisaoOpcoes){
+      const idx = _s3.divisaoOpcoes.findIndex(op => op._libId === id);
+      if(idx >= 0 && typeof removerDivisaoOpcaoDaLista==='function') removerDivisaoOpcaoDaLista(idx);
+    }
+  }
   if(colecao==='periodizacao') renderPeriod();
 }
 function closeDelModal(){ $('modal-del-lib').classList.add('hidden'); _delPending=null; }
@@ -1303,7 +1335,7 @@ function toggleTema(){
 function saveStudent(){
   const s=getActive(); if(!s) return;
   try { localStorage.setItem('acm-students', JSON.stringify(students)); } catch(e){}
-  driveAutoSave(); // sem isto, aprovar ficha (e outros usos de saveStudent) nunca sincronizava com o Drive
+  supaAutoSave();
   const ind=$('saved-indicator');
   if(ind){ ind.classList.remove('hidden'); setTimeout(()=>ind.classList.add('hidden'),2000); }
 }
@@ -1353,7 +1385,15 @@ const AQUECIMENTO_PADRAO = {
   'Panturrilhas':  'Elevação unilateral sem peso ×20/lado + rotação tornozelo ×10/lado',
 };
 
+// Usada só pelo PDF, pra virar uma linha de texto. Prioriza o aquecimento
+// específico por articulação (treino.aquecimento — ver gerarAquecimentoArticular
+// em prescricao-motor.js, gerado junto com a ficha a partir dos exercícios
+// principais de fato escolhidos), com fallback pro mapa genérico por grupo
+// muscular (AQUECIMENTO_PADRAO) só pra fichas salvas antes desse recurso existir.
 function gerarAquecimentoSessao(treino){
+  if(treino.aquecimento && treino.aquecimento.length){
+    return treino.aquecimento.map(a => `${a.nome} (${a.duracao})`).join(' | ');
+  }
   const grupos = [...new Set(treino.exercicios.map(e=>e.musculo))];
   const itens = grupos
     .map(g => AQUECIMENTO_PADRAO[g])
@@ -1495,12 +1535,32 @@ function salvarReavaliacao(){
 // no arquivo original monolítico isso não importava, hoisting resolvia sozinho)
 const _origSalvarDistrib = salvarDistrib;
 salvarDistrib = function(){
+  // Precisa capturar ANTES de chamar o original: salvarDistrib() de verdade
+  // fecha o modal chamando fecharModalDistrib(), que zera _pendingNavAposDescarte
+  // (esse zerar é o comportamento certo pra quando o personal CANCELA o modal
+  // sem salvar — ver fecharModalDistrib). Aqui é um salvamento de verdade, então
+  // guardamos a navegação pendente antes desse efeito colateral apagar ela.
+  const navPendente = (typeof _pendingNavAposDescarte!=='undefined') ? _pendingNavAposDescarte : null;
+  const tinhaCallbackPendente = _pendingDivisaoCallback;
   _origSalvarDistrib();
-  if(_pendingDivisaoCallback){
+  if(tinhaCallbackPendente){
     _pendingDivisaoCallback = false;
     const freq = val('pr-frequencia') || '3x';
     const numDias = parseInt(freq)||3;
-    _s3.divisaoOpcoes = gerarDivisoesBalanceadas(numDias);
+    // A lista é regenerada do zero aqui — isso também é o que limpa qualquer
+    // card com ajuste não salvo (_chaveOriginal) da lista antiga: o modelo
+    // recém-salvo já está na biblioteca de verdade, então o aviso de "ajuste
+    // não salvo" deixa de fazer sentido (ver temEdicaoDivisaoNaoSalva).
+    _s3.divisaoOpcoes = gerarDivisoesBalanceadas(numDias, selectedObj || 'Saude');
+    _s3._divChaveGeracao = numDias + '|' + (selectedObj || 'Saude');
+    _s3._dcEditando = undefined;
     renderTelaDivisao();
+    // Retoma a navegação que o personal tinha pedido antes de "Salvar como
+    // modelo" (ex: trocar de aba, voltar pra lista) — só depois do salvamento
+    // realmente acontecer, nunca antes.
+    if(navPendente){
+      if(typeof _pendingNavAposDescarte!=='undefined') _pendingNavAposDescarte = null;
+      navPendente();
+    }
   }
 };
