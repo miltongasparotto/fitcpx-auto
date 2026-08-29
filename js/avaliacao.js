@@ -1893,7 +1893,7 @@ function carregarHistFamiliar(valorSalvo){
 
 const SUBTABS_AVAL = ['anamnese-hist','anamnese-antro','anamnese-meta'];
 
-function switchSubtab(name){
+function _switchSubtabForcado(name){
   SUBTABS_AVAL.forEach(t=>{
     const panel = $('subpanel-'+t);
     const tab   = $('subtab-'+t);
@@ -1902,6 +1902,9 @@ function switchSubtab(name){
   });
   if(name==='anamnese-antro'){ _antroEditId=null; antroMostrarLista(); }
   if(name==='anamnese-meta') renderMeta();
+}
+function switchSubtab(name){
+  _guardNav(() => _switchSubtabForcado(name));
 }
 
 // ─── HISTÓRICO DE AVALIAÇÕES ANTROPOMÉTRICAS ───────────────────────────────────
@@ -2004,7 +2007,7 @@ function antroSalvarAvaliacao(){
   s.avaliacoesAntro.sort((a,b)=>(b.data_avaliacao||'').localeCompare(a.data_avaliacao||''));
   _antroEditId = null;
   onAnamneseChange(); // sincroniza s.anamnese com os campos atuais (mantém os motores de cálculo funcionando)
-  saveStudent();
+  saveStudent(); _clearDirty();;
   antroMostrarLista();
 }
 
@@ -2026,7 +2029,7 @@ function autosalvarAvaliacaoAtual(){
   else { snap.id=_antroEditId; s.avaliacoesAntro.push(snap); }
   return true;
 }
-attachAutosave('antro-form-view', autosalvarAvaliacaoAtual, () => saveStudent());
+attachAutosave('antro-form-view', autosalvarAvaliacaoAtual, () => { _markDirty(); _saveDraft(); });
 
 function antroExcluirAvaliacao(id){
   const s=getActive(); if(!s) return;
@@ -2315,7 +2318,7 @@ function onMetaFonteChange(){
   toggle('meta-manual-bloco', manual);
   esconderErroMeta();
   atualizarBadgeFonte();
-  salvarMeta(); // autosave — evita perder a escolha de fonte ao trocar de aba
+  _autosaveMeta(); // autosave — evita perder a escolha de fonte ao trocar de aba
 }
 
 function onMetaManualChange(){
@@ -2323,7 +2326,7 @@ function onMetaManualChange(){
   $('meta-manual-musculo-label').textContent = kg?'Músculo (kg) — opcional':'Músculo (%) — opcional';
   $('meta-manual-gordura-label').innerHTML = kg?'<b>Gordura (kg) *</b>':'<b>Gordura (%) *</b>';
   atualizarBadgeFonte();
-  salvarMeta(); // autosave — evita perder os dados manuais digitados ao trocar de aba
+  _autosaveMeta(); // autosave — evita perder os dados manuais digitados ao trocar de aba
 }
 
 function atualizarBadgeFonte(){
@@ -2344,7 +2347,7 @@ function mostrarErroMeta(msg){
 // Nível de meta selecionado no dropdown → preenche IMC/Peso/%Gordura de referência
 function onMetaNivelChange(){
   const nivel = val('meta-nivel');
-  if(!nivel || nivel==='personalizado'){ toggle('meta-personalizado-badge', nivel==='personalizado'); salvarMeta(); return; }
+  if(!nivel || nivel==='personalizado'){ toggle('meta-personalizado-badge', nivel==='personalizado'); _autosaveMeta(); return; }
   toggle('meta-personalizado-badge', false);
   const sexo=metaSexo(), faixa=metaFaixaEtaria();
   const imc = REF_IMC[sexo][faixa][nivel];
@@ -2352,7 +2355,7 @@ function onMetaNivelChange(){
   setVal('meta-imc', imc);
   setVal('meta-gordura-pct', gordura);
   recalcPesoDeImc();
-  salvarMeta(); // autosave — evita perder o Nível/IMC/Peso/%Gordura ao trocar de aba
+  _autosaveMeta(); // autosave — evita perder o Nível/IMC/Peso/%Gordura ao trocar de aba
 }
 
 function alturaMetros(){
@@ -2378,16 +2381,16 @@ function recalcImcDePeso(){
 function onMetaPesoChange(){
   recalcImcDePeso();
   if(val('meta-nivel')!=='personalizado'){ setVal('meta-nivel','personalizado'); toggle('meta-personalizado-badge', true); }
-  salvarMeta(); // autosave — evita perder o Peso alvo editado ao trocar de aba
+  _autosaveMeta(); // autosave — evita perder o Peso alvo editado ao trocar de aba
 }
 function onMetaImcChange(){
   recalcPesoDeImc();
   if(val('meta-nivel')!=='personalizado'){ setVal('meta-nivel','personalizado'); toggle('meta-personalizado-badge', true); }
-  salvarMeta(); // autosave — evita perder o IMC alvo editado ao trocar de aba
+  _autosaveMeta(); // autosave — evita perder o IMC alvo editado ao trocar de aba
 }
 function onMetaGorduraChange(){
   if(val('meta-nivel')!=='personalizado'){ setVal('meta-nivel','personalizado'); toggle('meta-personalizado-badge', true); }
-  salvarMeta(); // autosave — evita perder a %Gordura alvo editada ao trocar de aba
+  _autosaveMeta(); // autosave — evita perder a %Gordura alvo editada ao trocar de aba
 }
 
 // Botão "Calcular" — valida obrigatórios e só então roda o cálculo final.
@@ -2516,17 +2519,23 @@ function renderMeta(){
   $('meta-tabela-body').innerHTML = '<tr><td colspan="4" style="color:var(--text3);text-align:center">Preencha os dados e clique em Calcular</td></tr>';
 }
 
-function salvarMeta(){
+function _autosaveMeta(){
   const s=getActive(); if(!s) return;
+  const val = id => (document.getElementById(id)||{}).value||'';
   s.meta = {
-    fonte: document.querySelector('input[name="meta-fonte"]:checked')?.value||'anterior',
-    manual_unidade: document.querySelector('input[name="meta-unidade"]:checked')?.value||'pct',
+    fonte: (document.querySelector('input[name="meta-fonte"]:checked')||{}).value||'anterior',
+    manual_unidade: (document.querySelector('input[name="meta-unidade"]:checked')||{}).value||'pct',
     manual_altura: val('meta-manual-altura'), manual_peso: val('meta-manual-peso'),
     manual_musculo: val('meta-manual-musculo'), manual_gordura: val('meta-manual-gordura'),
     nivel: val('meta-nivel'), imc: val('meta-imc'), peso: val('meta-peso'),
     gordura_pct: val('meta-gordura-pct'),
   };
+  _markDirty(); _saveDraft();
+}
+function salvarMeta(){
+  _autosaveMeta();
   saveStudent();
+  _clearDirty();
 }
 
 // Pares: id base → [idD, idE, idDelta]
@@ -2787,7 +2796,7 @@ function calcDelta(curId, antId, outId, higherIsBetter){
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 
-function switchTab(name){
+function switchTabForcado(name){
   // Sair da aba Prescrição com um ajuste de sessões não salvo (Modelo de
   // Divisão) pede confirmação antes — sem isso, o ajuste some em silêncio.
   const abaAtualEhPrescricao = $('tab-prescricao')?.classList.contains('active');
@@ -2796,6 +2805,14 @@ function switchTab(name){
     return;
   }
   switchTabForcado(name);
+}
+function switchTab(name){
+  const abaAtualEhPrescricao = $('tab-prescricao')?.classList.contains('active');
+  if(abaAtualEhPrescricao && name!=='prescricao' && typeof temEdicaoDivisaoNaoSalva==='function' && temEdicaoDivisaoNaoSalva()){
+    confirmarSairEdicaoDivisao(() => switchTabForcado(name));
+    return;
+  }
+  _guardNav(() => switchTabForcado(name));
 }
 
 function switchTabForcado(name){

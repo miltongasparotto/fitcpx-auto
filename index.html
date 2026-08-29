@@ -2606,5 +2606,44 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 
 <script src="js/supabase-auth.js"></script>
 
+
+<!-- Modal: Alterações não salvas -->
+<div id="modal-unsaved-overlay" class="modal-overlay hidden" style="z-index:9999">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title">⚠️ Alterações não salvas</div>
+    <p style="margin:12px 0 20px;color:var(--text2);font-size:14px">
+      Você tem alterações que ainda não foram salvas. O que deseja fazer?
+    </p>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="_unsavedSair()">Sair sem salvar</button>
+      <button class="btn btn-primary" onclick="_unsavedSalvar()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Global dirty-mark listener for all data-entry areas
+(function(){
+  const DIRTY_CONTAINERS = [
+    'panel-perfil','panel-anamnese','panel-meta','antro-form-view',
+    'screen-locais','screen-biblioteca','screen-distribuicao',
+    'screen-periodizacao','screen-exercicios'
+  ];
+  document.addEventListener('input', function(e){
+    if(typeof _markDirty!=='function') return;
+    for(const id of DIRTY_CONTAINERS){
+      const el=document.getElementById(id);
+      if(el && el.contains(e.target)){ _markDirty(); return; }
+    }
+  });
+  document.addEventListener('change', function(e){
+    if(typeof _markDirty!=='function') return;
+    for(const id of DIRTY_CONTAINERS){
+      const el=document.getElementById(id);
+      if(el && el.contains(e.target)){ _markDirty(); return; }
+    }
+  });
+})();
+</script>
 </body>
 </html>

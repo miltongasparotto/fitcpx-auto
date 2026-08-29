@@ -90,7 +90,7 @@ const NAV_ITEMS   = ['nav-alunos','nav-locais','nav-biblioteca','nav-distribuica
 
 function noop(){}
 
-function navGo(tela){
+function _navGoForcado(tela){
   NAV_SCREENS.forEach(id=>{ const el=$(id); if(el) el.classList.add('hidden'); });
   NAV_ITEMS.forEach(id=>{ const el=$(id); if(el) el.classList.remove('active'); });
 
@@ -112,6 +112,10 @@ function navGo(tela){
     if(tela==='periodizacao') renderPeriod();
     if(tela==='exercicios')   renderExercicios();
   }
+}
+function navGo(tela){
+  if(typeof _guardNav==='function') _guardNav(()=>_navGoForcado(tela));
+  else _navGoForcado(tela);
 }
 
 function toggleNavTreino(){
