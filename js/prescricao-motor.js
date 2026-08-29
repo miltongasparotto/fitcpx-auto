@@ -1,4 +1,4 @@
-// ══════════════════════════════════════════════════════
+﻿// ══════════════════════════════════════════════════════
 // MOTOR DE PRESCRIÇÃO FitCPX Auto — Constantes e utilitários
 // ══════════════════════════════════════════════════════
 
@@ -237,7 +237,7 @@ function tempoRepPorGrupo(grupoNome){
 // exercício/série). O médio (mostrado pro personal) é a média dos dois.
 function estimarTempoSessaoGrupo(grupoNome, objetivo, numSeries){
   const tempo = tempoRepPorGrupo(grupoNome);
-  const ref = REF_TEMPO_OBJETIVO[objetivo] || REF_TEMPO_OBJETIVO['Hipertrofia'];
+  const ref = { reps: parseFaixaMedia(REPS_REF[objetivo]||REPS_REF['Hip']), descansoSeg: parseFaixaMedia(INT_DESCANSO[objetivo]||INT_DESCANSO['Hip']) };
   if(!tempo || !numSeries) return null;
   const min = numSeries * (tempo.medio * ref.reps + ref.descansoSeg);
   const max = numSeries * (tempo.medio * ref.reps * 2 + TEMPO_TROCA_SEG + ref.descansoSeg);
@@ -250,7 +250,7 @@ function estimarTempoSessaoGrupo(grupoNome, objetivo, numSeries){
 // de divisão já decidiu antes de escolher qualquer exercício específico.
 // Retorna { min, max, medio } em segundos (soma de todos os grupos).
 function estimarTempoModeloSessao(gruposPlanejados, objetivo){
-  const ref = REF_TEMPO_OBJETIVO[objetivo] || REF_TEMPO_OBJETIVO['Hipertrofia'];
+  const ref = { reps: parseFaixaMedia(REPS_REF[objetivo]||REPS_REF['Hip']), descansoSeg: parseFaixaMedia(INT_DESCANSO[objetivo]||INT_DESCANSO['Hip']) };
   let min = 0, max = 0;
   for(const { grupo, nExercicios, nSeries } of (gruposPlanejados || [])){
     const tempo = tempoRepPorGrupo(grupo);
@@ -4292,9 +4292,8 @@ function gerarFichaMotorV2(params){
     // usadas no cálculo de tempo — mapeamento abaixo é PROVISÓRIO (meu
     // julgamento pela faixa de reps de cada objetivo em REPS_REF), confirmar
     // com o Milton antes de considerar fechado.
-    const valenciaTempo = OBJETIVO_PARA_VALENCIA[objetivo] || 'Hipertrofia';
     const gruposPlanejadosModelo = sessaoGrupos.map(sd => ({ grupo: sd.g, nExercicios: sd.numEx, nSeries: sd.serEx }));
-    const tempoEstimadoModelo = estimarTempoModeloSessao(gruposPlanejadosModelo, valenciaTempo);
+    const tempoEstimadoModelo = estimarTempoModeloSessao(gruposPlanejadosModelo, objetivo);
     const segundosPlanejados = tempoEstimadoModelo.medio;
     const segundosDisponiveis = (duracaoDisponivel||60)*60;
     // "Aperto": 0 = sessão cabe tranquila no tempo disponível; cresce conforme o
