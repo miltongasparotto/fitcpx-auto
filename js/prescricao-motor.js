@@ -95,6 +95,17 @@ const INT_DESCANSO = {
   Esport:'120–240s', Reab:'90–120s', Envelhec:'90–120s', Gestacao:'90–120s',
 };
 
+// Mapeamento objetivo (os 12 códigos acima) → valência de treino (as 4 usadas
+// no cálculo de tempo de execução — ver REF_TEMPO_OBJETIVO). São dois eixos
+// diferentes: objetivo é a meta geral do aluno, valência é o esquema de
+// reps/série/descanso. PROVISÓRIO — mapeado pela faixa de reps de cada
+// objetivo (REPS_REF acima); confirmar com o Milton antes de considerar fechado.
+const OBJETIVO_PARA_VALENCIA = {
+  Hip:'Hipertrofia', Forca:'Força', Emagr:'Hipertrofia', Comp:'Hipertrofia',
+  Resist:'Resistência', CardioR:'Resistência', Func:'Resistência', Saude:'Resistência',
+  Esport:'Potência', Reab:'Resistência', Envelhec:'Resistência', Gestacao:'Hipertrofia',
+};
+
 const DIVISOES = {
   2: {
     default:[
@@ -168,14 +179,87 @@ const PORCOES = {
   Antebracos:  [null],
 };
 
+// IDs de "Tipo de Resistência" — direto da aba "Corelação" da planilha oficial
+// (Cabo=1, Elástico=2, Máquina=3, Peso Corporal=4, Peso Livre=5, Suspenso=6).
+// Trocado de sigla (TRPL/TRM/...) pra ID na reimportação de 2026-08-28.
+const RESIST_ID = { CABO:1, ELASTICO:2, MAQUINA:3, PESO_CORPORAL:4, PESO_LIVRE:5, SUSPENSO:6 };
 const LOCAL_RESIST = {
-  'academia': ['TRPL','TRM','TRC','TRE','TRPC','TRS'],
-  'casa':     ['TRPC','TRE','TRPL'],
-  'ar livre': ['TRPC'],
-  'híbrido':  ['TRPL','TRM','TRC','TRE','TRPC'],
+  'academia': [RESIST_ID.PESO_LIVRE, RESIST_ID.MAQUINA, RESIST_ID.CABO, RESIST_ID.ELASTICO, RESIST_ID.PESO_CORPORAL, RESIST_ID.SUSPENSO],
+  'casa':     [RESIST_ID.PESO_CORPORAL, RESIST_ID.ELASTICO, RESIST_ID.PESO_LIVRE],
+  'ar livre': [RESIST_ID.PESO_CORPORAL],
+  'híbrido':  [RESIST_ID.PESO_LIVRE, RESIST_ID.MAQUINA, RESIST_ID.CABO, RESIST_ID.ELASTICO, RESIST_ID.PESO_CORPORAL],
 };
 
 function motorRand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+// ── Tempo de execução — Momento 1 (tela de modelos) ─────────────────────────
+// Fechado e validado com o Milton em 2026-08-29 (planilha linha a linha,
+// bateu 100%). 4 valências de treino, cada uma com UM valor de referência —
+// o máximo da faixa de repetição — e o intervalo padrão correspondente
+// (não trabalhamos mais com mín/médio/máx separado por valência; a variação
+// mín/máx da sessão vem da lateralidade dos exercícios, não da valência).
+const REF_TEMPO_OBJETIVO = {
+  'Força':          { reps:6,  descansoSeg:180 },
+  'Hipertrofia':    { reps:12, descansoSeg:90  },
+  'Resistência':    { reps:20, descansoSeg:30  },
+  'Potência':       { reps:5,  descansoSeg:180 },
+};
+
+// Troca (30s) — acontece entre exercícios de um mesmo biset/triset E entre os
+// dois lados de um exercício Unilateral. Mesmo valor nos dois casos (regra
+// fechada em 2026-08-29). Não aparece pro personal/aluno, só entra no cálculo.
+const TEMPO_TROCA_SEG = 30;
+
+// Tempo (em segundos) de execução de UMA repetição — min/médio/máx — olhando
+// todos os exercícios do banco cujo grupo PRINCIPAL bate com `grupoNome`.
+// Não considera lateralidade/dobra aqui (isso entra no momento 2, quando o
+// exercício real já foi escolhido — ver _blocosExecucao/calcularTempoEstimadoTreino).
+function tempoRepPorGrupo(grupoNome){
+  const exs = DB_EXERCICIOS.filter(e => e.g.some(x => textoIgual(x.nome, grupoNome)));
+  const tempos = exs.map(e => e.tempo).filter(t => t > 0);
+  if(!tempos.length) return null;
+  return {
+    min: Math.min(...tempos),
+    max: Math.max(...tempos),
+    medio: +(tempos.reduce((a,b)=>a+b,0) / tempos.length).toFixed(2),
+    nExercicios: exs.length,
+  };
+}
+
+// Estimativa de duração de UMA sessão pra um grupo, dado o objetivo e o
+// número de séries planejadas (vem do modelo de volume já existente). Usa a
+// referência de reps/descanso por objetivo (REF_TEMPO_OBJETIVO) + o tempo
+// MÉDIO de execução do grupo (tempoRepPorGrupo) — ainda não sabemos qual
+// exercício específico vai ser escolhido nesta tela, só o grupo. Retorna
+// segundos, considerando 2 cenários (regra fechada com o Milton em
+// 2026-08-29): mínimo = tudo Bilateral (sem dobra, sem troca de lado);
+// máximo = tudo Unilateral (dobra a execução + 1 troca de 30s por
+// exercício/série). O médio (mostrado pro personal) é a média dos dois.
+function estimarTempoSessaoGrupo(grupoNome, objetivo, numSeries){
+  const tempo = tempoRepPorGrupo(grupoNome);
+  const ref = REF_TEMPO_OBJETIVO[objetivo] || REF_TEMPO_OBJETIVO['Hipertrofia'];
+  if(!tempo || !numSeries) return null;
+  const min = numSeries * (tempo.medio * ref.reps + ref.descansoSeg);
+  const max = numSeries * (tempo.medio * ref.reps * 2 + TEMPO_TROCA_SEG + ref.descansoSeg);
+  return { min, max, medio: (min + max) / 2 };
+}
+
+// Mesma lógica de estimarTempoSessaoGrupo, mas pra SESSÃO INTEIRA (vários
+// grupos de uma vez) — é a função que a tela de modelos usa de fato.
+// `gruposPlanejados`: [{ grupo, nExercicios, nSeries }, ...] — o que o modelo
+// de divisão já decidiu antes de escolher qualquer exercício específico.
+// Retorna { min, max, medio } em segundos (soma de todos os grupos).
+function estimarTempoModeloSessao(gruposPlanejados, objetivo){
+  const ref = REF_TEMPO_OBJETIVO[objetivo] || REF_TEMPO_OBJETIVO['Hipertrofia'];
+  let min = 0, max = 0;
+  for(const { grupo, nExercicios, nSeries } of (gruposPlanejados || [])){
+    const tempo = tempoRepPorGrupo(grupo);
+    if(!tempo || !nExercicios || !nSeries) continue;
+    min += nExercicios * nSeries * (tempo.medio * ref.reps + ref.descansoSeg);
+    max += nExercicios * nSeries * (tempo.medio * ref.reps * 2 + TEMPO_TROCA_SEG + ref.descansoSeg);
+  }
+  return { min, max, medio: (min + max) / 2 };
+}
 
 // ── Normalização de texto — ignora acentos e caixa em todas as comparações ──
 // Resolve o descasamento estrutural entre GRUPOS_MAPA (sem acento: 'Latissimo',
@@ -207,6 +291,29 @@ function normalizarIdentificador(str){
 // 'RetoAbdominal' vs DB_EXERCICIOS 'Reto Abdominal').
 function textoIgual(a, b){
   return normalizarIdentificador(a) === normalizarIdentificador(b);
+}
+
+// `uni` (flag binária) virou `lateralidade` — 3 categorias (2026-08-28):
+// Bilateral / Bilateral com Carga Unilateral / Unilateral. Só "Unilateral" de
+// fato exige trocar de lado (dobra o tempo de execução) — "Bilateral com Carga
+// Unilateral" (ex.: agachamento com halteres) é um movimento só, sem troca.
+function _exercicioUnilateral(e){
+  return e.lateralidade?.nome === 'Unilateral';
+}
+function _exercicioBilateralCU(e){
+  return e.lateralidade?.nome === 'Bilateral com Carga Unilateral';
+}
+
+// Alto impacto (2026-08-28) — não existe campo no banco (nem `tp` nem `pad`
+// identificam isso de forma confiável: só 1 exercício tem tp="Potência" e
+// "Aeróbio" hoje inclui abdominais que não têm nada de impacto). Detecção por
+// nome — lista curta e curada manualmente, resultado de varredura na base
+// atual (9 exercícios em 692). Revisar/expandir conforme a base crescer.
+const _REGEX_ALTO_IMPACTO = /salto|polichinelo|burpee|corrida|correr/i;
+function _exercicioAltoImpacto(e){
+  const n = e.n.toLowerCase();
+  if(n.includes('sem salto')) return false; // "Burpee sem Salto" etc — não conta
+  return _REGEX_ALTO_IMPACTO.test(e.n);
 }
 
 // Busca fuzzy por fragmento — ignora acentos/caixa e permite que o personal
@@ -251,20 +358,20 @@ const _NOM_EXCLUI_PRESCRICAO = [
 ];
 
 function filtrarExerciciosFicha(musculo, porcao, resistPermitida, nivelAluno, contraindicacoes){
-  // Filtro base (nível, recurso, ci legacy, porção)
+  // Filtro base (nível, recurso, ci, grupo+porção)
+  // Porção deixou de ser campo à parte (`e.p`) — agora é lida como uma variação
+  // do próprio grupo muscular (ex.: "Peitoral" casa com "Peitoral" e também com
+  // "Peitoral Superior" dentro de `e.g`), conforme decisão da revisão de 2026-08-28.
+  const termoGrupo = porcao ? `${musculo} ${porcao}` : musculo;
   let pool = DB_EXERCICIOS.filter(e=>{
-    if(!textoIgual(e.g, musculo)) return false;
-    // Porção: o banco usa o formato "Grupo (Porção)" (ex: "Peitoral (Superior)"),
-    // enquanto a tela de Volume/PORCOES trabalha apenas com a porção isolada
-    // (ex: "Superior"). Comparação por fragmento (normalizada) cobre os dois formatos.
-    if(porcao!==null && !(e.p && buscaFuzzy(porcao, e.p))) return false;
-    if(!resistPermitida.includes(e.r)) return false;
-    if(!nivelOk(e.nv, nivelLabel(nivelAluno))) return false;
+    if(!e.g.some(x=>buscaFuzzy(termoGrupo, x.nome))) return false;
+    if(!e.r || !resistPermitida.includes(e.r.id)) return false;
+    if(!e.nv || !nivelOk(e.nv.nome, nivelLabel(nivelAluno))) return false;
     // Excluir exercícios de mobilidade, liberação e aeróbio da prescrição
     if(_NOM_EXCLUI_PRESCRICAO.some(pref => e.n.startsWith(pref))) return false;
-    if(e.ci && contraindicacoes){
-      const ciEx=e.ci.toLowerCase(), ciAluno=contraindicacoes.toLowerCase();
-      if(ciAluno && ciEx.split(' | ').some(c=>ciAluno.includes(c.split(' ')[0].toLowerCase()))) return false;
+    if(e.ci?.length && contraindicacoes){
+      const ciAluno = contraindicacoes.toLowerCase();
+      if(e.ci.some(c => ciAluno.includes(c.nome.toLowerCase()))) return false;
     }
     return true;
   });
@@ -292,22 +399,22 @@ function sortearExercicio(pool, jaUsados){
   return disponivel[Math.floor(Math.random() * disponivel.length)];
 }
 
-// ── Camada 4 — Sorteio ponderado ───────────────────────────────────────────
-// Fase E (redesenho geral, 2026-08-27): todos os fatores de peso viraram um
-// único score por exercício, somado (não mais duplicações encadeadas umas em
-// cima das outras). Cada exercício entra no pool ponderado repetido conforme
-// o próprio score — assim dá pra calibrar cada fator isoladamente, mexendo só
-// num número aqui, sem afetar os outros. Valores abaixo são o ponto de
-// partida (mantêm a proporção que já estava rodando); ajustar aqui conforme
-// o Milton for vendo o resultado na prática.
-const PESO_SORTEIO = {
-  novo:  2,  // exercício nunca prescrito pra esse aluno
-  visto: 1,  // exercício já usado em algum ciclo anterior
-  prioridadeClinica: 2, // bônus quando o exercício é prioritário por uma flag clínica (assimetria etc.)
-  tipoCadeia:        1, // bônus quando combina com a preferência de tipo/cadeia da condição clínica (item 16)
-  variedadePad:      1, // bônus quando traz um padrão de movimento ainda não usado neste treino (item 19)
-  base:              1, // bônus quando é exercício base/referência (item 20 — campo `base`, hoje zerado)
-  eficienciaMax:     3, // teto do bônus contínuo de eficiência (Fase F) — multiplicado pelo "aperto" da sessão
+// ── Camada 4 — Classificação de exercícios ─────────────────────────────────
+// Renomeado de "PESO_SORTEIO"/"score" pra CLASSIFICACAO (2026-08-28) — não é
+// aleatoriedade sem critério, é uma nota final por exercício. Regra fechada
+// com o Milton: cada característica que muda a nota vale sempre 1 ponto (pra
+// mais ou pra menos) — nunca 2, 3 etc. A nota final é a soma de tudo; pode dar
+// 0 (neutro, nenhum fator bateu), positivo (vários fatores bons) ou negativo
+// (fator ruim pesa mais que os bons). O que decide é o valor final, não um
+// fator isolado. Nenhum fator aqui BLOQUEIA — só sobe/desce a nota, e quem tem
+// nota mais alta tem mais chance de ser sorteado (nunca zero chance).
+const CLASSIFICACAO = {
+  novo:              1, // +1 — exercício nunca prescrito pra esse aluno (visto = 0, neutro)
+  prioridadeClinica: 1, // +1 — prioritário por flag clínica (assimetria etc.)
+  tipoCadeia:        1, // +1 — combina com tipo/cadeia preferida da condição clínica (item 16)
+  variedadePad:      1, // +1 — traz padrão de movimento ainda não usado neste treino (item 19)
+  eficiente:         1, // +1 — multiarticular + atinge grupo secundário, quando a sessão está apertada
+  naoRecomendado:    1, // −1 — "não recomendado" pro aluno (hoje: Baixo Impacto com IMC≥30). Mesmo tratamento visual/de nota que lesão vai receber quando a arquitetura de pontuação clínica completa for implementada (item pendente).
 };
 
 function sortearExercicioC4(pool, jaUsados, musculo, exerciciosTreino, aperto){
@@ -323,39 +430,50 @@ function sortearExercicioC4(pool, jaUsados, musculo, exerciciosTreino, aperto){
   // banco — fica pra quando esse campo for criado. `imp` (impacto articular) é
   // classificação de risco, não característica de variabilidade — não entra aqui.
   const padsUsadosTreino = new Set((exerciciosTreino||[]).map(e=>e._pad).filter(Boolean));
-  const trazVariedade = (e) => e.pad && !padsUsadosTreino.has(e.pad);
+  const trazVariedade = (e) => e.pad && !padsUsadosTreino.has(e.pad.id);
 
   // Prioritário clínico (flags Camada 4 — assimetria etc.)
   const isPrio = (e) => prioridades.some(p => { const fn=FLAGS_PRIORIDADE[p]; return fn && fn(e); });
 
   // Combina com a condição clínica do aluno (tipo ou cadeia preferida — item 16).
-  const combinaComCondicao = (e) => prefTipoCadeia.tp.has(e.tp) || prefTipoCadeia.cad.has(e.cad);
+  // `tp` e `cad` agora são lista/objeto {id,nome} — compara pelo nome.
+  const combinaComCondicao = (e) =>
+    (e.tp||[]).some(t => prefTipoCadeia.tp.has(t.nome)) ||
+    (e.cad && prefTipoCadeia.cad.has(e.cad.nome));
 
   // Eficiência (Fase F): multiarticular + atinge grupo muscular secundário
   // (campo `gs`) rende mais estímulo por série — vale mais quando a sessão
-  // está apertada em relação ao tempo disponível. Bônus contínuo, escala com
-  // `aperto` (0 = sessão cabe tranquila, cresce conforme fica mais apertada).
-  const eficiente = (e) => e.art === 'Multiarticular' && !!(e.gs && String(e.gs).trim());
+  // está apertada em relação ao tempo disponível. Antes era bônus contínuo
+  // (escalava com `aperto`); virou fixo +1 pra seguir a regra "cada fator
+  // vale sempre 1" (2026-08-28).
+  const eficiente = (e) => e.art?.nome === 'Multiarticular' && !!(e.gs && e.gs.length);
+
+  // "Não recomendado" (2026-08-28) — hoje só cobre Baixo Impacto (alto impacto
+  // + IMC≥30). Não bloqueia, só tira 1 ponto da classificação e mostra aviso
+  // visual (ver tag_naoRecomendado em abrirListaExercicios).
+  const { bloqueios: flagsAtivas } = extrairFlagsClinicas();
+  const naoRecomendado = (e) => flagsAtivas.includes('Baixo Impacto') && _exercicioAltoImpacto(e);
 
   // 1. Filtrar já usados nesta sessão
   const todos = pool.filter(e => !jaUsados.has(e.n));
   if(!todos.length) return pool[Math.floor(Math.random() * pool.length)] || null;
 
-  // 2. Score por exercício — soma de todos os fatores, sem duplicação encadeada.
-  const scoreDe = (e) => {
-    let score = historico.has(e.n) ? PESO_SORTEIO.visto : PESO_SORTEIO.novo;
-    if(isPrio(e))            score += PESO_SORTEIO.prioridadeClinica;
-    if(combinaComCondicao(e)) score += PESO_SORTEIO.tipoCadeia;
-    if(trazVariedade(e))      score += PESO_SORTEIO.variedadePad;
-    if(e.base === true)       score += PESO_SORTEIO.base;
-    if(aperto>0 && eficiente(e)) score += aperto * PESO_SORTEIO.eficienciaMax;
-    return score;
+  // 2. Classificação por exercício — soma de todos os fatores (cada um ±1).
+  const classificacaoDe = (e) => {
+    let nota = historico.has(e.n) ? 0 : CLASSIFICACAO.novo;
+    if(isPrio(e))              nota += CLASSIFICACAO.prioridadeClinica;
+    if(combinaComCondicao(e))  nota += CLASSIFICACAO.tipoCadeia;
+    if(trazVariedade(e))       nota += CLASSIFICACAO.variedadePad;
+    if(aperto>0 && eficiente(e)) nota += CLASSIFICACAO.eficiente;
+    if(naoRecomendado(e))      nota -= CLASSIFICACAO.naoRecomendado;
+    return nota;
   };
 
-  // 3. Montar pool ponderado repetindo cada exercício conforme seu score.
+  // 3. Montar pool ponderado repetindo cada exercício conforme sua nota —
+  // nota mais alta = mais chance, mas nunca zero chance (mínimo 1 entrada).
   const ponderado = [];
   todos.forEach(e => {
-    const n = Math.max(1, Math.round(scoreDe(e)));
+    const n = Math.max(1, Math.round(classificacaoDe(e)));
     for(let i=0; i<n; i++) ponderado.push(e);
   });
 
@@ -3382,28 +3500,31 @@ function parseFaixaMedia(str){
 }
 
 const TEMPO_ISOMETRICO_PADRAO_SEG = 60; // "usa 60 segundos por enquanto, depois refino" — banco ainda não tem seg/rep pra isométricos
-const TEMPO_TROCA_UNILATERAL_SEG  = 30; // fixo, interno — não aparece pro personal/aluno, só entra no cálculo
 
-// Segundos de execução de UMA série do exercício (reps × seg/rep, ou o padrão
-// isométrico; soma o tempo de troca de lado se for unilateral).
-function _tempoExecucaoPorSerie(ex){
+// Blocos de execução de UMA série do exercício (reps × seg/rep, ou o padrão
+// isométrico). Um exercício normal (Bilateral / Bilateral com Carga
+// Unilateral) é 1 bloco só; um exercício Unilateral vira 2 blocos (um por
+// lado, mesmo tempo cada) — é assim que a "dobra" de tempo entra na conta,
+// e cada bloco extra gera uma TROCA (ver calcularTempoEstimadoTreino).
+function _blocosExecucao(ex){
   const reps = parseFaixaMedia(ex.reps);
-  const tempoRep = String(ex._tempoRep||'');
-  let t;
-  if(tempoRep.toLowerCase().includes('isomet')){
-    t = TEMPO_ISOMETRICO_PADRAO_SEG;
-  } else {
-    const segPorRep = parseFloat(tempoRep) || 4; // fallback se o exercício não tiver `tempo` cadastrado
-    t = reps * segPorRep;
-  }
-  if(ex._uni) t += TEMPO_TROCA_UNILATERAL_SEG;
-  return t;
+  // Isométrico detectado pelo campo `contracao` (Pico de Contração ===
+  // "Isométrica"), direto da planilha oficial.
+  const tempoBloco = ex._contracaoIsometrica
+    ? TEMPO_ISOMETRICO_PADRAO_SEG
+    : reps * (parseFloat(ex._tempoRep) || 4); // fallback se o exercício não tiver `tempo` cadastrado
+  return ex._uni ? [tempoBloco, tempoBloco] : [tempoBloco];
 }
 
-// Tempo total estimado do treino, em segundos e minutos. Bi-set/tri-set
-// (`_vinculadoProximo`, ver _computarGruposExercicios): soma a execução de
-// cada exercício do bloco, mas o descanso só entra UMA vez por rodada, ao
-// final do bloco — não descanso individual por exercício.
+// Tempo total estimado do treino, em segundos e minutos — Momento 2 (tela de
+// seleção de exercício, exercícios já escolhidos). Regra fechada e validada
+// com o Milton em 2026-08-29 (planilha linha a linha, 6 cenários reais,
+// bateu 100%): dentro de um grupamento (bi-set/tri-set via
+// `_vinculadoProximo`/_computarGruposExercicios, ou um exercício solo),
+// TROCA (30s) acontece entre cada bloco de execução — troca de exercício no
+// biset/triset OU troca de lado num Unilateral, mesmo valor pros dois casos.
+// DESCANSO (o intervalo prescrito pro grupamento) entra só UMA vez, depois
+// do ÚLTIMO bloco, repetido a cada série (não só entre séries).
 function calcularTempoEstimadoTreino(treino){
   if(!treino?.exercicios?.length) return { segundos: 0, minutos: 0 };
   const gruposInfo = _computarGruposExercicios(treino.exercicios);
@@ -3411,19 +3532,18 @@ function calcularTempoEstimadoTreino(treino){
   let i = 0;
   while(i < treino.exercicios.length){
     const info = gruposInfo[i];
-    if(info && info.pos === 1){
-      const membros = treino.exercicios.slice(i, i + info.total);
-      const series = Math.max(...membros.map(m => parseInt(m.series) || 1));
-      const tempoExecucaoRodada = membros.reduce((acc, m) => acc + _tempoExecucaoPorSerie(m), 0);
-      const descansoMedio = membros.reduce((acc, m) => acc + parseFaixaMedia(m.intervalo), 0) / membros.length;
-      totalSegundos += series * tempoExecucaoRodada + Math.max(0, series - 1) * descansoMedio;
-      i += info.total;
-    } else {
-      const ex = treino.exercicios[i];
-      const series = parseInt(ex.series) || 1;
-      totalSegundos += series * _tempoExecucaoPorSerie(ex) + Math.max(0, series - 1) * parseFaixaMedia(ex.intervalo);
-      i++;
-    }
+    const ehGrupamento = info && info.pos === 1;
+    const membros = ehGrupamento ? treino.exercicios.slice(i, i + info.total) : [treino.exercicios[i]];
+
+    const series = Math.max(...membros.map(m => parseInt(m.series) || 1));
+    const descanso = membros.reduce((acc, m) => acc + parseFaixaMedia(m.intervalo), 0) / membros.length;
+
+    const blocos = membros.flatMap(_blocosExecucao);
+    const execucaoPorSerie = blocos.reduce((a, b) => a + b, 0);
+    const trocasPorSerie = Math.max(0, blocos.length - 1) * TEMPO_TROCA_SEG;
+
+    totalSegundos += series * (execucaoPorSerie + trocasPorSerie + descanso);
+    i += ehGrupamento ? info.total : 1;
   }
   return { segundos: Math.round(totalSegundos), minutos: Math.round(totalSegundos / 60) };
 }
@@ -3461,7 +3581,7 @@ function abrirListaExercicios(ti, rowIdx, musculo, porcaoStr){
   // Pool base (nível/recurso/ci)
   let poolBase = filtrarExerciciosFicha(musculo, porcao, resist, nivel, lesoes);
   if(!poolBase.length) poolBase = filtrarExerciciosFicha(musculo, null, resist, nivel, lesoes);
-  if(!poolBase.length) poolBase = DB_EXERCICIOS.filter(e=>textoIgual(e.g, musculo));
+  if(!poolBase.length) poolBase = DB_EXERCICIOS.filter(e=>e.g.some(x=>buscaFuzzy(musculo, x.nome)));
 
   // Aplicar status Camada 3 para exibição
   const { bloqueios, prioridades } = extrairFlagsClinicas();
@@ -3474,13 +3594,19 @@ function abrirListaExercicios(ti, rowIdx, musculo, porcaoStr){
       const fn = FLAGS_PRIORIDADE[prio];
       if(fn && fn(e)) return { ...e, _status:'prioritario', _motivo: prio };
     }
+    // "Não recomendado" (2026-08-28) — não bloqueia, só avisa e tira 1 ponto
+    // na classificação (ver sortearExercicioC4). Hoje só Baixo Impacto.
+    if(bloqueios.includes('Baixo Impacto') && _exercicioAltoImpacto(e)){
+      return { ...e, _status:'nao_recomendado', _motivo: 'Alto impacto — não recomendado com IMC ≥ 30' };
+    }
     return { ...e, _status:'ok', _motivo:'' };
   });
 
-  // Ordenar: prioritários > ok > bloqueados
+  // Ordenar: prioritários > ok > não recomendados > bloqueados
   const ordenado = [
     ...poolComStatus.filter(e=>e._status==='prioritario'),
     ...poolComStatus.filter(e=>e._status==='ok'),
+    ...poolComStatus.filter(e=>e._status==='nao_recomendado'),
     ...poolComStatus.filter(e=>e._status==='bloqueado'),
   ];
 
@@ -3496,7 +3622,7 @@ function abrirListaExercicios(ti, rowIdx, musculo, porcaoStr){
     if(bloqueios.length || prioridades.length){
       const leg = document.createElement('div');
       leg.style.cssText = 'font-size:10px;color:var(--text3);padding:4px 8px;border-bottom:1px solid var(--border);margin-bottom:2px;font-family:var(--mono)';
-      leg.textContent = '🟢 Prior.  ⚪ Ok  🔴 Bloq. (Filtros clínicos ativos)';
+      leg.textContent = '🟢 Prior.  ⚪ Ok  🟡 Não recom.  🔴 Bloq. (Filtros clínicos ativos)';
       listEl.appendChild(leg);
     }
 
@@ -3504,20 +3630,22 @@ function abrirListaExercicios(ti, rowIdx, musculo, porcaoStr){
       const div = document.createElement('div');
       const isBloq = e._status === 'bloqueado';
       const isPrio = e._status === 'prioritario';
+      const isNaoRec = e._status === 'nao_recomendado';
       div.style.cssText = `padding:5px 8px;border-radius:3px;cursor:${isBloq?'not-allowed':'pointer'};` +
-        `font-size:11px;color:${isBloq?'var(--text3)':isPrio?'var(--text)':'var(--text2)'};` +
+        `font-size:11px;color:${isBloq?'var(--text3)':isPrio?'var(--text)':isNaoRec?'var(--text2)':'var(--text2)'};` +
         `opacity:${isBloq?'0.5':'1'};transition:background .1s;` +
-        `border-left:2px solid ${isPrio?'var(--accent)':isBloq?'rgba(255,80,80,.4)':'transparent'};` +
-        `padding-left:${isPrio||isBloq?'10px':'8px'}`;
+        `border-left:2px solid ${isPrio?'var(--accent)':isBloq?'rgba(255,80,80,.4)':isNaoRec?'rgba(255,180,50,.5)':'transparent'};` +
+        `padding-left:${isPrio||isBloq||isNaoRec?'10px':'8px'}`;
       div.dataset.nome = e.n;
       div.dataset.bloq = isBloq ? '1' : '0';
 
-      const icone = isPrio ? '🟢 ' : isBloq ? '🔴 ' : '';
-      const tag_nv = `<span style="color:var(--text3);font-size:9px">${e.nv}</span>`;
-      const tag_uni = e.uni ? `<span style="color:var(--text3);font-size:9px;margin-left:4px">uni</span>` : '';
+      const icone = isPrio ? '🟢 ' : isBloq ? '🔴 ' : isNaoRec ? '🟡 ' : '';
+      const tag_nv = `<span style="color:var(--text3);font-size:9px">${e.nv?.nome||''}</span>`;
+      const tag_uni = _exercicioUnilateral(e) ? `<span style="color:var(--text3);font-size:9px;margin-left:4px">uni</span>`
+                    : _exercicioBilateralCU(e) ? `<span style="color:var(--text3);font-size:9px;margin-left:4px">CU</span>` : '';
       const tag_url = e.url ? `<a href="${e.url}" target="_blank" onclick="event.stopPropagation()" style="font-size:9px;color:var(--accent);margin-left:4px;text-decoration:none" title="Ver vídeo">▶</a>` : '';
-      const tag_motivo = (isBloq || isPrio) && e._motivo
-        ? `<div style="font-size:9px;color:${isBloq?'#ff5050':'var(--accent)'};margin-top:1px;opacity:.85">${e._motivo.split('—')[0].trim()}</div>` : '';
+      const tag_motivo = (isBloq || isPrio || isNaoRec) && e._motivo
+        ? `<div style="font-size:9px;color:${isBloq?'#ff5050':isNaoRec?'#e0a030':'var(--accent)'};margin-top:1px;opacity:.85">${e._motivo.split('—')[0].trim()}</div>` : '';
 
       div.innerHTML = `${icone}${e.n} ${tag_nv}${tag_uni}${tag_url}${tag_motivo}`;
 
@@ -3544,7 +3672,7 @@ function selecionarExercicio(ti, rowIdx, nome, listId){
     // — sem atualizar _artic e regerar o aquecimento, ele ficaria desatualizado
     // em relação ao que a sessão de fato vai treinar.
     const dbEx = DB_EXERCICIOS.find(e => e.n === nome);
-    treino.exercicios[rowIdx]._artic = dbEx?.artic || '';
+    treino.exercicios[rowIdx]._artic = (dbEx?.artic||[]).map(a=>a.nome);
     regerarAquecimentoTreino(ti);
     renderTreinoAtivo(); // re-render completo: precisa refletir o aquecimento recalculado, não só o nome trocado
     return;
@@ -3571,7 +3699,7 @@ function regerarAquecimentoTreino(ti){
     s?.perfil?.lesoes || '', s?.perfil?.condicoes || '', val('pr-evitar') || s?.anamnese?.preferencias || '',
   ].filter(Boolean).join(' ');
   const articsTreino = new Set();
-  treino.exercicios.forEach(ex => { (ex._artic||'').split('|').forEach(a => { a = a.trim(); if(a) articsTreino.add(a); }); });
+  treino.exercicios.forEach(ex => { (ex._artic||[]).forEach(a => { if(a) articsTreino.add(a); }); });
   treino.aquecimento = gerarAquecimentoArticular(articsTreino, resistPermitida, nivel, contraindicacoes);
 }
 
@@ -4009,17 +4137,17 @@ function gerarAquecimentoArticular(articsTreino, resistPermitida, nivel, contrai
 
   ordenadas.forEach(artic => {
     let pool = DB_EXERCICIOS.filter(e =>
-      e.tp === 'Mobilidade' &&
-      (e.artic||'').split('|').map(x=>x.trim()).includes(artic) &&
-      resistPermitida.includes(e.r) &&
-      nivelOk(e.nv, nivelLabel(nivel)) &&
+      (e.tp||[]).some(t=>t.nome === 'Mobilidade') &&
+      (e.artic||[]).some(x=>x.nome === artic) &&
+      e.r && resistPermitida.includes(e.r.id) &&
+      e.nv && nivelOk(e.nv.nome, nivelLabel(nivel)) &&
       !usados.has(e.n)
     );
     if(contraindicacoes){
       const semCi = pool.filter(e => {
-        if(!e.ci) return true;
-        const ciEx = e.ci.toLowerCase(), ciAluno = contraindicacoes.toLowerCase();
-        return !ciEx.split(' | ').some(c => ciAluno.includes(c.split(' ')[0].toLowerCase()));
+        if(!e.ci?.length) return true;
+        const ciAluno = contraindicacoes.toLowerCase();
+        return !e.ci.some(c => ciAluno.includes(c.nome.toLowerCase()));
       });
       if(semCi.length) pool = semCi;
     }
@@ -4154,17 +4282,20 @@ function gerarFichaMotorV2(params){
 
     // ── Fase F — tempo estimado de treino: estima o quanto essa sessão vai
     // apertar em relação ao tempo disponível, ANTES de escolher os exercícios
-    // (só temos reps/descanso de referência do objetivo nesse ponto, ainda não
-    // o segundo/repetição real de cada exercício — por isso usa uma média
-    // aproximada só pra essa estimativa prévia; o cálculo fino, com os
-    // exercícios já escolhidos, é feito depois em calcularTempoEstimadoTreino).
-    const SEG_POR_REP_ESTIMATIVA = 4.5; // média aproximada do banco (4s/rep é o valor mais comum)
-    const repsMedioObjetivo      = parseFaixaMedia(repsRef);
-    const descansoMedioObjetivo  = parseFaixaMedia(descRef);
-    const totalSeriesPlanejadas    = sessaoGrupos.reduce((acc, sd) => acc + sd.serSessao, 0);
-    const totalExerciciosPlanejados = sessaoGrupos.reduce((acc, sd) => acc + sd.numEx, 0);
-    const segundosPlanejados = totalSeriesPlanejadas*(repsMedioObjetivo*SEG_POR_REP_ESTIMATIVA)
-      + Math.max(0, totalSeriesPlanejadas-totalExerciciosPlanejados)*descansoMedioObjetivo;
+    // (só sabemos grupo/nº exercícios/nº séries nesse ponto, ainda não qual
+    // exercício específico — por isso usa o tempo MÉDIO real por grupo, não o
+    // de um exercício, ver estimarTempoModeloSessao). O cálculo fino, com os
+    // exercícios já escolhidos (grupamento/biset/unilateral), é feito depois
+    // em calcularTempoEstimadoTreino (Momento 2).
+    // `objetivo` aqui é um dos 12 códigos do motor (Hip/Forca/Emagr/...), não
+    // uma das 4 valências de treino (Força/Hipertrofia/Resistência/Potência)
+    // usadas no cálculo de tempo — mapeamento abaixo é PROVISÓRIO (meu
+    // julgamento pela faixa de reps de cada objetivo em REPS_REF), confirmar
+    // com o Milton antes de considerar fechado.
+    const valenciaTempo = OBJETIVO_PARA_VALENCIA[objetivo] || 'Hipertrofia';
+    const gruposPlanejadosModelo = sessaoGrupos.map(sd => ({ grupo: sd.g, nExercicios: sd.numEx, nSeries: sd.serEx }));
+    const tempoEstimadoModelo = estimarTempoModeloSessao(gruposPlanejadosModelo, valenciaTempo);
+    const segundosPlanejados = tempoEstimadoModelo.medio;
     const segundosDisponiveis = (duracaoDisponivel||60)*60;
     // "Aperto": 0 = sessão cabe tranquila no tempo disponível; cresce conforme o
     // planejado passa do disponível. Usado como bônus contínuo (não por limiar)
@@ -4194,10 +4325,12 @@ function gerarFichaMotorV2(params){
             series: seriesFinal, reps: repsRef,
             intensidade: intensRef, intervalo: descRef,
             nota_clinica: nota || '',
-            _artic: ex.artic || '', // guarda a(s) articulação(ões) do exercício escolhido —
+            _artic: (ex.artic||[]).map(a=>a.nome), // guarda a(s) articulação(ões) do exercício escolhido —
             // não aparece na ficha, é só o insumo pra montar o aquecimento da sessão logo abaixo.
-            _pad: ex.pad || '', // insumo pro bônus de variedade por tipo de movimentação (Fase C) — não aparece na ficha.
-            _tempoRep: ex.tempo || '', _uni: ex.uni || 0, // insumo pro cálculo de tempo estimado (Fase F) — não aparece na ficha.
+            _pad: ex.pad?.id || '', // insumo pro bônus de variedade por tipo de movimentação (Fase C) — não aparece na ficha.
+            _tempoRep: ex.tempo || '',
+            _contracaoIsometrica: ex.contracao?.nome === 'Isométrica',
+            _uni: _exercicioUnilateral(ex) ? 1 : 0,
           });
         }
       }
@@ -4219,6 +4352,17 @@ function gerarFichaMotorV2(params){
       label: divisao.label[ti] || `Treino ${String.fromCharCode(65+ti)}`,
       aquecimento,
       exercicios: exerciciosTreino,
+      // Estimativa da tela de modelos (Momento 1) — mín (tudo Bilateral) / máx
+      // (tudo Unilateral) / médio (o que se mostra pro personal). Ainda sem
+      // tela própria pra exibir isso — guardado aqui pra quando a tela existir.
+      tempoEstimadoModelo: {
+        minSeg: Math.round(tempoEstimadoModelo.min),
+        maxSeg: Math.round(tempoEstimadoModelo.max),
+        medioSeg: Math.round(tempoEstimadoModelo.medio),
+        minMin: Math.round(tempoEstimadoModelo.min/60),
+        maxMin: Math.round(tempoEstimadoModelo.max/60),
+        medioMin: Math.round(tempoEstimadoModelo.medio/60),
+      },
     });
   });
 

@@ -939,69 +939,73 @@ function toggleTriagemDetalhe(){
 //   'ok' | 'prioritario' | 'bloqueado'
 // ══════════════════════════════════════════════════════════════════════════════
 
+// Utilitário: exercício tem essa indicação/contraindicação na lista (`ind`/`ci`
+// agora são arrays de {id,nome} — reimportação de 2026-08-28).
+const _temCi = (e, nome) => (e.ci||[]).some(c => c.nome === nome);
+
 // Mapa: flag clínica → exercícios bloqueados por critério
-// 'ci' = usa campo ci existente | 'pad' = padrão de movimento | 'ovh' = overhead | 'tr' = tags_restricao
+// 'ci' = usa campo ci (lista, direto da planilha) | 'pad' = padrão de movimento (id/nome oficial da planilha)
 const FLAGS_FILTRO = {
   // Lesões ativas
   'Dores nos Joelhos': {
-    bloqueio: e => e.ci?.includes('Dores nos Joelhos'),
+    bloqueio: e => _temCi(e, 'Dores nos Joelhos'),
     motivo: 'Contraindicado: dor no joelho',
   },
   'Dores Lombares': {
-    bloqueio: e => e.ci?.includes('Dores Lombares'),
+    bloqueio: e => _temCi(e, 'Dores Lombares'),
     motivo: 'Contraindicado: dor lombar',
   },
   'Dores nos Ombros': {
-    bloqueio: e => e.ci?.includes('Dores nos Ombros'),
+    bloqueio: e => _temCi(e, 'Dores nos Ombros'),
     motivo: 'Contraindicado: dor no ombro',
   },
   'Dores nos Cotovelos': {
-    bloqueio: e => e.ci?.includes('Dores nos Cotovelos'),
+    bloqueio: e => _temCi(e, 'Dores nos Cotovelos'),
     motivo: 'Contraindicado: dor no cotovelo',
   },
 
-  // Flags funcionais — FMS
+  // Flags funcionais — FMS foi removido do sistema (confirmado 2026-08-28); o
+  // campo `tr` (tags_restricao) também saiu do banco (nunca foi implementado
+  // de fato). As regras abaixo continuam só pela parte baseada em nome.
   'Encurtamento Isquiotibiais': {
-    bloqueio: e => e.tr?.includes('Encurtamento Isquiotibiais') ||
-                   (e.n.toLowerCase().includes('levantamento terra') && !e.n.toLowerCase().includes('romeno') && !e.n.toLowerCase().includes('stiff')),
+    bloqueio: e => e.n.toLowerCase().includes('levantamento terra') && !e.n.toLowerCase().includes('romeno') && !e.n.toLowerCase().includes('stiff'),
     motivo: 'Encurtamento de isquiotibiais — terra convencional contraindicado',
   },
   'Valgo Joelho': {
-    bloqueio: e => (e.pad === 'squat' && e.r !== 'TRM' && !e.n.toLowerCase().includes('leg press') &&
-                    !e.n.toLowerCase().includes('hack') && e.nv !== 'Iniciante' &&
+    bloqueio: e => (e.pad?.nome === 'Joelho bilateral simétrico' && e.r?.nome !== 'Máquina' && !e.n.toLowerCase().includes('leg press') &&
+                    !e.n.toLowerCase().includes('hack') && e.nv?.nome !== 'Iniciante' &&
                     e.n.toLowerCase().includes('barra') && e.n.toLowerCase().includes('agachamento')),
     motivo: 'Valgo de joelho — agachamento profundo com barra contraindicado',
   },
   'Ombro Limitado D': {
-    // CORREÇÃO DE STRING: e.g==='Deltoide' nunca casava com 'Deltóide' (banco real).
-    // ATENÇÃO — LIMITAÇÃO DE DADOS NÃO RESOLVIDA POR ESTA CORREÇÃO: o campo e.ovh
-    // (marca "exercício overhead") está zerado em 100% dos 691 exercícios do banco
-    // atual. Mesmo com a comparação de grupo corrigida, esta regra continuará sem
-    // bloquear nenhum exercício até que e.ovh seja preenchido na fonte de dados
-    // (vault) para os exercícios de Desenvolvimento/Arnold/overhead.
-    bloqueio: e => e.ovh && textoIgual(e.g, 'Deltoide') &&
+    // `e.ovh` foi removido — overhead agora é detectado pelo Padrão de
+    // Movimento oficial "Empurrar vertical" (decisão 2026-08-28, ponto 20).
+    bloqueio: e => e.pad?.nome === 'Empurrar vertical' && e.g.some(x=>textoIgual(x.nome, 'Deltoide')) &&
                    (e.n.toLowerCase().includes('desenvolvimento') || e.n.toLowerCase().includes('arnold')),
     motivo: 'Ombro D limitado — press vertical contraindicado no lado afetado',
   },
   'Ombro Limitado E': {
-    bloqueio: e => e.ovh && textoIgual(e.g, 'Deltoide') &&
+    bloqueio: e => e.pad?.nome === 'Empurrar vertical' && e.g.some(x=>textoIgual(x.nome, 'Deltoide')) &&
                    (e.n.toLowerCase().includes('desenvolvimento') || e.n.toLowerCase().includes('arnold')),
     motivo: 'Ombro E limitado — press vertical contraindicado no lado afetado',
   },
   'Ombro Limitado bilateral': {
-    bloqueio: e => e.ovh && textoIgual(e.g, 'Deltoide'),
+    bloqueio: e => e.pad?.nome === 'Empurrar vertical' && e.g.some(x=>textoIgual(x.nome, 'Deltoide')),
     motivo: 'Ombro limitado bilateral — overhead contraindicado',
   },
 
-  // IMC / impacto
+  // IMC / impacto — `e.imp` foi removido (não existia na planilha oficial;
+  // impacto articular por sobrepeso vira cálculo futuro combinando tipo de
+  // exercício + avaliação do aluno, ainda não desenhado). Regra desativada
+  // até esse cálculo existir — não bloqueia nada por enquanto.
   'Baixo Impacto': {
-    bloqueio: e => e.imp === 'alto',
+    bloqueio: e => false,
     motivo: 'Alto impacto — não recomendado com IMC ≥ 30',
   },
 
-  // FMS Score baixo — bloquear exercícios avançados
+  // FMS Score baixo — campo `tr` removido; mantém só o corte por nível.
   'FMS Score Baixo': {
-    bloqueio: e => e.nv === 'Avançado' || e.tr?.includes('FMS Score Baixo'),
+    bloqueio: e => e.nv?.nome === 'Avançado',
     motivo: 'FMS ≤ 13 — exercícios avançados bloqueados na fase corretiva',
   },
 };
@@ -1015,12 +1019,29 @@ const FLAGS_FILTRO = {
 //   - Assimetria MMII: 3→21 exercícios encontrados após adicionar squat_uni/squat_asym/hip_hinge
 //   - Core Assimétrico: 0→11 exercícios após corrigir 'core' para 'lateral_flex'
 //   - Valgo Corretivo: 0→17 exercícios após corrigir 'Gluteos' para 'Glúteos'
+// `uni` não é mais campo salvo — calculado do nome do exercício.
+// `pad` trocou de código curto (squat/pull_v/...) pro nome oficial da
+// planilha; de quebra corrige dois mapeamentos que estavam errados no banco
+// antigo: "Puxar horizontal" (antes caía junto de pull_v) e "Quadril
+// unilateral" (antes caía junto de rotation) entram nas listas certas agora.
+// `uni` (flag binária) virou `lateralidade` — 3 categorias (2026-08-28):
+// Bilateral / Bilateral com Carga Unilateral / Unilateral. Prioridade clínica
+// de assimetria usa só "Unilateral" de fato (mesma lógica de
+// _exercicioUnilateral em prescricao-motor.js).
+// Correção de assimetria (2026-08-28): prioriza tanto Unilateral quanto
+// Bilateral com Carga Unilateral — os dois permitem trabalhar um lado sem
+// depender do outro (carga independente por lado), o que ajuda a corrigir
+// assimetria. "Bilateral" puro não entra porque a carga é compartilhada.
+const _isUniOuCU = e => ['Unilateral','Bilateral com Carga Unilateral'].includes(e.lateralidade?.nome);
+const PADS_JOELHO_QUADRIL_ASSIMETRIA = ['Joelho bilateral simétrico','Joelho unilateral','Joelho bilateral assimétrico','Quadril bilateral','Quadril unilateral'];
+const PADS_EMPURRAR_PUXAR_ASSIMETRIA = ['Empurrar horizontal','Empurrar vertical','Puxar horizontal','Puxar vertical'];
 const FLAGS_PRIORIDADE = {
-  'Assimetria MMII':   e => e.uni && ['squat','squat_uni','squat_asym','hip_hinge'].includes(e.pad),
-  'Assimetria MMSS':   e => e.uni && (['push_h','push_v','pull_v'].includes(e.pad) || textoIgual(e.g, 'Biceps')),
-  'Core Assimétrico':  e => e.pad === 'lateral_flex',
-  'Isquio Encurtado':  e => textoIgual(e.g, 'Isquiossurais') && (e.r === 'TRM' || e.n.toLowerCase().includes('cadeira flexora') || e.n.toLowerCase().includes('flexão de joelho')),
-  'Valgo Corretivo':   e => textoIgual(e.g, 'Gluteos') && e.n.toLowerCase().includes('abdução'),
+  // MMII (membros inferiores) e MMSS (membros superiores) — segmentado como pedido.
+  'Assimetria MMII':   e => _isUniOuCU(e) && e.pad && PADS_JOELHO_QUADRIL_ASSIMETRIA.includes(e.pad.nome),
+  'Assimetria MMSS':   e => _isUniOuCU(e) && ((e.pad && PADS_EMPURRAR_PUXAR_ASSIMETRIA.includes(e.pad.nome)) || e.g.some(x=>textoIgual(x.nome, 'Biceps'))),
+  'Core Assimétrico':  e => e.pad?.nome === 'Flexão Lateral de Tronco',
+  'Isquio Encurtado':  e => e.g.some(x=>textoIgual(x.nome, 'Isquiossurais')) && (e.r?.nome === 'Máquina' || e.n.toLowerCase().includes('cadeira flexora') || e.n.toLowerCase().includes('flexão de joelho')),
+  'Valgo Corretivo':   e => e.g.some(x=>textoIgual(x.nome, 'Gluteos')) && e.n.toLowerCase().includes('abdução'),
 };
 
 // Regra 2 (esboço 2026-08-26) — condição clínica do aluno → preferência de tipo
@@ -1028,13 +1049,16 @@ const FLAGS_PRIORIDADE = {
 // acima) — só prioriza, dentro do que já é seguro, o exercício mais adequado à
 // condição. Reaproveita os mesmos nomes de flag de FLAGS_FILTRO/extrairFlagsClinicas.
 // Ainda não é exaustivo (esboço funcional pra afinar depois de ver rodando).
+// Cadeia cinética trocou de CCA/CCF/Complementar/Misto (código antigo, com
+// mapeamento inconsistente) pro binário oficial da planilha: 'Aberta'/'Fechada'
+// — CCF = Fechada, CCA = Aberta, por definição (2026-08-28).
 const FLAGS_TIPO_CADEIA = {
-  'Dores nos Joelhos':   { cad: ['CCF'], tp: ['Estabilidade','Mobilidade'] },
-  'Dores Lombares':      { cad: ['CCF'], tp: ['Estabilidade'] },
-  'Dores nos Ombros':    { cad: ['CCA'], tp: ['Estabilidade','Mobilidade'] },
-  'Dores nos Cotovelos': { cad: ['CCF'], tp: [] },
-  'Baixo Impacto':       { cad: [],      tp: ['Estabilidade','Aeróbio'] },
-  'FMS Score Baixo':     { cad: ['CCF'], tp: ['Estabilidade','Mobilidade'] },
+  'Dores nos Joelhos':   { cad: ['Fechada'], tp: ['Estabilidade','Mobilidade'] },
+  'Dores Lombares':      { cad: ['Fechada'], tp: ['Estabilidade'] },
+  'Dores nos Ombros':    { cad: ['Aberta'],  tp: ['Estabilidade','Mobilidade'] },
+  'Dores nos Cotovelos': { cad: ['Fechada'], tp: [] },
+  'Baixo Impacto':       { cad: [],          tp: ['Estabilidade','Aeróbio'] },
+  'FMS Score Baixo':     { cad: ['Fechada'], tp: ['Estabilidade','Mobilidade'] },
 };
 
 // Agrega as preferências de tipo/cadeia de todas as flags clínicas ativas do
@@ -1120,7 +1144,7 @@ function extrairFlagsClinicas(){
 function filtrarExercicios(grupo){
   // Retorna exercícios do grupo com status: 'ok' | 'prioritario' | 'bloqueado' | 'motivo'
   const { bloqueios, prioridades } = extrairFlagsClinicas();
-  const pool = DB_EXERCICIOS.filter(e => e.g === grupo);
+  const pool = DB_EXERCICIOS.filter(e => e.g.some(x => x.nome === grupo));
 
   return pool.map(e => {
     // Verificar bloqueios
