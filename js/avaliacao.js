@@ -2956,6 +2956,8 @@ function preencherStep1DaAnamnese(){
       setVal(id, a[key]||'');
     }
   });
+  // Popula locais personalizados do LIBS no select pr-local (se existir a função)
+  if(typeof populateLocalSelect === 'function') populateLocalSelect();
   renderObjGrid();
   checkStep1();
 }

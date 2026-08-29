@@ -151,7 +151,13 @@ function verExercicio(localIdx){
     </div>
     ${e.ind ? `<div class="alert alert-green" style="margin-bottom:8px"><strong>✅ Indicação:</strong> ${e.ind}</div>` : ''}
     ${e.cnt ? `<div class="alert alert-red" style="margin-bottom:8px"><strong>❌ Contra-indicação:</strong> ${e.cnt}</div>` : ''}
-    ${e.url ? `<div style="margin-top:10px"><a href="${e.url}" target="_blank" style="color:var(--blue);font-size:13px">▶ Ver vídeo demonstrativo</a></div>` : ''}
+    ${e.url ? `<div style="margin-top:10px"><a data-url="${e.url}" data-nome="${(e.n||'').replace(/"/g,'&quot;')}" onclick="abrirVideoModal(this.dataset.url,this.dataset.nome)" style="color:var(--blue);font-size:13px;cursor:pointer;text-decoration:none">▶ Ver vídeo demonstrativo</a></div>` : ''}
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+      <button id="btn-fav-ex-detail" onclick="toggleFavorito(${e.id},document.getElementById('btn-fav-ex-detail'))" style="font-size:13px;background:none;border:1px solid var(--border);border-radius:20px;padding:4px 14px;cursor:pointer;color:var(--text2)">
+        ${typeof ehFavorito!=='undefined'&&ehFavorito(e.id) ? '⭐ Favoritado' : '☆ Favoritar'}
+      </button>
+      <span style="font-size:11px;color:var(--text3);margin-left:8px">Exercícios favoritos têm preferência na prescrição automática</span>
+    </div>
   `;
   $('modal-ex-detail').classList.remove('hidden');
 }
@@ -182,6 +188,7 @@ let LIBS = loadLibs();
 
 function gerarLibsDefault(){
   return {
+    favoritos: [], // IDs de exercícios favoritados pelo personal (ver LIBS.favoritos em prescricao-motor.js)
     locais: [
       { id:1, nome:'Academia Completa', tipo:'Academia completa',
         equipamentos:['Barra olimpica','Halteres','Máquinas de cabo','Leg press','Smith machine','Banco regulável','Pulley','Anilhas','Kettlebells','Pull-up bar','TRX/Suspensão','Step/Plataforma','Bicicleta ergométrica','Esteira','Elíptico','Colchonete'],

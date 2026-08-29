@@ -95,16 +95,6 @@ const INT_DESCANSO = {
   Esport:'120–240s', Reab:'90–120s', Envelhec:'90–120s', Gestacao:'90–120s',
 };
 
-// Mapeamento objetivo (os 12 códigos acima) → valência de treino (as 4 usadas
-// no cálculo de tempo de execução — ver REF_TEMPO_OBJETIVO). São dois eixos
-// diferentes: objetivo é a meta geral do aluno, valência é o esquema de
-// reps/série/descanso. PROVISÓRIO — mapeado pela faixa de reps de cada
-// objetivo (REPS_REF acima); confirmar com o Milton antes de considerar fechado.
-const OBJETIVO_PARA_VALENCIA = {
-  Hip:'Hipertrofia', Forca:'Força', Emagr:'Hipertrofia', Comp:'Hipertrofia',
-  Resist:'Resistência', CardioR:'Resistência', Func:'Resistência', Saude:'Resistência',
-  Esport:'Potência', Reab:'Resistência', Envelhec:'Resistência', Gestacao:'Hipertrofia',
-};
 
 const DIVISOES = {
   2: {
@@ -190,20 +180,124 @@ const LOCAL_RESIST = {
   'híbrido':  [RESIST_ID.PESO_LIVRE, RESIST_ID.MAQUINA, RESIST_ID.CABO, RESIST_ID.ELASTICO, RESIST_ID.PESO_CORPORAL],
 };
 
+// ── Perfil de equipamento personalizado por local ────────────────────────────
+// Mapeamento nome de equipamento → IDs de tipo de resistência (RESIST_ID).
+// Equipamentos que não determinam tipo de resistência (cardio, banco) = null.
+const EQUIP_PARA_RESIST = {
+  'Halteres':              RESIST_ID.PESO_LIVRE,
+  'Barra olimpica':        RESIST_ID.PESO_LIVRE,
+  'Barra olímpica':        RESIST_ID.PESO_LIVRE,
+  'Anilhas':               RESIST_ID.PESO_LIVRE,
+  'Kettlebells':           RESIST_ID.PESO_LIVRE,
+  'Máquinas de cabo':      RESIST_ID.CABO,
+  'Pulley':                RESIST_ID.CABO,
+  'Leg press':             RESIST_ID.MAQUINA,
+  'Smith machine':         RESIST_ID.MAQUINA,
+  'Elásticos/Faixas':      RESIST_ID.ELASTICO,
+  'TRX/Suspensão':         RESIST_ID.SUSPENSO,
+  'Peso corporal':         RESIST_ID.PESO_CORPORAL,
+  'Pull-up bar':           RESIST_ID.PESO_CORPORAL,
+  'Paralelas':             RESIST_ID.PESO_CORPORAL,
+  'Step/Plataforma':       RESIST_ID.PESO_CORPORAL,
+  'Colchonete':            RESIST_ID.PESO_CORPORAL,
+};
+
+// Deriva quais tipos de resistência estão disponíveis a partir da lista de
+// equipamentos de um local (LIBS.locais[i].equipamentos). Inclui sempre
+// PESO_CORPORAL como fallback (o corpo do aluno sempre está disponível).
+function _resistFromEquipamentos(equipamentos){
+  const ids = new Set([RESIST_ID.PESO_CORPORAL]);
+  (equipamentos || []).forEach(eq => {
+    const id = EQUIP_PARA_RESIST[eq];
+    if(id) ids.add(id);
+  });
+  return [...ids];
+}
+
+// Lookup central de tipos de resistência permitidos para um valor de local.
+// Aceita os valores genéricos ("academia", "casa", etc.) E valores de LIBS
+// no formato "libs:ID" (local personalizado do personal).
+function getResistPermitida(local){
+  if(local && local.startsWith('libs:')){
+    const libsId = parseInt(local.split(':')[1]);
+    const libsLocal = (typeof LIBS !== 'undefined') ? (LIBS?.locais||[]).find(l => l.id === libsId) : null;
+    if(libsLocal) return _resistFromEquipamentos(libsLocal.equipamentos);
+  }
+  return getResistPermitida(local);
+}
+
+// Popula o select #pr-local com opções genéricas + locais personalizados do
+// LIBS. Chamado ao abrir o Step 1 da prescrição (preencherStep1DaAnamnese).
+function populateLocalSelect(){
+  const sel = document.getElementById('pr-local');
+  if(!sel) return;
+  const currentVal = sel.value;
+  // Mantém as 4 opções hardcoded + acrescenta as do LIBS se existirem
+  const libsLocais = (typeof LIBS !== 'undefined') ? (LIBS?.locais||[]) : [];
+  // Remove opções LIBS antigas (não remove as genéricas)
+  [...sel.options].filter(o => o.dataset.libsLocal).forEach(o => o.remove());
+  // Remove separador antigo
+  const sepAntigo = sel.querySelector('option[data-libs-sep]');
+  if(sepAntigo) sepAntigo.remove();
+  if(libsLocais.length){
+    const sep = document.createElement('option');
+    sep.disabled = true;
+    sep.textContent = '── Locais personalizados ──';
+    sep.dataset.libsSep = '1';
+    sel.appendChild(sep);
+    libsLocais.forEach(loc => {
+      const opt = document.createElement('option');
+      opt.value = `libs:${loc.id}`;
+      opt.textContent = loc.nome || `Local ${loc.id}`;
+      opt.title = (loc.equipamentos||[]).join(', ');
+      opt.dataset.libsLocal = '1';
+      sel.appendChild(opt);
+    });
+  }
+  // Restaura valor anterior se ainda válido
+  if(currentVal && [...sel.options].some(o => o.value === currentVal)){
+    sel.value = currentVal;
+  }
+}
+
 function motorRand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+// ── Modal de Vídeo Embutido ──────────────────────────────────────────────────
+// Extrai o ID do YouTube de qualquer formato de URL (youtu.be/ID ou ?v=ID)
+// e abre um modal inline sem redirecionar pro YouTube.
+function _ytId(url){
+  if(!url) return null;
+  const m = url.match(/(?:youtu\.be\/|[?&]v=)([\w-]{11})/);
+  return m ? m[1] : null;
+}
+function abrirVideoModal(url, titulo){
+  const id = _ytId(url);
+  if(!id){ window.open(url,'_blank'); return; } // fallback: abre em nova aba
+  const modal = document.getElementById('modal-video');
+  const iframe = document.getElementById('modal-video-iframe');
+  const tituloEl = document.getElementById('modal-video-titulo');
+  if(!modal || !iframe) return;
+  iframe.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
+  if(tituloEl) tituloEl.textContent = titulo || '';
+  modal.classList.remove('hidden');
+  // Fecha no ESC
+  modal._escHandler = (e) => { if(e.key==='Escape') fecharVideoModal(); };
+  document.addEventListener('keydown', modal._escHandler);
+}
+function fecharVideoModal(){
+  const modal = document.getElementById('modal-video');
+  const iframe = document.getElementById('modal-video-iframe');
+  if(!modal) return;
+  modal.classList.add('hidden');
+  if(iframe) iframe.src = ''; // para o áudio
+  if(modal._escHandler){ document.removeEventListener('keydown', modal._escHandler); modal._escHandler = null; }
+}
 
 // ── Tempo de execução — Momento 1 (tela de modelos) ─────────────────────────
 // Fechado e validado com o Milton em 2026-08-29 (planilha linha a linha,
-// bateu 100%). 4 valências de treino, cada uma com UM valor de referência —
-// o máximo da faixa de repetição — e o intervalo padrão correspondente
-// (não trabalhamos mais com mín/médio/máx separado por valência; a variação
-// mín/máx da sessão vem da lateralidade dos exercícios, não da valência).
-const REF_TEMPO_OBJETIVO = {
-  'Força':          { reps:6,  descansoSeg:180 },
-  'Hipertrofia':    { reps:12, descansoSeg:90  },
-  'Resistência':    { reps:20, descansoSeg:30  },
-  'Potência':       { reps:5,  descansoSeg:180 },
-};
+// bateu 100%). Usa REPS_REF[objetivo] e INT_DESCANSO[objetivo] diretamente
+// (keyed por código de objetivo). A variação mín/máx da sessão vem da
+// lateralidade dos exercícios, não de faixas de valência.
 
 // Troca (30s) — acontece entre exercícios de um mesmo biset/triset E entre os
 // dois lados de um exercício Unilateral. Mesmo valor nos dois casos (regra
@@ -227,8 +321,8 @@ function tempoRepPorGrupo(grupoNome){
 }
 
 // Estimativa de duração de UMA sessão pra um grupo, dado o objetivo e o
-// número de séries planejadas (vem do modelo de volume já existente). Usa a
-// referência de reps/descanso por objetivo (REF_TEMPO_OBJETIVO) + o tempo
+// número de séries planejadas (vem do modelo de volume já existente). Usa
+// REPS_REF[objetivo] e INT_DESCANSO[objetivo] direto + o tempo
 // MÉDIO de execução do grupo (tempoRepPorGrupo) — ainda não sabemos qual
 // exercício específico vai ser escolhido nesta tela, só o grupo. Retorna
 // segundos, considerando 2 cenários (regra fechada com o Milton em
@@ -415,7 +509,38 @@ const CLASSIFICACAO = {
   variedadePad:      1, // +1 — traz padrão de movimento ainda não usado neste treino (item 19)
   eficiente:         1, // +1 — multiarticular + atinge grupo secundário, quando a sessão está apertada
   naoRecomendado:    1, // −1 — "não recomendado" pro aluno (hoje: Baixo Impacto com IMC≥30). Mesmo tratamento visual/de nota que lesão vai receber quando a arquitetura de pontuação clínica completa for implementada (item pendente).
+  favorito:          1, // +1 — favoritado pelo personal (LIBS.favoritos) — preferência de curadoria
 };
+
+// ── Favoritar exercício por personal ────────────────────────────────────────
+// LIBS.favoritos: array de exercise IDs (numérico) que o personal marcou como
+// favoritos. Vinculado à CONTA do personal, nunca ao banco original nem ao
+// aluno — substitui o antigo `base_exercicio` que foi removido (2026-08-28).
+// A preferência dá +1 na classificação (ver CLASSIFICACAO.favorito) e mostra
+// ⭐ no seletor. Persistido em localStorage + Supabase via saveLibs/supaAutoSave.
+function ehFavorito(exId){
+  return (typeof LIBS !== 'undefined' && (LIBS?.favoritos||[])).includes(Number(exId));
+}
+function toggleFavorito(exId, elOuEvt){
+  if(typeof LIBS === 'undefined') return;
+  if(!LIBS.favoritos) LIBS.favoritos = [];
+  const id = Number(exId);
+  const idx = LIBS.favoritos.indexOf(id);
+  if(idx >= 0) LIBS.favoritos.splice(idx, 1);
+  else LIBS.favoritos.push(id);
+  if(typeof saveLibs === 'function') saveLibs(LIBS);
+  if(typeof supaAutoSave === 'function') supaAutoSave();
+  // Atualiza ícone inline sem re-render completo
+  const agora = ehFavorito(id); // após toggle
+  if(elOuEvt && elOuEvt.nodeType === 1){
+    if(elOuEvt.tagName === 'BUTTON'){
+      elOuEvt.textContent = agora ? '⭐ Favoritado' : '☆ Favoritar';
+    } else {
+      elOuEvt.textContent = agora ? '⭐' : '☆';
+      elOuEvt.title = agora ? 'Remover favorito' : 'Favoritar exercício';
+    }
+  }
+}
 
 function sortearExercicioC4(pool, jaUsados, musculo, exerciciosTreino, aperto){
   const { prioridades } = extrairFlagsClinicas();
@@ -466,6 +591,7 @@ function sortearExercicioC4(pool, jaUsados, musculo, exerciciosTreino, aperto){
     if(trazVariedade(e))       nota += CLASSIFICACAO.variedadePad;
     if(aperto>0 && eficiente(e)) nota += CLASSIFICACAO.eficiente;
     if(naoRecomendado(e))      nota -= CLASSIFICACAO.naoRecomendado;
+    if(ehFavorito(e.id))       nota += CLASSIFICACAO.favorito;
     return nota;
   };
 
@@ -714,6 +840,7 @@ let _s3 = {
   divisaoOpcoes: [],    // calculadas a partir do volume
   fichaObj: null,
   treinoAtivo: 0,
+  aquecTipos: ['Mobilidade'], // tipos de aquecimento selecionados (TIPOS_AQUECIMENTO valores)
 };
 
 // Modelos de periodização — alinhados com FASE-2 do Obsidian
@@ -2291,12 +2418,23 @@ function renderTelaDivisao(){
       renderTelaDivisao();
     });
 
-    // Mini barras de carga
+    // Mini barras de carga + tempo estimado por sessão
     const minibars = document.createElement('div');
     minibars.style.cssText = 'display:flex;gap:12px;flex-wrap:wrap;padding:6px 14px 8px;background:var(--bg3)';
+    const objAtual = selectedObj || val('pr-objetivo') || 'Saude';
     op.cargasSessao.forEach((c, ti) => {
       const letra = String.fromCharCode(65+ti);
       const pct   = Math.round((c/maxC)*100);
+
+      // Tempo estimado para esta sessão específica (Momento 1 — antes de sortear exercícios).
+      // Usa os grupos/volume reais calculados pra esta sessão, não uma estimativa geral.
+      const sessaoGT = (divisao.default||[])[ti] || [];
+      const calcT = calcSeriesSessaoExibida(sessaoGT, lim, divisao, ti);
+      const gpT   = calcT.grupos.map(({g,exAlvo,serEx})=>({grupo:g,nExercicios:exAlvo,nSeries:serEx}));
+      const tpT   = estimarTempoModeloSessao(gpT, objAtual);
+      const tMin  = Math.round(tpT.min/60), tMax = Math.round(tpT.max/60);
+      const tLabel = tMin > 0 ? `${tMin}–${tMax}min` : '';
+
       const d = document.createElement('div');
       d.style.cssText = 'display:flex;align-items:center;gap:5px';
       d.innerHTML =
@@ -2304,7 +2442,8 @@ function renderTelaDivisao(){
         '<div style="width:60px;height:5px;background:var(--bg2);border-radius:3px;overflow:hidden">' +
           '<div style="width:' + pct + '%;height:100%;background:' + (sel?'var(--accent)':'var(--text3)') + ';border-radius:3px"></div>' +
         '</div>' +
-        '<span style="font-family:var(--mono);font-size:11px;color:var(--text2)">' + c + 's</span>';
+        '<span style="font-family:var(--mono);font-size:11px;color:var(--text2)">' + c + 's</span>' +
+        (tLabel ? '<span style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-left:2px">⏱' + tLabel + '</span>' : '');
       minibars.appendChild(d);
     });
 
@@ -3336,6 +3475,50 @@ function renderFichaTabs(){
   renderTreinoAtivo();
 }
 
+// ── Barra de Solicitação Articular ──────────────────────────────────────────
+// Exibe, em tempo real, quais articulações estão sendo exigidas na sessão e
+// com que intensidade relativa (quantos exercícios as recrutam). Atualiza
+// automaticamente quando o personal troca um exercício (renderTreinoAtivo faz
+// o re-render completo). Usa a mesma ordem de ORDEM_ARTIC_AQUECIMENTO pra
+// consistência visual com o bloco de aquecimento.
+function _htmlBarraArticular(exercicios){
+  if(!exercicios || !exercicios.length) return '';
+  const cont = {};
+  exercicios.forEach(ex => {
+    (ex._artic||[]).forEach(a => {
+      if(a) cont[a] = (cont[a]||0) + 1;
+    });
+  });
+  const total = exercicios.length;
+  const ordenadas = Object.keys(cont).sort((a,b) => {
+    const ia = ORDEM_ARTIC_AQUECIMENTO.indexOf(a), ib = ORDEM_ARTIC_AQUECIMENTO.indexOf(b);
+    const ra = ia < 0 ? 999 : ia, rb = ib < 0 ? 999 : ib;
+    if(ra !== rb) return ra - rb;
+    return cont[b] - cont[a]; // empate na ordem → maior demanda primeiro
+  });
+  if(!ordenadas.length) return '';
+  const maxCont = Math.max(...Object.values(cont));
+  const chips = ordenadas.map(a => {
+    const n = cont[a];
+    const pct = Math.round((n / total) * 100);
+    const barPct = Math.round((n / maxCont) * 100);
+    // Cor por demanda relativa ao total de exercícios
+    const cor = pct >= 60 ? 'var(--accent)' : pct >= 35 ? '#e8a020' : pct >= 20 ? 'var(--text2)' : 'var(--text3)';
+    const barCor = pct >= 60 ? 'var(--accent)' : pct >= 35 ? '#e8a020' : pct >= 20 ? 'var(--text3)' : 'var(--bg2)';
+    const badge = n > 1 ? `<span style="font-size:9px;margin-left:3px;opacity:.7">×${n}</span>` : '';
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+      <span style="font-size:10px;font-weight:${pct>=35?'700':'400'};color:${cor};white-space:nowrap">${a}${badge}</span>
+      <div style="width:100%;height:2px;background:var(--bg2);border-radius:1px">
+        <div style="width:${barPct}%;height:100%;background:${barCor};border-radius:1px;transition:width .3s"></div>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div style="padding:6px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px">
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">🦴 Solicitação articular</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px 14px">${chips}</div>
+  </div>`;
+}
+
 function renderTreinoAtivo(){
   const f = _s3.fichaObj; if(!f) return;
   const treino = f.treinos[_s3.treinoAtivo];
@@ -3362,16 +3545,23 @@ function renderTreinoAtivo(){
   const aquecimento = treino.aquecimento || [];
   const aquecimentoHtml = aquecimento.length ? `
     <div style="margin-bottom:14px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border)">
-        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">🔥 Aquecimento — específico da sessão (rascunho)</div>
-        <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="regerarAquecimentoTreinoAtivo()">🔄 Sortear de novo</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">🔥 Aquecimento</div>
+        <div style="display:flex;align-items:center;gap:6px;flex:1;justify-content:center;flex-wrap:wrap">
+          ${Object.keys(TIPOS_AQUECIMENTO).map(label => {
+            const sel = (_s3.aquecTipos||['Mobilidade']).includes(TIPOS_AQUECIMENTO[label]);
+            const short = label==='Liberação Miofascial'?'Liberação':label;
+            return `<button onclick="toggleAquecTipo('${TIPOS_AQUECIMENTO[label]}')" style="font-size:10px;padding:2px 10px;border-radius:20px;border:1px solid ${sel?'var(--accent)':'var(--border)'};background:${sel?'var(--accent)':'transparent'};color:${sel?'#fff':'var(--text3)'};cursor:pointer;transition:all .15s">${short}</button>`;
+          }).join('')}
+        </div>
+        <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="regerarAquecimentoTreinoAtivo()">🔄 Sortear</button>
       </div>
       <table class="treino-table" style="margin:0">
         <thead><tr><th>Articulação</th><th>Mobilização</th><th>Duração</th></tr></thead>
         <tbody>
           ${aquecimento.map(a => `<tr>
             <td style="font-size:11px;color:var(--text3)">${a.artic}</td>
-            <td style="font-size:12px">${a.nome}${a.url?` <a href="${a.url}" target="_blank" style="font-size:9px;color:var(--accent);text-decoration:none" title="Ver vídeo">▶</a>`:''}</td>
+            <td style="font-size:12px">${a.nome}${a.url?` <a data-url="${a.url}" data-nome="${(a.nome||'').replace(/"/g,'&quot;')}" onclick="abrirVideoModal(this.dataset.url,this.dataset.nome)" style="font-size:9px;color:var(--accent);text-decoration:none;cursor:pointer" title="Ver vídeo">▶</a>`:''}</td>
             <td style="font-size:11px;color:var(--text2)">${a.duracao}</td>
           </tr>`).join('')}
         </tbody>
@@ -3379,13 +3569,16 @@ function renderTreinoAtivo(){
     </div>` : `
     <div style="margin-bottom:14px;font-size:11px;color:var(--text3);font-style:italic">Sem aquecimento sugerido para esta sessão (nenhuma articulação identificada ou sem mobilização compatível nos filtros atuais).</div>`;
 
+  const barraArticular = _htmlBarraArticular(treino.exercicios);
+
   cont.innerHTML = `
     ${aquecimentoHtml}
     <div style="padding:8px 0 6px;border-bottom:1px solid var(--border);margin-bottom:8px">
       <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">💪 Parte Principal</div>
       <div style="font-size:11px;color:var(--text2);margin-bottom:4px">${treino.label} — <strong style="color:var(--accent)">${totalSessao} séries totais</strong> &nbsp;·&nbsp; ${tempoHtml}</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">${resumo}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${barraArticular?'8px':'0'}">${resumo}</div>
     </div>
+    ${barraArticular}
     <table class="treino-table">
       <thead><tr><th>#</th><th>Músculo</th><th>Porção</th><th>Exercício <span style="color:var(--text3);font-weight:400;font-size:10px">(↕ trocar)</span></th><th>Séries</th><th>Reps</th><th>Intensidade</th><th>Intervalo</th><th>Bi/Tri-set</th></tr></thead>
       <tbody id="tbody-treino"></tbody>
@@ -3575,7 +3768,7 @@ function abrirListaExercicios(ti, rowIdx, musculo, porcaoStr){
   const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
   const local = s?.anamnese?.local || 'academia';
   const lesoes = (s?.perfil?.lesoes||'') + ' ' + (s?.anamnese?.preferencias||'');
-  const resist = LOCAL_RESIST[local] || LOCAL_RESIST['academia'];
+  const resist = getResistPermitida(local);
   const porcao = (porcaoStr==='null'||!porcaoStr) ? null : porcaoStr;
 
   // Pool base (nível/recurso/ci)
@@ -3643,11 +3836,12 @@ function abrirListaExercicios(ti, rowIdx, musculo, porcaoStr){
       const tag_nv = `<span style="color:var(--text3);font-size:9px">${e.nv?.nome||''}</span>`;
       const tag_uni = _exercicioUnilateral(e) ? `<span style="color:var(--text3);font-size:9px;margin-left:4px">uni</span>`
                     : _exercicioBilateralCU(e) ? `<span style="color:var(--text3);font-size:9px;margin-left:4px">CU</span>` : '';
-      const tag_url = e.url ? `<a href="${e.url}" target="_blank" onclick="event.stopPropagation()" style="font-size:9px;color:var(--accent);margin-left:4px;text-decoration:none" title="Ver vídeo">▶</a>` : '';
+      const tag_url = e.url ? `<a data-url="${e.url}" data-nome="${(e.n||'').replace(/"/g,'&quot;')}" onclick="event.stopPropagation();abrirVideoModal(this.dataset.url,this.dataset.nome)" style="font-size:9px;color:var(--accent);margin-left:4px;text-decoration:none;cursor:pointer" title="Ver vídeo">▶</a>` : '';
+      const tag_fav = `<span data-exid="${e.id}" onclick="event.stopPropagation();toggleFavorito(${e.id},this)" style="font-size:10px;margin-left:4px;cursor:pointer;opacity:.8" title="${ehFavorito(e.id)?'Remover favorito':'Favoritar exercício'}">${ehFavorito(e.id)?'⭐':'☆'}</span>`;
       const tag_motivo = (isBloq || isPrio || isNaoRec) && e._motivo
         ? `<div style="font-size:9px;color:${isBloq?'#ff5050':isNaoRec?'#e0a030':'var(--accent)'};margin-top:1px;opacity:.85">${e._motivo.split('—')[0].trim()}</div>` : '';
 
-      div.innerHTML = `${icone}${e.n} ${tag_nv}${tag_uni}${tag_url}${tag_motivo}`;
+      div.innerHTML = `${icone}${e.n} ${tag_nv}${tag_uni}${tag_url}${tag_fav}${tag_motivo}`;
 
       if(!isBloq){
         div.addEventListener('mouseover', function(){ this.style.background = 'var(--bg3)'; });
@@ -3694,13 +3888,26 @@ function regerarAquecimentoTreino(ti){
   const s = getActive();
   const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
   const local = val('pr-local') || s?.anamnese?.local || 'academia';
-  const resistPermitida = LOCAL_RESIST[local] || LOCAL_RESIST['academia'];
+  const resistPermitida = getResistPermitida(local);
   const contraindicacoes = [
     s?.perfil?.lesoes || '', s?.perfil?.condicoes || '', val('pr-evitar') || s?.anamnese?.preferencias || '',
   ].filter(Boolean).join(' ');
   const articsTreino = new Set();
   treino.exercicios.forEach(ex => { (ex._artic||[]).forEach(a => { if(a) articsTreino.add(a); }); });
-  treino.aquecimento = gerarAquecimentoArticular(articsTreino, resistPermitida, nivel, contraindicacoes);
+  treino.aquecimento = gerarAquecimentoArticular(articsTreino, resistPermitida, nivel, contraindicacoes, _s3.aquecTipos);
+}
+
+function toggleAquecTipo(tipo){
+  _s3.aquecTipos = _s3.aquecTipos || ['Mobilidade'];
+  const idx = _s3.aquecTipos.indexOf(tipo);
+  if(idx >= 0){
+    // Não deixa desmarcar o último tipo (mínimo 1 selecionado)
+    if(_s3.aquecTipos.length === 1) return;
+    _s3.aquecTipos = _s3.aquecTipos.filter(t => t !== tipo);
+  } else {
+    _s3.aquecTipos = [..._s3.aquecTipos, tipo];
+  }
+  regerarAquecimentoTreinoAtivo();
 }
 
 function regerarAquecimentoTreinoAtivo(){
@@ -3738,7 +3945,7 @@ function novaPrescricao(){
   setVal('pr-nivel',''); setVal('pr-frequencia',''); setVal('pr-obs',''); setVal('pr-validade','12sem');
   setVal('pr-objetivo-sec',''); setVal('pr-duracao',''); setVal('pr-horario','');
   setVal('pr-local',''); setVal('pr-gosta',''); setVal('pr-evitar','');
-  _s3={seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:null,treinoAtivo:0};
+  _s3={seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:null,treinoAtivo:0,aquecTipos:(_s3.aquecTipos||['Mobilidade'])};
   renderObjGrid(); goStep(1);
   treinosMostrarForm();
   saveStudent();
@@ -3757,7 +3964,7 @@ function treinosContinuarRascunho(id){
   setVal('pr-objetivo-sec', t.objetivoSec||''); setVal('pr-duracao', t.duracao||'');
   setVal('pr-horario', t.horario||''); setVal('pr-local', t.local||'');
   setVal('pr-gosta', t.gosta||''); setVal('pr-evitar', t.evitar||'');
-  _s3 = {seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:t._fichaObj||null,treinoAtivo:0};
+  _s3 = {seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:t._fichaObj||null,treinoAtivo:0,aquecTipos:(_s3.aquecTipos||['Mobilidade'])};
   renderObjGrid(); goStep(1);
   treinosMostrarForm();
   updateHeader(s);
@@ -3774,7 +3981,7 @@ function treinosAbrirAprovado(id){
   setVal('pr-objetivo-sec', t.objetivoSec||''); setVal('pr-duracao', t.duracao||'');
   setVal('pr-horario', t.horario||''); setVal('pr-local', t.local||'');
   setVal('pr-gosta', t.gosta||''); setVal('pr-evitar', t.evitar||'');
-  _s3 = {seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:t._fichaObj||null,treinoAtivo:0};
+  _s3 = {seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:t._fichaObj||null,treinoAtivo:0,aquecTipos:(_s3.aquecTipos||['Mobilidade'])};
   $('ficha-aprovada').textContent = t.treino||'';
   $('aprovado-data').textContent = t.dataAprovacao||'—';
   const anterior = getTreinoAnteriorA(s, id);
@@ -4129,15 +4336,26 @@ function lerSessionDataDOM(cardIdx, ti, sessaoGrupos){
 const ORDEM_ARTIC_AQUECIMENTO = ['Lombar','Quadril','Joelho','Tornozelo','Arco Plantar','Tórax','Escápula','Ombro','Cotovelo','Punho'];
 const _TETO_ITENS_AQUECIMENTO = 5; // teto propositalmente baixo — aquecimento não pode virar treino paralelo
 
-function gerarAquecimentoArticular(articsTreino, resistPermitida, nivel, contraindicacoes){
+// Tipos de aquecimento disponíveis no banco (campo `tp` dos exercícios).
+// Mapeados pra label curto exibido no UI → nome exato no banco.
+const TIPOS_AQUECIMENTO = {
+  'Mobilidade':          'Mobilidade',
+  'Liberação Miofascial':'Liberação Miofascial',
+  'Flexibilidade':       'Flexibilidade',
+};
+
+// tiposPermitidos: array de nomes exatos do banco — ex: ['Mobilidade','Flexibilidade']
+// Se omitido/vazio, usa o default ['Mobilidade'].
+function gerarAquecimentoArticular(articsTreino, resistPermitida, nivel, contraindicacoes, tiposPermitidos){
   if(!articsTreino || !articsTreino.size) return [];
+  const tipos = (tiposPermitidos && tiposPermitidos.length) ? tiposPermitidos : ['Mobilidade'];
   const usados = new Set();
   const itens  = [];
   const ordenadas = [...articsTreino].sort((a,b) => ORDEM_ARTIC_AQUECIMENTO.indexOf(a) - ORDEM_ARTIC_AQUECIMENTO.indexOf(b));
 
   ordenadas.forEach(artic => {
     let pool = DB_EXERCICIOS.filter(e =>
-      (e.tp||[]).some(t=>t.nome === 'Mobilidade') &&
+      (e.tp||[]).some(t => tipos.includes(t.nome)) &&
       (e.artic||[]).some(x=>x.nome === artic) &&
       e.r && resistPermitida.includes(e.r.id) &&
       e.nv && nivelOk(e.nv.nome, nivelLabel(nivel)) &&
@@ -4174,7 +4392,7 @@ function gerarFichaMotorV2(params){
     ? DIVISOES_TEMPLATES[divisaoChave]
     : (DIVISOES[numDias] || DIVISOES[3]);
 
-  const resistPermitida = LOCAL_RESIST[local] || LOCAL_RESIST['academia'];
+  const resistPermitida = getResistPermitida(local);
 
   // Filtros clínicos do aluno — consolidados aqui para uso no motor
   const s = getActive();
@@ -4345,7 +4563,7 @@ function gerarFichaMotorV2(params){
     exerciciosTreino.forEach(ex => {
       (ex._artic||'').split('|').forEach(a => { a = a.trim(); if(a) articsTreino.add(a); });
     });
-    const aquecimento = gerarAquecimentoArticular(articsTreino, resistPermitida, nivel, contraindicacoes);
+    const aquecimento = gerarAquecimentoArticular(articsTreino, resistPermitida, nivel, contraindicacoes, _s3.aquecTipos);
 
     treinos.push({
       label: divisao.label[ti] || `Treino ${String.fromCharCode(65+ti)}`,
