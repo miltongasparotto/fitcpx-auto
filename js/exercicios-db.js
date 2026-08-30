@@ -11631,7 +11631,7 @@ const DB_EXERCICIOS = [
       },
       {
         "id": 57,
-        "nome": "Pistola e Liberação"
+        "nome": "Pistola de Liberação"
       }
     ],
     "art": {

@@ -202,6 +202,26 @@ function _nivelColor(n){
   return {Iniciante:'badge-green',Intermediário:'badge-amber',Avançado:'badge-red'}[n]||'badge-gray';
 }
 
+// Estado de ordenação das colunas da tabela de alunos
+let _alunosSortCol = null;
+let _alunosSortDir = 1; // 1=asc, -1=desc
+
+function sortAlunos(col){
+  if(_alunosSortCol===col) _alunosSortDir*=-1;
+  else { _alunosSortCol=col; _alunosSortDir=1; }
+  document.querySelectorAll('.alunos-sort-ind').forEach(el=>el.textContent='↕');
+  const ind=document.getElementById('alunos-sort-'+col);
+  if(ind) ind.textContent=_alunosSortDir===1?'↑':'↓';
+  renderScreenAlunos();
+}
+
+function _parseDataBR(s){
+  if(!s||s==='—') return 0;
+  const pts=(s||'').split('/');
+  if(pts.length===3) return +new Date(pts[2],pts[1]-1,pts[0])||0;
+  return +new Date(s)||0;
+}
+
 function renderScreenAlunos(){
   const grid=$('alunos-grid');
   const empty=$('alunos-empty');
@@ -237,10 +257,24 @@ function renderScreenAlunos(){
     return true;
   });
 
-  // Ordenar
+  // Ordenar — prioridade: coluna clicada > select oculto
   lista = [...lista].sort((a,b)=>{
     const pa=a.perfil||{}, pb=b.perfil||{};
     const aa=a.anamnese||{}, ab=b.anamnese||{};
+    // Ordenação por coluna clicada (cabeçalho da tabela)
+    if(_alunosSortCol==='ultAval'){
+      const avA=a.avaliacoesAntro||[], avB=b.avaliacoesAntro||[];
+      const dA=_parseDataBR((avA.length?avA[avA.length-1].data_avaliacao:null)||aa.data_avaliacao||'—');
+      const dB=_parseDataBR((avB.length?avB[avB.length-1].data_avaliacao:null)||ab.data_avaliacao||'—');
+      return (dA-dB)*_alunosSortDir;
+    }
+    if(_alunosSortCol==='ultTreino'){
+      const prA=getUltimoTreino(a), prB=getUltimoTreino(b);
+      const dA=prA.aprovado?_parseDataBR(prA.dataAprovacao||(prA.id?new Date(prA.id).toLocaleDateString('pt-BR'):'')):0;
+      const dB=prB.aprovado?_parseDataBR(prB.dataAprovacao||(prB.id?new Date(prB.id).toLocaleDateString('pt-BR'):'')):0;
+      return (dA-dB)*_alunosSortDir;
+    }
+    // Fallback: select oculto #alunos-ordem
     if(ordem==='nome')      return (pa.nome||'').localeCompare(pb.nome||'');
     if(ordem==='nome_desc') return (pb.nome||'').localeCompare(pa.nome||'');
     if(ordem==='nivel'){
@@ -256,7 +290,7 @@ function renderScreenAlunos(){
       return (_calcIdadeNum(pa.nascimento)||99)-(_calcIdadeNum(pb.nascimento)||99);
     }
     if(ordem==='recente') return (b.id||0)-(a.id||0);
-    return 0;
+    return (pa.nome||'').localeCompare(pb.nome||'');
   });
 
   grid.innerHTML='';
@@ -264,96 +298,63 @@ function renderScreenAlunos(){
 
   lista.forEach(s=>{
     const p=s.perfil||{}, a=s.anamnese||{}, pr=getUltimoTreino(s);
-    const card=document.createElement('div');
-    card.className='card'; card.style='margin:0;cursor:pointer;transition:box-shadow .15s';
-    card.onmouseenter=()=>card.style.boxShadow='0 0 0 2px var(--accent)';
-    card.onmouseleave=()=>card.style.boxShadow='';
+    const tr=document.createElement('tr');
+    tr.style.cssText='border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s';
+    tr.onmouseenter=()=>tr.style.background='var(--bg2)';
+    tr.onmouseleave=()=>tr.style.background='';
 
     const idade = _calcIdadeNum(p.nascimento);
-    const obj   = pr.objetivo || a.objetivo_ef || '';
-    const objLbl= OBJ_LABEL_MAP[obj]||obj||'—';
     const modal = p.modalidade||'';
     const nivel = a.nivel||'';
     const temPresc = pr.aprovado;
-    const sexoIcon = p.sexo==='M'?'♂':p.sexo==='F'?'♀':'';
 
-    // IMC
-    const imc = (a.peso && a.altura) ? (a.peso/((a.altura/100)**2)).toFixed(1) : null;
-
-    // Objetivo da prescrição ou da anamnese
-    const objBadge = obj
-      ? `<span class="badge badge-green" style="font-size:10px">${objLbl}</span>`
-      : '';
-
-    // Prescrição status
-    const prescBadge = temPresc
-      ? `<span class="badge badge-green" style="font-size:10px">✓ Prescrito</span>`
-      : `<span class="badge badge-gray" style="font-size:10px">Sem prescrição</span>`;
-
-    // Condições / flags
+    // Flags
     const flags = [];
     if((p.condicoes||'').includes('Gestação')) flags.push('🤰');
-    if(p.lesoes && p.lesoes!=='Nenhuma' && p.lesoes.length>2) flags.push('⚠️ Lesão');
+    if(p.lesoes && p.lesoes!=='Nenhuma' && p.lesoes.length>2) flags.push('⚠️');
     if((p.condicoes||'').includes('Cardiopatia')) flags.push('❤️‍🩹');
     const flagHtml = flags.map(f=>`<span style="font-size:10px">${f}</span>`).join('');
 
-    card.innerHTML=`
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:8px">
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <div style="font-size:15px;font-weight:700;color:var(--text)">${escHTML(p.nome||'—')}</div>
-            ${p.sexo?`<span style="font-size:13px;color:${p.sexo==='M'?'var(--blue)':'var(--amber)'}">${p.sexo==='M'?'♂':'♀'}</span>`:''}
-            ${flagHtml}
-          </div>
-          ${idade!==null?`<div style="font-size:12px;color:var(--text3);margin-top:1px">${idade} anos</div>`:''}
-        </div>
-        <div style="display:flex;gap:4px;flex-shrink:0">
-          <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="event.stopPropagation();confirmarDeletarAluno(${s.id})" title="Remover aluno">✕</button>
-        </div>
-      </div>
+    const avs = s.avaliacoesAntro||[];
+    const ultAval = (avs.length ? avs[avs.length-1].data_avaliacao : null) || a.data_avaliacao || '—';
+    const ultTreino = temPresc ? (pr.dataAprovacao || (pr.id ? new Date(pr.id).toLocaleDateString('pt-BR') : '—')) : '—';
 
-      <!-- Badges de perfil -->
-      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
-        ${nivel?`<span class="badge ${_nivelColor(nivel)}" style="font-size:10px">${nivel}</span>`:''}
-        ${objBadge}
-        ${prescBadge}
-        ${modal?`<span class="badge badge-blue" style="font-size:10px">${_modalLabel(modal)}</span>`:''}
-      </div>
-
-      <!-- Dados rápidos -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;font-size:11px">
-        <div class="param-block" style="padding:5px 7px">
-          <div class="param-key">Frequência</div>
-          <div class="param-val">${a.frequencia||pr.frequencia||'—'}</div>
-        </div>
-        <div class="param-block" style="padding:5px 7px">
-          <div class="param-key">Peso / Altura</div>
-          <div class="param-val">${a.peso?a.peso+'kg':'—'} ${a.altura?'/ '+a.altura+'cm':''}</div>
-        </div>
-        <div class="param-block" style="padding:5px 7px">
-          <div class="param-key">IMC</div>
-          <div class="param-val">${imc||'—'}</div>
-        </div>
-      </div>
-
-      <!-- Prescrição ativa -->
-      ${temPresc?`
-      <div style="font-size:11px;background:var(--accent-dim);border-radius:var(--radius);padding:6px 9px;border:1px solid var(--accent-dim2)">
-        <span style="color:var(--accent);font-weight:600">Prescrição ativa</span>
-        <span style="color:var(--text2);margin-left:6px">${pr.modelo||''} · ${pr.frequencia||''} · Aprovado ${pr.dataAprovacao||'—'}</span>
-      </div>`:`
-      <div style="font-size:11px;color:var(--text3);padding:4px 0">Aguardando prescrição</div>`}
+    tr.innerHTML=`
+      <td style="padding:10px 12px;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap">
+        ${escHTML(p.nome||'—')} ${flagHtml}
+        ${idade!==null?`<span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:4px">${idade} anos</span>`:''}
+      </td>
+      <td style="padding:10px 8px;text-align:center;font-size:15px">
+        ${p.sexo?`<span style="color:${p.sexo==='M'?'var(--blue)':'var(--amber)'}">${p.sexo==='M'?'♂':'♀'}</span>`:'<span style="color:var(--text3)">—</span>'}
+      </td>
+      <td style="padding:10px 8px">
+        ${nivel?`<span class="badge ${_nivelColor(nivel)}" style="font-size:10px">${nivel}</span>`:'<span style="color:var(--text3);font-size:12px">—</span>'}
+      </td>
+      <td style="padding:10px 8px">
+        ${modal?`<span class="badge badge-blue" style="font-size:10px">${_modalLabel(modal)}</span>`:'<span style="color:var(--text3);font-size:12px">—</span>'}
+      </td>
+      <td style="padding:10px 8px;font-size:12px;color:var(--text2);white-space:nowrap">${ultAval}</td>
+      <td style="padding:10px 8px;font-size:12px;white-space:nowrap">
+        ${temPresc
+          ? `<span class="badge badge-green" style="font-size:10px">✓ ${ultTreino}</span>`
+          : `<span style="color:var(--text3);font-size:12px">—</span>`}
+      </td>
+      <td style="padding:10px 8px;text-align:right">
+        <button class="btn btn-ghost btn-sm" style="color:var(--red);padding:2px 6px" onclick="event.stopPropagation();confirmarDeletarAluno(${s.id})" title="Remover aluno">✕</button>
+      </td>
     `;
 
-    card.onclick = ()=>selectStudent(s.id);
-    grid.appendChild(card);
+    tr.onclick = ()=>selectStudent(s.id);
+    grid.appendChild(tr);
   });
 
   if(!lista.length && students.length>0){
-    grid.innerHTML=`<div style="grid-column:1/-1;padding:30px 0;text-align:center;color:var(--text3);font-size:13px">
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td colspan="7" style="padding:30px 0;text-align:center;color:var(--text3);font-size:13px">
       Nenhum aluno corresponde aos filtros.
       <button class="btn btn-ghost btn-sm" onclick="limparFiltrosAlunos()" style="margin-left:8px">Limpar filtros</button>
-    </div>`;
+    </td>`;
+    grid.appendChild(tr);
     if(empty) empty.classList.add('hidden');
   }
 }
@@ -364,6 +365,8 @@ function limparFiltrosAlunos(){
     const el=$(id); if(el) el.value='';
   });
   const ord=$('alunos-ordem'); if(ord) ord.value='nome';
+  _alunosSortCol=null; _alunosSortDir=1;
+  document.querySelectorAll('.alunos-sort-ind').forEach(el=>el.textContent='↕');
   renderScreenAlunos();
 }
 
@@ -433,12 +436,14 @@ function _revertStudent(){
 function _saveCurrentContext(){
   const tabPerf=$('tab-perfil')?.classList.contains('active');
   const tabAnam=$('tab-anamnese')?.classList.contains('active');
+  const tabPresc=$('tab-prescricao')?.classList.contains('active');
   if(tabPerf && typeof salvarPerfil==='function'){ salvarPerfil(); return; }
   if(tabAnam){
     if(!$('subpanel-anamnese-antro')?.classList.contains('hidden') && typeof antroSalvarAvaliacao==='function'){ antroSalvarAvaliacao(); return; }
     if(!$('subpanel-anamnese-meta')?.classList.contains('hidden') && typeof salvarMeta==='function'){ salvarMeta(); return; }
     if(typeof salvarAnamnese==='function'){ salvarAnamnese(); return; }
   }
+  if(tabPresc && typeof salvarEstadoPrescricao==='function'){ salvarEstadoPrescricao(); return; }
   saveStudent();
 }
 
@@ -843,9 +848,9 @@ function updateHeader(s){
   const p=s.perfil, a=s.anamnese, pr=getUltimoTreino(s);
   $('student-header-name').textContent = p.nome||'Aluno';
   let b='';
-  if(p.sexo) b+=`<span class="badge badge-blue">${p.sexo}</span>`;
-  if(a.nivel) b+=`<span class="badge badge-amber">${a.nivel}</span>`;
-  if(pr.objetivo) b+=`<span class="badge badge-green">${pr.objetivo}</span>`;
+  if(p.sexo) b+=`<span class="badge badge-blue">${escHTML(p.sexo)}</span>`;
+  if(a.nivel) b+=`<span class="badge badge-amber">${escHTML(a.nivel)}</span>`;
+  if(pr.objetivo) b+=`<span class="badge badge-green">${escHTML(pr.objetivo)}</span>`;
   if(pr.aprovado) b+=`<span class="badge badge-green">✓ Prescrito</span>`;
   $('student-badges').innerHTML = b;
 }
@@ -3274,7 +3279,12 @@ function switchTabForcado(name){
     toggle('panel-'+t, t===name);
     $('tab-'+t).classList.toggle('active', t===name);
   });
-  if(name==='prescricao') { checkPrescWarning(); renderizarTriagem(); }
+  if(name==='prescricao'){
+    checkPrescWarning();
+    renderizarTriagem();
+    // Garante que a lista de treinos esteja visível ao entrar na aba
+    if(typeof treinosMostrarLista==='function') treinosMostrarLista();
+  }
 }
 
 function checkPrescWarning(){

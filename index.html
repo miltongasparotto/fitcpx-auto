@@ -401,67 +401,99 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         </div>
       </div>
 
-      <!-- Barra de busca + filtros -->
-      <div style="padding:0 20px 12px;border-bottom:1px solid var(--border);background:var(--bg2)">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <!-- Busca -->
-          <div style="position:relative;flex:1;min-width:180px">
-            <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3)">🔍
-            <input id="alunos-busca" placeholder="Buscar por nome..." oninput="renderScreenAlunos()"
-              style="width:100%;padding:7px 10px 7px 30px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg2);color:var(--text);font-size:13px">
-          </div>
-          <!-- Filtros -->
-          <select id="alunos-filtro-sexo" onchange="renderScreenAlunos()"
-            style="font-size:12px;padding:6px 8px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text)">
-            <option value="">M / F</option>
-            <option value="M">Masculino</option>
-            <option value="F">Feminino</option>
-          </select>
-          <select id="alunos-filtro-nivel" onchange="renderScreenAlunos()"
-            style="font-size:12px;padding:6px 8px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text)">
-            <option value="">Todos os níveis</option>
-            <option>Iniciante</option><option>Intermediário</option><option>Avançado</option>
-          </select>
-          <select id="alunos-filtro-obj" onchange="renderScreenAlunos()"
-            style="font-size:12px;padding:6px 8px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text)">
-            <option value="">Todos os objetivos</option>
-            <option value="Hip">Hipertrofia</option><option value="Forca">Força</option>
-            <option value="Emagr">Emagrecimento</option><option value="Comp">Composição</option>
-            <option value="Resist">Resistência</option><option value="CardioR">Cardio</option>
-            <option value="Func">Funcional</option><option value="Saude">Saúde</option>
-            <option value="Esport">Esportivo</option><option value="Reab">Reabilitação</option>
-            <option value="Envelhec">Envelhecimento</option><option value="Gestacao">Gestação</option>
-          </select>
-          <select id="alunos-filtro-modal" onchange="renderScreenAlunos()"
-            style="font-size:12px;padding:6px 8px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text)">
-            <option value="">Presencial / Online</option>
-            <option value="presencial">Presencial</option>
-            <option value="online">Online</option>
-            <option value="hibrido">Híbrido</option>
-          </select>
-          <select id="alunos-filtro-presc" onchange="renderScreenAlunos()"
-            style="font-size:12px;padding:6px 8px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text)">
-            <option value="">Com/sem prescrição</option>
-            <option value="com">Com prescrição</option>
-            <option value="sem">Sem prescrição</option>
-          </select>
-          <!-- Ordenar -->
-          <select id="alunos-ordem" onchange="renderScreenAlunos()"
-            style="font-size:12px;padding:6px 8px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text)">
-            <option value="nome">Ordenar: Nome A→Z</option>
-            <option value="nome_desc">Nome Z→A</option>
-            <option value="nivel">Nível</option>
-            <option value="objetivo">Objetivo</option>
-            <option value="idade">Idade</option>
-            <option value="recente">Mais recentes</option>
-          </select>
-          <button class="btn btn-ghost btn-sm" onclick="limparFiltrosAlunos()" style="font-size:11px;color:var(--text3)">✕ Limpar</button>
-        </div>
-      </div>
+      <!-- Elementos ocultos para compatibilidade (limparFiltrosAlunos usa esses IDs) -->
+      <select id="alunos-filtro-obj" onchange="renderScreenAlunos()" hidden>
+        <option value="">Todos os objetivos</option>
+        <option value="Hip">Hipertrofia</option><option value="Forca">Força</option>
+        <option value="Emagr">Emagrecimento</option><option value="Comp">Composição</option>
+        <option value="Resist">Resistência</option><option value="CardioR">Cardio</option>
+        <option value="Func">Funcional</option><option value="Saude">Saúde</option>
+        <option value="Esport">Esportivo</option><option value="Reab">Reabilitação</option>
+        <option value="Envelhec">Envelhecimento</option><option value="Gestacao">Gestação</option>
+      </select>
+      <select id="alunos-ordem" onchange="renderScreenAlunos()" hidden>
+        <option value="nome">Nome A→Z</option>
+        <option value="nome_desc">Nome Z→A</option>
+        <option value="nivel">Nível</option>
+        <option value="objetivo">Objetivo</option>
+        <option value="idade">Idade</option>
+        <option value="recente">Mais recentes</option>
+      </select>
 
       <div class="main-scroll">
         <div class="content">
-          <div id="alunos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px"></div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse">
+              <thead>
+                <tr style="border-bottom:2px solid var(--border);background:var(--bg2)">
+                  <!-- Nome + busca -->
+                  <th style="padding:8px 12px;font-weight:500;min-width:180px;vertical-align:bottom">
+                    <div style="font-size:10px;color:var(--text3);font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Nome</div>
+                    <div style="position:relative">
+                      <span style="position:absolute;left:7px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3);pointer-events:none">🔍</span>
+                      <input id="alunos-busca" placeholder="Buscar..." oninput="renderScreenAlunos()"
+                        style="width:100%;padding:4px 8px 4px 24px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-size:12px;box-sizing:border-box">
+                    </div>
+                  </th>
+                  <!-- Sexo -->
+                  <th style="padding:8px 8px;font-weight:500;vertical-align:bottom;min-width:72px">
+                    <div style="font-size:10px;color:var(--text3);font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Sexo</div>
+                    <select id="alunos-filtro-sexo" onchange="renderScreenAlunos()"
+                      style="font-size:11px;padding:4px 4px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg);color:var(--text);width:100%">
+                      <option value="">Todos</option>
+                      <option value="M">♂ M</option>
+                      <option value="F">♀ F</option>
+                    </select>
+                  </th>
+                  <!-- Nível -->
+                  <th style="padding:8px 8px;font-weight:500;vertical-align:bottom;min-width:110px">
+                    <div style="font-size:10px;color:var(--text3);font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Nível</div>
+                    <select id="alunos-filtro-nivel" onchange="renderScreenAlunos()"
+                      style="font-size:11px;padding:4px 4px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg);color:var(--text);width:100%">
+                      <option value="">Todos</option>
+                      <option>Iniciante</option><option>Intermediário</option><option>Avançado</option>
+                    </select>
+                  </th>
+                  <!-- Atendimento -->
+                  <th style="padding:8px 8px;font-weight:500;vertical-align:bottom;min-width:110px">
+                    <div style="font-size:10px;color:var(--text3);font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">Atendimento</div>
+                    <select id="alunos-filtro-modal" onchange="renderScreenAlunos()"
+                      style="font-size:11px;padding:4px 4px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg);color:var(--text);width:100%">
+                      <option value="">Todos</option>
+                      <option value="presencial">Presencial</option>
+                      <option value="online">Online</option>
+                      <option value="hibrido">Híbrido</option>
+                    </select>
+                  </th>
+                  <!-- Última Avaliação — clique para ordenar -->
+                  <th style="padding:8px 8px;font-weight:500;vertical-align:bottom;min-width:130px;cursor:pointer;user-select:none;white-space:nowrap" onclick="sortAlunos('ultAval')" title="Clique para ordenar">
+                    <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">
+                      Última Avaliação <span id="alunos-sort-ultAval" class="alunos-sort-ind" style="font-size:9px;color:var(--accent)">↕</span>
+                    </div>
+                    <div style="font-size:10px;color:var(--text3);margin-top:4px;opacity:.6">clique p/ ordenar</div>
+                  </th>
+                  <!-- Último Treino — clique para ordenar -->
+                  <th style="padding:8px 8px;font-weight:500;vertical-align:bottom;min-width:130px;cursor:pointer;user-select:none;white-space:nowrap" onclick="sortAlunos('ultTreino')" title="Clique para ordenar">
+                    <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">
+                      Último Treino <span id="alunos-sort-ultTreino" class="alunos-sort-ind" style="font-size:9px;color:var(--accent)">↕</span>
+                    </div>
+                    <div style="font-size:10px;color:var(--text3);margin-top:4px;opacity:.6">clique p/ ordenar</div>
+                  </th>
+                  <!-- select oculto para compatibilidade com limparFiltrosAlunos -->
+                  <select id="alunos-filtro-presc" onchange="renderScreenAlunos()" hidden>
+                    <option value="">Todos</option>
+                    <option value="com">Com prescrição</option>
+                    <option value="sem">Sem prescrição</option>
+                  </select>
+                  <!-- Limpar / delete col -->
+                  <th style="width:36px;padding:8px 8px;vertical-align:bottom;text-align:right">
+                    <button class="btn btn-ghost btn-sm" onclick="limparFiltrosAlunos()" title="Limpar filtros" style="font-size:10px;color:var(--text3);padding:3px 5px">✕</button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="alunos-grid"></tbody>
+            </table>
+          </div>
           <div id="alunos-empty" class="hidden" style="padding:40px 0;text-align:center;color:var(--text3);font-size:13px">
             Nenhum aluno encontrado.<br>
             <button class="btn btn-primary btn-sm" onclick="abrirNovoAluno()" style="margin-top:12px">+ Novo Aluno</button>

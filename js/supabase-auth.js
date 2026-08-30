@@ -89,14 +89,19 @@ async function supaCarregarDados(){
     ? rowLibs.data
     : ((typeof LIBS!=='undefined' && LIBS && Object.keys(LIBS).length) ? LIBS : gerarLibsDefault());
 
+  // Migração pós-Supabase: garante que o local interno (id=-1) existe.
+  // Não remove locais do usuário.
+  if(typeof _migrarLocais==='function') _migrarLocais(LIBS);
+
   activeId = null;
   renderObjGrid();
   renderStudentList();
   navGo('alunos');
   if(typeof detectarDraftsNaoSalvos==='function') setTimeout(detectarDraftsNaoSalvos, 400);
 
-  // Conta nova ou LIBS faltando: grava estado inicial no banco
+  // Conta nova, LIBS faltando, ou migração alterou locais: salva no banco
   if(!rowStudents?.data?.length || !rowLibs?.data) supaSalvarAgora();
+  else if(typeof _libsMigrado!=='undefined' && _libsMigrado) supaSalvarAgora();
 }
 
 // ── Salvar (debounced) ─────────────────────────────────────────────────────

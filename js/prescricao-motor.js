@@ -223,7 +223,7 @@ function getResistPermitida(local){
     const libsLocal = (typeof LIBS !== 'undefined') ? (LIBS?.locais||[]).find(l => l.id === libsId) : null;
     if(libsLocal) return _resistFromEquipamentos(libsLocal.equipamentos);
   }
-  return getResistPermitida(local);
+  return LOCAL_RESIST[local] || LOCAL_RESIST['academia'] || [];
 }
 
 // Popula o select #pr-local com opções genéricas + locais personalizados do
@@ -232,25 +232,28 @@ function populateLocalSelect(){
   const sel = document.getElementById('pr-local');
   if(!sel) return;
   const currentVal = sel.value;
-  // Mantém as 4 opções hardcoded + acrescenta as do LIBS se existirem
+  // Limpa todas as opções (inclusive as hardcoded do HTML)
+  sel.innerHTML = '';
   const libsLocais = (typeof LIBS !== 'undefined') ? (LIBS?.locais||[]) : [];
-  // Remove opções LIBS antigas (não remove as genéricas)
-  [...sel.options].filter(o => o.dataset.libsLocal).forEach(o => o.remove());
-  // Remove separador antigo
-  const sepAntigo = sel.querySelector('option[data-libs-sep]');
-  if(sepAntigo) sepAntigo.remove();
-  if(libsLocais.length){
+  // "Todos os Equipamentos" (id=-1) — opção primária/padrão
+  const interno = libsLocais.find(l => l.id === -1);
+  const optInterno = document.createElement('option');
+  optInterno.value = 'libs:-1';
+  optInterno.textContent = interno ? interno.nome : 'Todos os Equipamentos';
+  optInterno.title = interno ? (interno.equipamentos||[]).join(', ') : '';
+  sel.appendChild(optInterno);
+  // Locais criados pelo usuário (id > 0)
+  const userLocais = libsLocais.filter(l => l.id !== -1);
+  if(userLocais.length){
     const sep = document.createElement('option');
     sep.disabled = true;
     sep.textContent = '── Locais personalizados ──';
-    sep.dataset.libsSep = '1';
     sel.appendChild(sep);
-    libsLocais.forEach(loc => {
+    userLocais.forEach(loc => {
       const opt = document.createElement('option');
       opt.value = `libs:${loc.id}`;
       opt.textContent = loc.nome || `Local ${loc.id}`;
       opt.title = (loc.equipamentos||[]).join(', ');
-      opt.dataset.libsLocal = '1';
       sel.appendChild(opt);
     });
   }
@@ -1355,6 +1358,7 @@ function toggleGrupo(id){
   }
   renderTabelaVolumeGlobal();
   recalcularCargasDivisoes();
+  if(typeof _markDirty==='function') _markDirty();
 }
 
 function atualizarNumEx(){
@@ -1369,6 +1373,7 @@ function resetSeriesGlobal(){
   });
   renderTabelaVolumeGlobal();
   recalcularCargasDivisoes();
+  if(typeof _markDirty==='function') _markDirty();
 }
 
 function resetarLinhaGrupo(id){
@@ -1409,6 +1414,7 @@ function atualizarVolGrupo(id, campo, valor){
   vg.sem = Math.round(((vg.semMin || 0) + (vg.semMax || 0)) / 2);
   atualizarLinhaTabela(id);
   recalcularCargasDivisoes();
+  if(typeof _markDirty==='function') _markDirty();
 }
 
 function atualizarLinhaTabela(id){
@@ -3966,6 +3972,48 @@ function novaPrescricao(){
 
 // Continua um rascunho já existente (clicado na lista) — reaproveita o id,
 // não cria um segundo rascunho.
+// ── Salvar estado completo da prescrição em andamento ────────────────────────
+// Chamado por _saveCurrentContext (avaliacao.js) quando o personal clica
+// "Salvar" no modal de alterações não salvas enquanto está na aba Prescrição.
+// Persiste step 1 (campos DOM pr-*) E step 2 (_s3 editado) no rascunho ativo,
+// para que tudo seja restaurado corretamente ao reabrir o treino.
+function salvarEstadoPrescricao(){
+  const s = getActive(); if(!s) return;
+  const patch = {};
+  // Step 1 — lê DOM e monta patch
+  const localVal = val('pr-local');
+  const nivelVal = val('pr-nivel');
+  const freqVal  = val('pr-frequencia');
+  const durVal   = val('pr-duracao');
+  const objVal   = val('pr-objetivo-principal') || selectedObj;
+  const secVal   = val('pr-objetivo-sec');
+  if(localVal != null) patch.local       = localVal;
+  if(nivelVal)         patch.nivel       = nivelVal;
+  if(freqVal)          patch.frequencia  = freqVal;
+  if(durVal)           patch.duracao     = durVal;
+  if(objVal)           { patch.objetivo  = objVal; selectedObj = objVal; s.anamnese.objetivo_ef = objVal; }
+  if(secVal != null)   patch.objetivoSec = secVal;
+  // Step 2 — persiste _s3 editado (grupos ativos, volumes, séries/ex, divisão)
+  if(_s3 && _s3.volPorGrupo && Object.keys(_s3.volPorGrupo).length){
+    patch._s3Draft = {
+      volPorGrupo: JSON.parse(JSON.stringify(_s3.volPorGrupo)),
+      seriesPorEx: _s3.seriesPorEx,
+      divisaoIdx:  _s3.divisaoIdx || 0,
+    };
+  }
+  if(_treinoEditId != null){
+    atualizarTreino(s, _treinoEditId, patch);
+  } else {
+    // Sem rascunho ativo: persiste pelo menos os campos de anamnese
+    if(patch.local != null)  s.anamnese.local      = patch.local;
+    if(patch.nivel)          s.anamnese.nivel       = patch.nivel;
+    if(patch.frequencia)     s.anamnese.frequencia  = patch.frequencia;
+    if(patch.duracao)        s.anamnese.duracao     = patch.duracao;
+  }
+  saveStudent();
+  if(typeof setSyncStatus==='function'){ setSyncStatus('✓ Prescrição salva',false); setTimeout(()=>setSyncStatus('',false),2500); }
+}
+
 function treinosContinuarRascunho(id){
   const s=getActive(); if(!s) return;
   const t=getTreinoPorId(s,id); if(!t) return;
@@ -3977,6 +4025,12 @@ function treinosContinuarRascunho(id){
   setVal('pr-horario', t.horario||''); setVal('pr-local', t.local||'');
   setVal('pr-gosta', t.gosta||''); setVal('pr-evitar', t.evitar||'');
   _s3 = {seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:t._fichaObj||null,treinoAtivo:0,aquecTipos:(_s3.aquecTipos||['Mobilidade'])};
+  // Restaura rascunho do Step 2 (edições de grupos/volume/séries feitas antes de sair)
+  if(t._s3Draft && t._s3Draft.volPorGrupo && Object.keys(t._s3Draft.volPorGrupo).length){
+    _s3.volPorGrupo = t._s3Draft.volPorGrupo;
+    _s3.seriesPorEx = t._s3Draft.seriesPorEx || 3;
+    _s3.divisaoIdx  = t._s3Draft.divisaoIdx  || 0;
+  }
   renderObjGrid(); goStep(1);
   treinosMostrarForm();
   updateHeader(s);
@@ -4573,7 +4627,8 @@ function gerarFichaMotorV2(params){
     // volume/MEV-MAV-MRV) — é preparação, não é a parte que ele registra carga.
     const articsTreino = new Set();
     exerciciosTreino.forEach(ex => {
-      (ex._artic||'').split('|').forEach(a => { a = a.trim(); if(a) articsTreino.add(a); });
+      (Array.isArray(ex._artic) ? ex._artic : (ex._artic||'').split('|'))
+        .forEach(a => { a = (a||'').trim(); if(a) articsTreino.add(a); });
     });
     const aquecimento = gerarAquecimentoArticular(articsTreino, resistPermitida, nivel, contraindicacoes, _s3.aquecTipos);
 
