@@ -510,6 +510,7 @@ const CLASSIFICACAO = {
   eficiente:         1, // +1 — multiarticular + atinge grupo secundário, quando a sessão está apertada
   naoRecomendado:    1, // −1 — "não recomendado" pro aluno (hoje: Baixo Impacto com IMC≥30). Mesmo tratamento visual/de nota que lesão vai receber quando a arquitetura de pontuação clínica completa for implementada (item pendente).
   favorito:          1, // +1 — favoritado pelo personal (LIBS.favoritos) — preferência de curadoria
+  preferidoAluno:    1, // +1 — exercício está na lista de preferidos do aluno (anamnese)
 };
 
 // ── Favoritar exercício por personal ────────────────────────────────────────
@@ -547,6 +548,14 @@ function sortearExercicioC4(pool, jaUsados, musculo, exerciciosTreino, aperto){
   const prefTipoCadeia = preferenciasTipoCadeia();
   const s = getActive();
   const historico = new Set(s?.historicoExercicios || []);
+
+  // Exercícios preferidos e a evitar pelo aluno (anamnese.gosta_ex / evitar_ex)
+  let _prefIds = new Set(), _evitIds = new Set();
+  try{
+    const _ae = s?.anamnese;
+    if(_ae?.gosta_ex)  JSON.parse(_ae.gosta_ex).forEach(e=>_prefIds.add(Number(e.id)));
+    if(_ae?.evitar_ex) JSON.parse(_ae.evitar_ex).forEach(e=>_evitIds.add(Number(e.id)));
+  }catch(e){}
 
   // Variedade dentro do treino baseada em característica do exercício: tipo de
   // movimentação (campo `pad`). Ângulo já é coberto separadamente pelo filtro
@@ -592,13 +601,16 @@ function sortearExercicioC4(pool, jaUsados, musculo, exerciciosTreino, aperto){
     if(aperto>0 && eficiente(e)) nota += CLASSIFICACAO.eficiente;
     if(naoRecomendado(e))      nota -= CLASSIFICACAO.naoRecomendado;
     if(ehFavorito(e.id))       nota += CLASSIFICACAO.favorito;
+    if(_prefIds.has(Number(e.id))) nota += CLASSIFICACAO.preferidoAluno;
     return nota;
   };
 
   // 3. Montar pool ponderado repetindo cada exercício conforme sua nota —
   // nota mais alta = mais chance, mas nunca zero chance (mínimo 1 entrada).
+  // Exercícios explicitamente evitados pelo aluno são removidos do pool.
   const ponderado = [];
   todos.forEach(e => {
+    if(_evitIds.has(Number(e.id))) return; // aluno pediu pra evitar — exclui
     const n = Math.max(1, Math.round(classificacaoDe(e)));
     for(let i=0; i<n; i++) ponderado.push(e);
   });

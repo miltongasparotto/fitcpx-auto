@@ -606,7 +606,7 @@ function preencherModalLocal(loc){
     const checked = loc?.equipamentos.includes(eq);
     const label=document.createElement('label');
     label.style.cssText='display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer';
-    label.innerHTML=`<input type="checkbox" value="${eq}" ${checked?'checked':''}> ${eq}`;
+    label.innerHTML=`<input type="checkbox" style="width:auto;flex-shrink:0" value="${eq}" ${checked?'checked':''}> ${eq}`;
     wrap.appendChild(label);
   });
 }
@@ -1343,6 +1343,7 @@ function saveStudent(){
   const s=getActive(); if(!s) return;
   try { localStorage.setItem('acm-students', JSON.stringify(students)); } catch(e){}
   supaAutoSave();
+  if(typeof _clearDirty==='function') _clearDirty();
   const ind=$('saved-indicator');
   if(ind){ ind.classList.remove('hidden'); setTimeout(()=>ind.classList.add('hidden'),2000); }
 }

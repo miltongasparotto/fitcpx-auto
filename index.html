@@ -167,6 +167,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .btn{padding:7px 14px;border-radius:var(--radius);font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
 .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
 .btn-primary:hover{background:var(--accent2);border-color:var(--accent2)}
+.btn-save{display:inline-flex;align-items:center;gap:6px;font-size:14px;padding:9px 20px;font-weight:600;border-radius:var(--radius)}
+.btn-save span{font-size:15px;line-height:1}
 .btn-ghost{background:transparent;color:var(--text2);border-color:var(--border2)}
 .btn-ghost:hover{color:var(--text);border-color:var(--text3);background:var(--bg4)}
 .btn-danger{background:var(--red);color:#fff;border-color:var(--red)}
@@ -257,6 +259,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 ::-webkit-scrollbar-thumb:hover{background:var(--text3)}
 </style>
+  <style>
+  .chk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:4px 6px}
+  .chk-label{display:flex;align-items:center;gap:5px;font-size:12px!important;color:var(--text2)!important;font-weight:400!important;cursor:pointer;padding:2px 4px;border-radius:4px}
+  .chk-label:hover{background:var(--bg3)}
+  .chk-label input[type=checkbox]{width:16px!important;height:16px!important;flex-shrink:0;margin:0!important;padding:0!important;cursor:pointer}
+  .chk-label span{white-space:nowrap}
+  </style>
 </head>
 <body>
 
@@ -318,8 +327,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 
     <button id="btn-tema" onclick="toggleTema()"
       style="background:transparent;border:1px solid var(--border2);border-radius:20px;padding:4px 12px;cursor:pointer;font-size:12px;color:var(--text2);display:flex;align-items:center;gap:5px;transition:all .2s;margin-right:8px;font-family:var(--sans);font-weight:500">
-      <span id="tema-icon">🌙</span>
-      <span id="tema-label">Escuro</span>
+      <span id="tema-icon">🌙
+      <span id="tema-label">Escuro
     </button>
     <span class="topbar-badge">v1.6.2 — Módulo EF</span>
   </div>
@@ -329,13 +338,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
     <div class="sidebar-section">
       <div class="sidebar-label">Módulos</div>
       <div class="sidebar-item active" onclick="noop()">
-        <span>🏋️</span><span>Personal Trainer</span><span class="dot dot-active"></span>
+        <span>🏋️<span>Personal Trainer<span class="dot dot-active">
       </div>
       <div class="sidebar-item inactive">
-        <span>🥗</span><span>Nutricionista</span><span class="lock-icon">🔒</span>
+        <span>🥗<span>Nutricionista<span class="lock-icon">🔒
       </div>
       <div class="sidebar-item inactive">
-        <span>🩺</span><span>Fisioterapeuta</span><span class="lock-icon">🔒</span>
+        <span>🩺<span>Fisioterapeuta<span class="lock-icon">🔒
       </div>
     </div>
     <div class="sidebar-div"></div>
@@ -343,26 +352,26 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
     <!-- Nav principal -->
     <div style="padding:0 10px 4px">
       <div class="sidebar-item" id="nav-alunos" onclick="navGo('alunos')" style="font-weight:600">
-        <span>👤</span><span>Alunos</span><span id="nav-count-alunos" style="margin-left:auto;font-size:11px;color:var(--text3);font-family:var(--mono)">0</span>
+        <span>👤<span>Alunos<span id="nav-count-alunos" style="margin-left:auto;font-size:11px;color:var(--text3);font-family:var(--mono)">0
       </div>
       <!-- Treino (expansível) -->
       <div class="sidebar-item" id="nav-treino-hdr" onclick="toggleNavTreino()" style="font-weight:600">
-        <span>🗂️</span><span>Treino</span><span id="nav-treino-arrow" style="margin-left:auto;font-size:11px;color:var(--text3)">▸</span>
+        <span>🗂️<span>Treino<span id="nav-treino-arrow" style="margin-left:auto;font-size:11px;color:var(--text3)">▸
       </div>
       <div id="nav-treino-sub" style="display:none;padding-left:10px">
-        <div class="sidebar-item" id="nav-locais"       onclick="navGo('locais')"      style="font-size:12px;padding:6px 8px"><span>📍</span><span>Locais de Treino</span></div>
-        <div class="sidebar-item" id="nav-biblioteca"   onclick="navGo('biblioteca')"  style="font-size:12px;padding:6px 8px"><span>📚</span><span>Biblioteca de Treinos</span></div>
-        <div class="sidebar-item" id="nav-distribuicao" onclick="navGo('distribuicao')" style="font-size:12px;padding:6px 8px"><span>📋</span><span>Distribuição</span></div>
-        <div class="sidebar-item" id="nav-periodizacao" onclick="navGo('periodizacao')" style="font-size:12px;padding:6px 8px"><span>📈</span><span>Periodização</span></div>
-        <div class="sidebar-item" id="nav-exercicios" onclick="navGo('exercicios')" style="font-size:12px;padding:6px 8px"><span>💪</span><span>Exercícios</span><span style="margin-left:auto;font-size:10px;color:var(--text3);font-family:var(--mono)">693</span></div>
+        <div class="sidebar-item" id="nav-locais"       onclick="navGo('locais')"      style="font-size:12px;padding:6px 8px"><span>📍<span>Locais de Treino</div>
+        <div class="sidebar-item" id="nav-biblioteca"   onclick="navGo('biblioteca')"  style="font-size:12px;padding:6px 8px"><span>📚<span>Biblioteca de Treinos</div>
+        <div class="sidebar-item" id="nav-distribuicao" onclick="navGo('distribuicao')" style="font-size:12px;padding:6px 8px"><span>📋<span>Distribuição</div>
+        <div class="sidebar-item" id="nav-periodizacao" onclick="navGo('periodizacao')" style="font-size:12px;padding:6px 8px"><span>📈<span>Periodização</div>
+        <div class="sidebar-item" id="nav-exercicios" onclick="navGo('exercicios')" style="font-size:12px;padding:6px 8px"><span>💪<span>Exercícios<span style="margin-left:auto;font-size:10px;color:var(--text3);font-family:var(--mono)">693</div>
       </div>
     </div>
 
     <div class="sidebar-div"></div>
     <!-- student-list mantido oculto para compatibilidade com funções existentes -->
     <div id="student-list" style="display:none"></div>
-    <span id="student-count" style="display:none">0</span>
-    <span id="no-students" style="display:none"></span>
+    <span id="student-count" style="display:none">0
+    <span id="no-students" style="display:none">
   </div>
 
   <!-- MAIN -->
@@ -384,11 +393,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <div>
           <div class="page-title">👤 Alunos</div>
           <div class="page-subtitle">
-            <span class="badge badge-blue" id="alunos-count-badge">0 alunos</span>
+            <span class="badge badge-blue" id="alunos-count-badge">0 alunos
           </div>
         </div>
         <div class="page-header-actions">
-          <button class="btn btn-primary btn-sm" onclick="showModal()">+ Novo Aluno</button>
+          <button class="btn btn-primary btn-sm" onclick="abrirNovoAluno()">+ Novo Aluno</button>
         </div>
       </div>
 
@@ -397,7 +406,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <!-- Busca -->
           <div style="position:relative;flex:1;min-width:180px">
-            <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3)">🔍</span>
+            <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3)">🔍
             <input id="alunos-busca" placeholder="Buscar por nome..." oninput="renderScreenAlunos()"
               style="width:100%;padding:7px 10px 7px 30px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg2);color:var(--text);font-size:13px">
           </div>
@@ -455,7 +464,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
           <div id="alunos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px"></div>
           <div id="alunos-empty" class="hidden" style="padding:40px 0;text-align:center;color:var(--text3);font-size:13px">
             Nenhum aluno encontrado.<br>
-            <button class="btn btn-primary btn-sm" onclick="showModal()" style="margin-top:12px">+ Novo Aluno</button>
+            <button class="btn btn-primary btn-sm" onclick="abrirNovoAluno()" style="margin-top:12px">+ Novo Aluno</button>
           </div>
         </div>
       </div>
@@ -466,7 +475,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       <div class="page-header">
         <div>
           <div class="page-title">📍 Locais de Treino</div>
-          <div class="page-subtitle"><span class="badge badge-blue">Filtro de equipamentos na prescrição</span></div>
+          <div class="page-subtitle"><span class="badge badge-blue">Filtro de equipamentos na prescrição</div>
         </div>
         <div class="page-header-actions">
           <button class="btn btn-primary btn-sm" onclick="abrirModalLocal()">+ Novo Local</button>
@@ -485,7 +494,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       <div class="page-header">
         <div>
           <div class="page-title">📚 Biblioteca de Treinos</div>
-          <div class="page-subtitle"><span class="badge badge-blue">Templates prontos para prescrição rápida</span></div>
+          <div class="page-subtitle"><span class="badge badge-blue">Templates prontos para prescrição rápida</div>
         </div>
         <div class="page-header-actions">
           <button class="btn btn-primary btn-sm" onclick="abrirModalBib()">+ Novo Template</button>
@@ -531,7 +540,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       <div class="page-header">
         <div>
           <div class="page-title">📋 Modelos de Distribuição</div>
-          <div class="page-subtitle"><span class="badge badge-blue">Divisões de treino por frequência e objetivo</span></div>
+          <div class="page-subtitle"><span class="badge badge-blue">Divisões de treino por frequência e objetivo</div>
         </div>
         <div class="page-header-actions">
           <button class="btn btn-primary btn-sm" onclick="abrirModalDistrib()">+ Nova Divisão</button>
@@ -550,7 +559,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       <div class="page-header">
         <div>
           <div class="page-title">📈 Modelos de Periodização</div>
-          <div class="page-subtitle"><span class="badge badge-blue">Macrociclos com progressão de carga por fase</span></div>
+          <div class="page-subtitle"><span class="badge badge-blue">Macrociclos com progressão de carga por fase</div>
         </div>
         <div class="page-header-actions">
           <button class="btn btn-ghost btn-sm" id="btn-period-acomp" onclick="abrirAcompPeriod()" style="display:none">📊 Acompanhamento</button>
@@ -630,7 +639,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         </div>
 
         <!-- BLOCO 2: Parâmetros de treino — TODOS FECHADOS -->
-        <div class="section-label">Parâmetros de Treino Base <span style="font-size:11px;color:var(--text3);font-weight:400">— Tabela Mestre FASE-3 ACM</span></div>
+        <div class="section-label">Parâmetros de Treino Base <span style="font-size:11px;color:var(--text3);font-weight:400">— Tabela Mestre FASE-3 ACM</div>
         <div class="grid-3">
           <div class="field">
             <label>Intensidade-alvo (%1RM)</label>
@@ -748,7 +757,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
             </select>
           </div>
         </div>
-        <div class="field"><label>Objetivos compatíveis <span style="font-size:11px;font-weight:400;color:var(--text3)">(Vault FASE-2 — Tabela de Decisão)</span></label>
+        <div class="field"><label>Objetivos compatíveis <span style="font-size:11px;font-weight:400;color:var(--text3)">(Vault FASE-2 — Tabela de Decisão)</label>
           <div id="period-obj-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 16px">
             <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" value="Hip"> Hipertrofia (Hip)</label>
             <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" value="Forca"> Força (Forca)</label>
@@ -764,7 +773,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
             <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" value="Gestacao"> Gestação (Gestacao)</label>
           </div>
         </div>
-        <div class="field"><label>Frequência semanal compatível <span style="font-size:11px;font-weight:400;color:var(--text3)">(Vault FASE-2 §7)</span></label>
+        <div class="field"><label>Frequência semanal compatível <span style="font-size:11px;font-weight:400;color:var(--text3)">(Vault FASE-2 §7)</label>
           <div style="display:flex;gap:14px;flex-wrap:wrap;padding:8px 12px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius)">
             <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer" title="LP, LP Reverso — full body ou A/B"><input type="checkbox" id="pf-2x" value="2x"> 2x/sem</label>
             <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer" title="LP, DUP básico — ABC ou ABA"><input type="checkbox" id="pf-3x" value="3x"> 3x/sem</label>
@@ -799,7 +808,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 
         <!-- BLOCO 5: Mesociclos -->
         <div class="section-label">Mesociclos e Fases de Progressão
-          <span style="font-size:11px;font-weight:400;color:var(--text3)">— Δ carga% e Δ vol% definem como o sistema calcula cargas por semana</span>
+          <span style="font-size:11px;font-weight:400;color:var(--text3)">— Δ carga% e Δ vol% definem como o sistema calcula cargas por semana
         </div>
         <div class="alert alert-green" style="margin-bottom:10px">
           💡 <strong>Δ carga%</strong> = variação sobre a carga da semana anterior. <strong>Δ vol%</strong> = variação de volume. Vault: deload padrão = −10% carga / −40 a −50% vol.
@@ -808,18 +817,18 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <button class="btn btn-ghost btn-sm" onclick="addMesoPeriod()" style="margin-bottom:14px">+ Adicionar Mesociclo</button>
 
         <!-- BLOCO 6: Regras de Progressão -->
-        <div class="section-label">Regras de Progressão <span style="font-size:11px;font-weight:400;color:var(--text3)">— Vault FASE-4 §5</span></div>
+        <div class="section-label">Regras de Progressão <span style="font-size:11px;font-weight:400;color:var(--text3)">— Vault FASE-4 §5</div>
         <div id="period-regras-wrap"></div>
         <button class="btn btn-ghost btn-sm" onclick="addRegraPeriod()" style="margin-bottom:14px">+ Adicionar Regra</button>
 
         <!-- BLOCO 7: Critérios -->
         <div class="section-label">Critérios de Avanço e Acionamentos</div>
         <div class="field">
-          <label>Critérios de avanço de nível <span style="font-size:11px;font-weight:400;color:var(--text3)">(Vault FASE-4 §5.1)</span></label>
+          <label>Critérios de avanço de nível <span style="font-size:11px;font-weight:400;color:var(--text3)">(Vault FASE-4 §5.1)</label>
           <textarea id="period-criterios" rows="3" placeholder="Ex: Técnica segura em todos os exercícios | Aderência ≥80% | Progrediu carga em ≥60% dos exercícios | Tolerou volume sem overreaching → Próximo: Intermediário"></textarea>
         </div>
         <div class="field">
-          <label>Acionamentos para outros módulos <span style="font-size:11px;font-weight:400;color:var(--text3)">(Vault FASE-4)</span></label>
+          <label>Acionamentos para outros módulos <span style="font-size:11px;font-weight:400;color:var(--text3)">(Vault FASE-4)</label>
           <textarea id="period-acionamentos" rows="2" placeholder="Ex: Dor articular >2 sem → FT (Alta) | Estagnação composição >4 sem → NUT (Média) | Sintoma cardiovascular → Médico (Emergência)"></textarea>
         </div>
 
@@ -833,7 +842,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
     <!-- Modal Acompanhamento de Carga -->
     <div id="modal-acomp-period" class="modal-overlay hidden">
       <div class="modal" style="width:680px;max-height:93vh;overflow-y:auto">
-        <div class="modal-title">📊 Acompanhamento de Carga — <span id="acomp-nome-aluno"></span></div>
+        <div class="modal-title">📊 Acompanhamento de Carga — <span id="acomp-nome-aluno"></div>
         <div class="alert alert-blue" style="margin-bottom:12px">Registre a carga atual do aluno por exercício. O sistema calcula os ajustes sugeridos para cada fase do macrociclo.</div>
         <div class="grid-2" style="margin-bottom:14px">
           <div class="field"><label>Aluno</label>
@@ -978,7 +987,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 
         <!-- BLOCO 2: Dias — configuração por treino -->
         <div class="section-label">Dias de Treino — Grupos Musculares por Sessão
-          <span style="font-size:11px;font-weight:400;color:var(--text3)"> — grupos canônicos do banco de exercícios ACM</span>
+          <span style="font-size:11px;font-weight:400;color:var(--text3)"> — grupos canônicos do banco de exercícios ACM
         </div>
         <div class="alert alert-blue" style="margin-bottom:10px">
           💡 Cada dia define quais grupos são trabalhados naquela sessão. O motor usa isso para filtrar exercícios por dia e calcular volume semanal por grupamento.
@@ -1011,7 +1020,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
             </div>
           </div>
         </div>
-        <div class="field"><label>Objetivos compatíveis <span style="font-size:11px;font-weight:400;color:var(--text3)">(Vault FASE-2 — Tabela de Decisão)</span></label>
+        <div class="field"><label>Objetivos compatíveis <span style="font-size:11px;font-weight:400;color:var(--text3)">(Vault FASE-2 — Tabela de Decisão)</label>
           <div id="distrib-obj-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 14px">
             <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" class="dobj-cb" value="Hip"> Hip</label>
             <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" class="dobj-cb" value="Forca"> Força</label>
@@ -1067,12 +1076,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <div class="section-label">Regras de Escolha e Descarte</div>
         <div class="grid-2">
           <div class="field">
-            <label>✅ Critérios de escolha <span style="font-size:11px;font-weight:400;color:var(--text3)">(um por linha)</span></label>
+            <label>✅ Critérios de escolha <span style="font-size:11px;font-weight:400;color:var(--text3)">(um por linha)</label>
             <div id="distrib-uso-wrap"></div>
             <button class="btn btn-ghost btn-sm" onclick="addItemDistrib('uso')" style="margin-top:4px">+ Adicionar critério</button>
           </div>
           <div class="field">
-            <label>❌ Critérios de descarte <span style="font-size:11px;font-weight:400;color:var(--text3)">(um por linha)</span></label>
+            <label>❌ Critérios de descarte <span style="font-size:11px;font-weight:400;color:var(--text3)">(um por linha)</label>
             <div id="distrib-contra-wrap"></div>
             <button class="btn btn-ghost btn-sm" onclick="addItemDistrib('contra')" style="margin-top:4px">+ Adicionar critério</button>
           </div>
@@ -1128,10 +1137,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       <div class="page-header">
         <div>
           <div class="page-title">💪 Banco de Exercícios</div>
-          <div class="page-subtitle"><span class="badge badge-green">693 exercícios</span><span class="badge badge-gray">Vault ACM v1.1</span><span class="badge badge-blue">19 grupos musculares</span></div>
+          <div class="page-subtitle"><span class="badge badge-green">693 exercícios<span class="badge badge-gray">Vault ACM v1.1<span class="badge badge-blue">19 grupos musculares</div>
         </div>
         <div class="page-header-actions">
-          <span id="ex-count-label" style="font-size:12px;color:var(--text3);font-family:var(--mono)"></span>
+          <span id="ex-count-label" style="font-size:12px;color:var(--text3);font-family:var(--mono)">
         </div>
       </div>
       <!-- Filtros -->
@@ -1193,7 +1202,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
     <div id="modal-video" class="modal-overlay hidden" onclick="if(event.target===this)fecharVideoModal()" style="background:rgba(0,0,0,.75)">
       <div style="background:var(--bg2);border-radius:var(--radius);overflow:hidden;width:min(680px,94vw);box-shadow:0 8px 40px rgba(0,0,0,.6)">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border)">
-          <span id="modal-video-titulo" style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:580px"></span>
+          <span id="modal-video-titulo" style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:580px">
           <button onclick="fecharVideoModal()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:0 2px;line-height:1" title="Fechar">×</button>
         </div>
         <div style="position:relative;padding-bottom:56.25%;height:0">
@@ -1217,7 +1226,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
           <input id="bsv-nome" placeholder="Ex: Hipertrofia 4x Intermediário Feminino — Ênfase MMII">
         </div>
 
-        <div class="section-label">Perfil de Referência <span style="font-size:11px;font-weight:400;color:var(--text3)">— preenchido automaticamente pelo perfil do aluno</span></div>
+        <div class="section-label">Perfil de Referência <span style="font-size:11px;font-weight:400;color:var(--text3)">— preenchido automaticamente pelo perfil do aluno</div>
         <div class="grid-3">
           <div class="field"><label>Objetivo</label>
             <select id="bsv-obj">
@@ -1310,15 +1319,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <div style="display:flex;align-items:center;gap:10px">
           <button class="btn btn-ghost btn-sm" onclick="navGo('alunos')" style="font-size:12px;padding:4px 10px;color:var(--text3)">← Alunos</button>
           <div>
-            <div class="page-title" id="student-header-name">—</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="page-title" id="student-header-name">—</div>
+              <span id="saved-indicator" class="hidden" style="font-size:12px;color:var(--accent);font-family:var(--mono)">✓ Salvo</span>
+            </div>
             <div class="page-subtitle" id="student-badges"></div>
           </div>
-        </div>
-        <div class="page-header-actions">
-          <span id="saved-indicator" class="hidden" style="font-size:13px;color:var(--accent);font-family:var(--mono)">✓ Salvo</span>
-          <button class="btn btn-ghost btn-sm" onclick="exportMD()">↓ MD</button>
-          <button class="btn btn-ghost btn-sm" onclick="exportPDF()">↓ PDF</button>
-          <button class="btn btn-primary btn-sm" onclick="saveStudent()">Salvar</button>
         </div>
       </div>
 
@@ -1344,7 +1350,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 <label>Data de nascimento</label>
                 <div style="display:flex;gap:8px;align-items:center">
                   <input type="date" id="p-nascimento" oninput="onPerfilChange();calcIdade()" style="flex:1">
-                  <span id="p-idade-label" style="font-size:12px;color:var(--accent);font-family:var(--mono);white-space:nowrap"></span>
+                  <span id="p-idade-label" style="font-size:12px;color:var(--accent);font-family:var(--mono);white-space:nowrap">
                 </div>
               </div>
               <div class="field">
@@ -1374,6 +1380,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               </div>
             </div>
           </div>
+          <div class="btn-row" style="margin-top:16px;padding:0 4px">
+            <button class="btn btn-primary btn-save" onclick="salvarPerfil()" style="min-width:130px;gap:6px"><span>✓</span> Salvar</button>
+          </div>
         </div>
 
         <!-- ══════════════ AVALIAÇÃO ══════════════ -->
@@ -1398,14 +1407,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 
               <div class="grid-2" style="gap:12px">
                 <div class="field" style="grid-column:1/-1">
-                  <label>Sintomas de alerta ao esforço físico <span style="color:var(--text3);font-size:11px">(triagem de segurança)</span></label>
-                  <div id="a-sintomas-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 16px">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="sintoma-check" value="Nenhum" onchange="onSintomaChange(this)"> Nenhum</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="sintoma-check" value="Dor no peito" onchange="onSintomaChange(this)"> Dor no peito ao esforço</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="sintoma-check" value="Tontura ou vertigem" onchange="onSintomaChange(this)"> Tontura ou vertigem</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="sintoma-check" value="Falta de ar desproporcional" onchange="onSintomaChange(this)"> Falta de ar desproporcional</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="sintoma-check" value="Palpitações" onchange="onSintomaChange(this)"> Palpitações</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="sintoma-check" value="Desmaio ou quase-desmaio" onchange="onSintomaChange(this)"> Desmaio ou quase-desmaio</label>
+                  <label>Sintomas de alerta ao esforço físico <span style="color:var(--text3);font-size:11px">(triagem de segurança)</label>
+                  <div id="a-sintomas-wrap" class="chk-grid" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
+                    <label class="chk-label"><input type="checkbox" class="sintoma-check" value="Nenhum" onchange="onSintomaChange(this)"><span> Nenhum</span></label>
+                    <label class="chk-label"><input type="checkbox" class="sintoma-check" value="Dor no peito" onchange="onSintomaChange(this)"><span> Dor no peito</span></label>
+                    <label class="chk-label"><input type="checkbox" class="sintoma-check" value="Tontura ou vertigem" onchange="onSintomaChange(this)"><span> Tontura / vertigem</span></label>
+                    <label class="chk-label"><input type="checkbox" class="sintoma-check" value="Falta de ar desproporcional" onchange="onSintomaChange(this)"><span> Falta de ar</span></label>
+                    <label class="chk-label"><input type="checkbox" class="sintoma-check" value="Palpitações" onchange="onSintomaChange(this)"><span> Palpitações</span></label>
+                    <label class="chk-label"><input type="checkbox" class="sintoma-check" value="Desmaio ou quase-desmaio" onchange="onSintomaChange(this)"><span> Desmaio</span></label>
                   </div>
                   <input type="hidden" id="a-sintomas">
                 </div>
@@ -1418,7 +1427,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                     <option value="Fumante atual">Fumante atual</option>
                   </select>
                 </div>
-                <div class="field">
+                <div class="field" id="field-gestacao">
                   <label>Gestante / Pós-parto</label>
                   <div style="display:flex;gap:8px">
                     <select id="a-gestacao" onchange="onAnamneseChange();toggleTrimestre()" style="flex:1">
@@ -1435,84 +1444,82 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                     </select>
                   </div>
                 </div>
-                <div class="field">
+                <div class="field" style="grid-column:1/-1">
                   <label>Histórico familiar de doença</label>
-                  <div id="a-hist-familiar-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 16px">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="histfam-check" value="Nenhum conhecido" onchange="onHistFamiliarChange(this)"> Nenhum conhecido</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="histfam-check" value="Doença cardíaca" onchange="onHistFamiliarChange(this)"> Doença cardíaca</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="histfam-check" value="Diabetes" onchange="onHistFamiliarChange(this)"> Diabetes</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="histfam-check" value="Hipertensão" onchange="onHistFamiliarChange(this)"> Hipertensão</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="histfam-check" value="AVC" onchange="onHistFamiliarChange(this)"> AVC</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="histfam-check" value="Outros" onchange="onHistFamiliarChange(this)"> Outros</label>
+                  <div id="a-hist-familiar-wrap" class="chk-grid" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
+                    <label class="chk-label"><input type="checkbox" class="histfam-check" value="Nenhum conhecido" onchange="onHistFamiliarChange(this)"><span> Nenhum conhecido</span></label>
+                    <label class="chk-label"><input type="checkbox" class="histfam-check" value="Doença cardíaca" onchange="onHistFamiliarChange(this)"><span> Doença cardíaca</span></label>
+                    <label class="chk-label"><input type="checkbox" class="histfam-check" value="Diabetes" onchange="onHistFamiliarChange(this)"><span> Diabetes</span></label>
+                    <label class="chk-label"><input type="checkbox" class="histfam-check" value="Hipertensão" onchange="onHistFamiliarChange(this)"><span> Hipertensão</span></label>
+                    <label class="chk-label"><input type="checkbox" class="histfam-check" value="AVC" onchange="onHistFamiliarChange(this)"><span> AVC</span></label>
+                    <label class="chk-label"><input type="checkbox" class="histfam-check" value="Obesidade" onchange="onHistFamiliarChange(this)"><span> Obesidade</span></label>
+                    <label class="chk-label"><input type="checkbox" class="histfam-check" value="Outros" onchange="onHistFamiliarChange(this)"><span> Outros</span></label>
                   </div>
                   <input type="hidden" id="a-hist-familiar">
                 </div>
                 <div class="field" style="grid-column:1/-1">
-                  <label>Cirurgias prévias <span style="color:var(--text3);font-size:11px">(mesmo sem lesão ativa hoje)</span></label>
+                  <label>Cirurgias prévias <span style="color:var(--text3);font-size:11px">(mesmo sem lesão ativa hoje)</label>
                   <textarea id="a-cirurgias" oninput="onAnamneseChange()" placeholder="Ex: Cirurgia de LCA no joelho D em 2022, sem sequelas atuais." style="min-height:45px"></textarea>
                 </div>
               </div>
 
-              <div class="section-label">Condições & Restrições Clínicas <span style="color:var(--text3);font-size:11px;font-weight:400">🌐 compartilhado com NUT/FT — gravado no Perfil</span></div>
+              <div class="section-label">Condições & Restrições Clínicas <span style="color:var(--text3);font-size:11px;font-weight:400">🌐 compartilhado com NUT/FT — gravado no Perfil</div>
               <div class="grid-2" style="gap:12px">
                 <div class="field" style="grid-column:1/-1">
                   <label>Condições de saúde ativas</label>
-                  <div id="p-condicoes-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 16px">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Nenhuma" onchange="onCondicaoChange(this)"> Nenhuma</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Hipertensão arterial" onchange="onCondicaoChange(this)"> Hipertensão arterial</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Diabetes tipo 1" onchange="onCondicaoChange(this)"> Diabetes tipo 1</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Diabetes tipo 2" onchange="onCondicaoChange(this)"> Diabetes tipo 2</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Dislipidemia" onchange="onCondicaoChange(this)"> Dislipidemia (colesterol/triglicerídeos)</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Obesidade" onchange="onCondicaoChange(this)"> Obesidade</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Hipotireoidismo" onchange="onCondicaoChange(this)"> Hipotireoidismo</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Hipertireoidismo" onchange="onCondicaoChange(this)"> Hipertireoidismo</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Asma / DPOC" onchange="onCondicaoChange(this)"> Asma / DPOC</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Cardiopatia" onchange="onCondicaoChange(this)"> Cardiopatia (controlada)</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Osteoporose / Osteopenia" onchange="onCondicaoChange(this)"> Osteoporose / Osteopenia</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Fibromialgia" onchange="onCondicaoChange(this)"> Fibromialgia</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Ansiedade / Depressão" onchange="onCondicaoChange(this)"> Ansiedade / Depressão</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="SOP" onchange="onCondicaoChange(this)"> Síndrome dos ovários policísticos (SOP)</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="cond-check" value="Outros" id="cond-outros-check" onchange="onCondicaoChange(this)"> Outros</label>
+                  <div id="p-condicoes-wrap" class="chk-grid" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
+                    <label class="chk-label"><input type="checkbox" class="cond-check" value="Nenhuma" onchange="onCondicaoChange(this)"><span> Nenhuma</span></label>
+                    <label class="chk-label"><input type="checkbox" class="cond-check" value="Hipertensão arterial" onchange="onCondicaoChange(this)"><span> Hipertensão arterial</span></label>
+                    <label class="chk-label"><input type="checkbox" class="cond-check" value="Diabetes" onchange="onCondicaoChange(this)"><span> Diabetes</span></label>
+                    <label class="chk-label"><input type="checkbox" class="cond-check" value="Dislipidemia" onchange="onCondicaoChange(this)"><span> Dislipidemia</span></label>
+                    <label class="chk-label"><input type="checkbox" class="cond-check" value="Obesidade" onchange="onCondicaoChange(this)"><span> Obesidade</span></label>
+                    <label class="chk-label"><input type="checkbox" class="cond-check" value="Hipotireoidismo" onchange="onCondicaoChange(this)"><span> Hipotireoidismo</span></label>
+                    <label class="chk-label"><input type="checkbox" class="cond-check" value="Asma / DPOC" onchange="onCondicaoChange(this)"><span> Asma / DPOC</span></label>
+                    <label class="chk-label"><input type="checkbox" class="cond-check" value="Cardiopatia" onchange="onCondicaoChange(this)"><span> Cardiopatia</span></label>
+                    <label class="chk-label"><input type="checkbox" class="cond-check" value="Osteoporose / Osteopenia" onchange="onCondicaoChange(this)"><span> Osteoporose / Osteopenia</span></label>
+                    <label class="chk-label"><input type="checkbox" class="cond-check" value="Ansiedade / Depressão" onchange="onCondicaoChange(this)"><span> Ansiedade / Depressão</span></label>
+                    <label class="chk-label"><input type="checkbox" class="cond-check" value="SOP" onchange="onCondicaoChange(this)"><span> SOP</span></label>
+                    <label class="chk-label"><input type="checkbox" class="cond-check" value="Outros" id="cond-outros-check" onchange="onCondicaoChange(this)"><span> Outros</span></label>
                   </div>
                   <input type="text" id="p-condicoes-outros" oninput="onPerfilChange()" placeholder="Descrever condição..." style="margin-top:6px;display:none">
                   <input type="hidden" id="p-condicoes">
                 </div>
                 <div class="field" style="grid-column:1/-1">
                   <label>Medicamentos em uso contínuo</label>
-                  <div id="p-medicamentos-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 16px">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="med-check" value="Nenhum" onchange="onMedChange(this)"> Nenhum</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Betabloqueadores, ECA, BRA, bloqueadores de canal de cálcio — afetam FC-alvo"><input type="checkbox" class="med-check" value="Anti-hipertensivos" onchange="onMedChange(this)"> Anti-hipertensivos <span style="font-size:10px;color:var(--text3)">(↓FC)</span></label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Metformina, glipizida, inibidores SGLT2, GLP-1 — monitorar hipoglicemia no treino"><input type="checkbox" class="med-check" value="Hipoglicemiantes orais" onchange="onMedChange(this)"> Hipoglicemiantes / antidiabéticos <span style="font-size:10px;color:var(--text3)">(glicemia)</span></label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Insulina — ajuste de dose peri-treino, risco de hipoglicemia"><input type="checkbox" class="med-check" value="Insulina" onchange="onMedChange(this)"> Insulina</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Levotiroxina, propiltiouracil — impacto no metabolismo basal"><input type="checkbox" class="med-check" value="Hormônios tireoidianos" onchange="onMedChange(this)"> Hormônios tireoidianos</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Hormônios sexuais, anabolizantes prescritos, TRH — impacto na composição corporal e força"><input type="checkbox" class="med-check" value="Hormônios sexuais / TRH" onchange="onMedChange(this)"> Hormônios sexuais / TRH</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Corticoides sistêmicos — catabolismo muscular, retenção hídrica, osteoporose secundária"><input type="checkbox" class="med-check" value="Corticosteróides" onchange="onMedChange(this)"> Corticosteróides <span style="font-size:10px;color:var(--text3)">(catabolismo)</span></label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="ISRS, IRSN, tricíclicos — podem afetar FC, termorregulação e motivação"><input type="checkbox" class="med-check" value="Antidepressivos / ansiolíticos" onchange="onMedChange(this)"> Antidepressivos / ansiolíticos</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Varfarina, rivaroxabana — evitar exercícios de alto risco de trauma/queda"><input type="checkbox" class="med-check" value="Anticoagulantes" onchange="onMedChange(this)"> Anticoagulantes</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap" title="AINEs, analgésicos de uso contínuo — podem mascarar dor de lesão"><input type="checkbox" class="med-check" value="Analgésicos / anti-inflamatórios" onchange="onMedChange(this)"> Analgésicos / anti-inflamatórios</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="med-check" value="Outros medicamentos" id="med-outros-check" onchange="onMedChange(this)"> Outros</label>
+                  <div id="p-medicamentos-wrap" class="chk-grid" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
+                    <label class="chk-label"><input type="checkbox" class="med-check" value="Nenhum" onchange="onMedChange(this)"><span> Nenhum</span></label>
+                    <label title="Betabloqueadores, ECA, BRA — afetam FC-alvo" class="chk-label"><input type="checkbox" class="med-check" value="Anti-hipertensivos" onchange="onMedChange(this)"><span> Anti-hipertensivos</span></label>
+                    <label title="Metformina, SGLT2, GLP-1 — monitorar glicemia no treino" class="chk-label"><input type="checkbox" class="med-check" value="Hipoglicemiantes orais" onchange="onMedChange(this)"><span> Antidiabéticos</span></label>
+                    <label title="Risco de hipoglicemia peri-treino" class="chk-label"><input type="checkbox" class="med-check" value="Insulina" onchange="onMedChange(this)"><span> Insulina</span></label>
+                    <label title="Levotiroxina — impacto no metabolismo basal" class="chk-label"><input type="checkbox" class="med-check" value="Hormônios tireoidianos" onchange="onMedChange(this)"><span> Tireoidianos</span></label>
+                    <label title="Hormônios sexuais, TRH, anabolizantes prescritos" class="chk-label"><input type="checkbox" class="med-check" value="Hormônios sexuais / TRH" onchange="onMedChange(this)"><span> Hormônios / TRH</span></label>
+                    <label title="Corticoides sistêmicos — catabolismo muscular" class="chk-label"><input type="checkbox" class="med-check" value="Corticosteróides" onchange="onMedChange(this)"><span> Corticosteróides</span></label>
+                    <label title="ISRS, IRSN — podem afetar FC e termorregulação" class="chk-label"><input type="checkbox" class="med-check" value="Antidepressivos / ansiolíticos" onchange="onMedChange(this)"><span> Antidepressivos</span></label>
+                    <label title="Varfarina, rivaroxabana — evitar risco de trauma/queda" class="chk-label"><input type="checkbox" class="med-check" value="Anticoagulantes" onchange="onMedChange(this)"><span> Anticoagulantes</span></label>
+                    <label title="AINEs — podem mascarar dor de lesão" class="chk-label"><input type="checkbox" class="med-check" value="Analgésicos / anti-inflamatórios" onchange="onMedChange(this)"><span> Analgésicos / AINEs</span></label>
+                    <label class="chk-label"><input type="checkbox" class="med-check" value="Outros medicamentos" id="med-outros-check" onchange="onMedChange(this)"><span> Outros</span></label>
                   </div>
                   <input type="text" id="p-medicamentos-detalhe" oninput="onPerfilChange()" placeholder="Nome(s) do(s) medicamento(s) e/ou informações adicionais..." style="margin-top:6px">
                   <input type="hidden" id="p-medicamentos">
                 </div>
                 <div class="field" style="grid-column:1/-1">
                   <label>Região de dor ou lesão ativa</label>
-                  <div id="p-lesoes-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 16px">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Nenhuma" onchange="onLesaoChange(this)"> Nenhuma</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Joelho D" onchange="onLesaoChange(this)"> Joelho D</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Joelho E" onchange="onLesaoChange(this)"> Joelho E</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Ombro D" onchange="onLesaoChange(this)"> Ombro D</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Ombro E" onchange="onLesaoChange(this)"> Ombro E</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Lombar / coluna baixa" onchange="onLesaoChange(this)"> Lombar / coluna baixa</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Cervical / coluna alta" onchange="onLesaoChange(this)"> Cervical / coluna alta</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Cotovelo D" onchange="onLesaoChange(this)"> Cotovelo D</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Cotovelo E" onchange="onLesaoChange(this)"> Cotovelo E</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Quadril D" onchange="onLesaoChange(this)"> Quadril D</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Quadril E" onchange="onLesaoChange(this)"> Quadril E</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Tornozelo / pé D" onchange="onLesaoChange(this)"> Tornozelo / pé D</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Tornozelo / pé E" onchange="onLesaoChange(this)"> Tornozelo / pé E</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Pós-cirurgia" onchange="onLesaoChange(this)"> Pós-cirurgia (&lt;12 meses)</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="lesao-check" value="Outros" id="lesao-outros-check" onchange="onLesaoChange(this)"> Outros</label>
+                  <div id="p-lesoes-wrap" class="chk-grid" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
+                    <label class="chk-label"><input type="checkbox" class="lesao-check" value="Nenhuma" onchange="onLesaoChange(this)"><span> Nenhuma</span></label>
+                    <label class="chk-label"><input type="checkbox" class="lesao-check" value="Joelho D" onchange="onLesaoChange(this)"><span> Joelho D</span></label>
+                    <label class="chk-label"><input type="checkbox" class="lesao-check" value="Joelho E" onchange="onLesaoChange(this)"><span> Joelho E</span></label>
+                    <label class="chk-label"><input type="checkbox" class="lesao-check" value="Ombro D" onchange="onLesaoChange(this)"><span> Ombro D</span></label>
+                    <label class="chk-label"><input type="checkbox" class="lesao-check" value="Ombro E" onchange="onLesaoChange(this)"><span> Ombro E</span></label>
+                    <label class="chk-label"><input type="checkbox" class="lesao-check" value="Lombar / coluna baixa" onchange="onLesaoChange(this)"><span> Lombar</span></label>
+                    <label class="chk-label"><input type="checkbox" class="lesao-check" value="Cervical / coluna alta" onchange="onLesaoChange(this)"><span> Cervical</span></label>
+                    <label class="chk-label"><input type="checkbox" class="lesao-check" value="Cotovelo D" onchange="onLesaoChange(this)"><span> Cotovelo D</span></label>
+                    <label class="chk-label"><input type="checkbox" class="lesao-check" value="Cotovelo E" onchange="onLesaoChange(this)"><span> Cotovelo E</span></label>
+                    <label class="chk-label"><input type="checkbox" class="lesao-check" value="Quadril D" onchange="onLesaoChange(this)"><span> Quadril D</span></label>
+                    <label class="chk-label"><input type="checkbox" class="lesao-check" value="Quadril E" onchange="onLesaoChange(this)"><span> Quadril E</span></label>
+                    <label class="chk-label"><input type="checkbox" class="lesao-check" value="Tornozelo / pé D" onchange="onLesaoChange(this)"><span> Tornozelo D</span></label>
+                    <label class="chk-label"><input type="checkbox" class="lesao-check" value="Tornozelo / pé E" onchange="onLesaoChange(this)"><span> Tornozelo E</span></label>
+                    <label class="chk-label"><input type="checkbox" class="lesao-check" value="Pós-cirurgia" onchange="onLesaoChange(this)"><span> Pós-cirurgia</span></label>
+                    <label class="chk-label"><input type="checkbox" class="lesao-check" value="Outros" id="lesao-outros-check" onchange="onLesaoChange(this)"><span> Outros</span></label>
                   </div>
                   <input type="text" id="p-lesoes-outros" oninput="onPerfilChange()" placeholder="Descrever região..." style="margin-top:6px;display:none">
                   <input type="hidden" id="p-lesoes">
@@ -1584,19 +1591,19 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 </div>
                 <div class="field" style="grid-column:1/-1">
                   <label>Suplementação em uso</label>
-                  <div id="a-suplementos-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 16px">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="suple-check" value="Nenhuma" onchange="onSupleChange(this)"> Nenhuma</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="suple-check" value="Whey protein" onchange="onSupleChange(this)"> Whey protein</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="suple-check" value="Creatina" onchange="onSupleChange(this)"> Creatina</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="suple-check" value="Caseína" onchange="onSupleChange(this)"> Caseína</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="suple-check" value="BCAA" onchange="onSupleChange(this)"> BCAA</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="suple-check" value="Pré-treino" onchange="onSupleChange(this)"> Pré-treino</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="suple-check" value="Beta-alanina" onchange="onSupleChange(this)"> Beta-alanina</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="suple-check" value="Cafeína" onchange="onSupleChange(this)"> Cafeína</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="suple-check" value="Vitamina D" onchange="onSupleChange(this)"> Vitamina D</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="suple-check" value="Ômega-3" onchange="onSupleChange(this)"> Ômega-3</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="suple-check" value="Multivitamínico" onchange="onSupleChange(this)"> Multivitamínico</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" class="suple-check" value="Outros suplementos" onchange="onSupleChange(this)"> Outros</label>
+                  <div id="a-suplementos-wrap" class="chk-grid" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
+                    <label class="chk-label"><input type="checkbox" class="suple-check" value="Nenhuma" onchange="onSupleChange(this)"><span> Nenhuma</span></label>
+                    <label class="chk-label"><input type="checkbox" class="suple-check" value="Whey protein" onchange="onSupleChange(this)"><span> Whey protein</span></label>
+                    <label class="chk-label"><input type="checkbox" class="suple-check" value="Creatina" onchange="onSupleChange(this)"><span> Creatina</span></label>
+                    <label class="chk-label"><input type="checkbox" class="suple-check" value="Caseína" onchange="onSupleChange(this)"><span> Caseína</span></label>
+                    <label class="chk-label"><input type="checkbox" class="suple-check" value="BCAA" onchange="onSupleChange(this)"><span> BCAA</span></label>
+                    <label class="chk-label"><input type="checkbox" class="suple-check" value="Pré-treino" onchange="onSupleChange(this)"><span> Pré-treino</span></label>
+                    <label class="chk-label"><input type="checkbox" class="suple-check" value="Beta-alanina" onchange="onSupleChange(this)"><span> Beta-alanina</span></label>
+                    <label class="chk-label"><input type="checkbox" class="suple-check" value="Cafeína" onchange="onSupleChange(this)"><span> Cafeína</span></label>
+                    <label class="chk-label"><input type="checkbox" class="suple-check" value="Vitamina D" onchange="onSupleChange(this)"><span> Vitamina D</span></label>
+                    <label class="chk-label"><input type="checkbox" class="suple-check" value="Ômega-3" onchange="onSupleChange(this)"><span> Ômega-3</span></label>
+                    <label class="chk-label"><input type="checkbox" class="suple-check" value="Multivitamínico" onchange="onSupleChange(this)"><span> Multivitamínico</span></label>
+                    <label class="chk-label"><input type="checkbox" class="suple-check" value="Outros suplementos" onchange="onSupleChange(this)"><span> Outros</span></label>
                   </div>
                   <input type="hidden" id="a-suplementos">
                 </div>
@@ -1676,17 +1683,17 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 </div>
                 <div class="field" style="grid-column:1/-1">
                   <label>Modalidade(s) praticada(s)</label>
-                  <div id="a-modalidades-wrap" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 12px">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Musculação" onchange="onModalChange()"> Musculação</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="CrossFit / Funcional" onchange="onModalChange()"> CrossFit / Funcional</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Calistenia" onchange="onModalChange()"> Calistenia</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Corrida" onchange="onModalChange()"> Corrida</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Ciclismo" onchange="onModalChange()"> Ciclismo</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Natação" onchange="onModalChange()"> Natação</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Esportes coletivos" onchange="onModalChange()"> Esportes coletivos</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Artes marciais" onchange="onModalChange()"> Artes marciais / luta</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Yoga / Pilates" onchange="onModalChange()"> Yoga / Pilates</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap"><input type="checkbox" class="modal-check" value="Nenhuma" onchange="onModalChange()"> Nunca treinou</label>
+                  <div id="a-modalidades-wrap" class="chk-grid" style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
+                    <label class="chk-label"><input type="checkbox" class="modal-check" value="Musculação" onchange="onModalChange()"><span> Musculação</span></label>
+                    <label class="chk-label"><input type="checkbox" class="modal-check" value="CrossFit / Funcional" onchange="onModalChange()"><span> CrossFit / Funcional</span></label>
+                    <label class="chk-label"><input type="checkbox" class="modal-check" value="Calistenia" onchange="onModalChange()"><span> Calistenia</span></label>
+                    <label class="chk-label"><input type="checkbox" class="modal-check" value="Corrida" onchange="onModalChange()"><span> Corrida</span></label>
+                    <label class="chk-label"><input type="checkbox" class="modal-check" value="Ciclismo" onchange="onModalChange()"><span> Ciclismo</span></label>
+                    <label class="chk-label"><input type="checkbox" class="modal-check" value="Natação" onchange="onModalChange()"><span> Natação</span></label>
+                    <label class="chk-label"><input type="checkbox" class="modal-check" value="Esportes coletivos" onchange="onModalChange()"><span> Esportes coletivos</span></label>
+                    <label class="chk-label"><input type="checkbox" class="modal-check" value="Artes marciais" onchange="onModalChange()"><span> Artes marciais / luta</span></label>
+                    <label class="chk-label"><input type="checkbox" class="modal-check" value="Yoga / Pilates" onchange="onModalChange()"><span> Yoga / Pilates</span></label>
+                    <label class="chk-label"><input type="checkbox" class="modal-check" value="Nenhuma" onchange="onModalChange()"><span> Nunca treinou</span></label>
                   </div>
                   <input type="hidden" id="a-modalidades">
                 </div>
@@ -1700,11 +1707,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   <input type="hidden" id="a-extras">
                 </div>
                 <div class="field" style="grid-column:1/-1">
-                  <label>Lesões relacionadas a treino no passado <span style="color:var(--text3);font-size:11px">(diferente de lesão ativa — algo já resolvido, mas que molda a progressão)</span></label>
+                  <label>Lesões relacionadas a treino no passado <span style="color:var(--text3);font-size:11px">(diferente de lesão ativa — algo já resolvido, mas que molda a progressão)</label>
                   <textarea id="a-lesoes-passadas" oninput="onAnamneseChange()" placeholder="Ex: Estirou o ombro fazendo supino há 2 anos, hoje sem dor, mas evita carga alta em desenvolvimento." style="min-height:45px"></textarea>
                 </div>
                 <div class="field" style="grid-column:1/-1">
-                  <label>Motivo de pausas anteriores <span style="color:var(--text3);font-size:11px">(se aplicável)</span></label>
+                  <label>Motivo de pausas anteriores <span style="color:var(--text3);font-size:11px">(se aplicável)</label>
                   <select id="a-motivo-pausa" onchange="onAnamneseChange()">
                     <option value="">Nunca parou / não se aplica</option>
                     <option value="Falta de tempo">Falta de tempo</option>
@@ -1718,28 +1725,18 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               </div>
 
               <!-- ══════════════ BLOCO 3 — DADOS ATUAIS DE TREINO ══════════════ -->
-              <div class="section-label" style="font-size:13px;color:var(--accent);margin-top:24px">③ Dados Atuais de Treino <span style="color:var(--text3);font-size:11px;font-weight:400">chave pra prescrição — importado automaticamente na Prescrição, editável lá sem alterar aqui</span></div>
+              <div class="section-label" style="font-size:13px;color:var(--accent);margin-top:24px">③ Dados Atuais de Treino <span style="color:var(--text3);font-size:11px;font-weight:400">chave pra prescrição — importado automaticamente na Prescrição, editável lá sem alterar aqui</div>
               <div class="grid-3" style="gap:12px">
                 <div class="field">
                   <label>Objetivo principal</label>
-                  <select id="a-objetivo-ef" onchange="onAnamneseChange()">
+                  <select id="a-objetivo-ef" onchange="_onObjetivoEfChange()">
                     <option value="">Selecionar</option>
-                    <option value="Hipertrofia">Ganhar massa muscular (hipertrofia)</option>
-                    <option value="Emagrecimento">Emagrecer / reduzir gordura</option>
-                    <option value="Força">Aumentar força máxima</option>
-                    <option value="Saúde">Saúde geral e qualidade de vida</option>
-                    <option value="Reabilitação">Reabilitação / retorno pós-lesão</option>
                   </select>
                 </div>
                 <div class="field">
-                  <label>Objetivo secundário <span style="color:var(--text3);font-size:11px">(opcional)</span></label>
-                  <select id="a-objetivo-sec" onchange="onAnamneseChange()">
+                  <label>Objetivo secundário <span style="color:var(--text3);font-size:11px">(opcional)</label>
+                  <select id="a-objetivo-sec" onchange="_onObjetivoSecChange()" disabled>
                     <option value="">Nenhum</option>
-                    <option value="Recomposição corporal">Recompor o corpo (ganhar músculo e perder gordura)</option>
-                    <option value="Mobilidade">Ganho de mobilidade e flexibilidade</option>
-                    <option value="Resistência muscular">Aumentar resistência muscular</option>
-                    <option value="Resistência cardiorrespiratória">Melhorar resistência cardiorrespiratória (cardio)</option>
-                    <option value="Performance esportiva">Performance esportiva</option>
                   </select>
                 </div>
                 <div class="field">
@@ -1785,35 +1782,44 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                     <option value="híbrido">Híbrido (academia + casa)</option>
                   </select>
                 </div>
-                <div class="field">
-                  <label>Preferência de exercícios / grupos musculares</label>
-                  <select id="a-gosta" onchange="onAnamneseChange()">
-                    <option value="">Sem preferência definida</option>
-                    <option value="Pernas e glúteos">Foco em pernas e glúteos</option>
-                    <option value="Superior (peito e costas)">Foco em superior (peito/costas)</option>
-                    <option value="Braços e ombros">Foco em braços e ombros</option>
-                    <option value="Core e abdômen">Foco em core e abdômen</option>
-                    <option value="Corpo inteiro">Treino corpo inteiro</option>
-                    <option value="Exercícios funcionais">Prefere exercícios funcionais</option>
-                    <option value="Exercícios com máquinas">Prefere máquinas</option>
-                    <option value="Exercícios com peso livre">Prefere peso livre</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label>Exercícios ou movimentos a evitar</label>
-                  <select id="a-preferencias" onchange="onAnamneseChange()">
-                    <option value="">Nenhum a evitar</option>
-                    <option value="Dores nos Joelhos">Agachamentos profundos (dor no joelho)</option>
-                    <option value="Dores nos Ombros">Desenvolvimentos acima da cabeça (dor no ombro)</option>
-                    <option value="Dores Lombares">Terra / stiff (dor lombar)</option>
-                    <option value="Dores nos Cotovelos">Extensões de cotovelo (dor no cotovelo)</option>
-                    <option value="Impacto">Exercícios de alto impacto (corrida, saltos)</option>
-                    <option value="Barra livre">Não se sente seguro com barra livre</option>
-                    <option value="Exercícios complexos">Exercícios técnicos/complexos</option>
-                  </select>
+                <div class="field" style="grid-column:1/-1">
+                  <label style="margin-bottom:8px;display:block">Exercícios preferidos e a evitar <span style="color:var(--text3);font-size:11px;font-family:var(--mono)">(influenciam a prescrição)</label>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                    <!-- Preferidos -->
+                    <div>
+                      <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">✅ Exercícios preferidos</div>
+                      <div style="display:flex;gap:6px;margin-bottom:6px">
+                        <input id="ex-pref-busca" type="text" placeholder="Buscar exercício..." oninput="_exPickerBusca('pref')"
+                          style="flex:1;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:6px 8px;font-size:12px">
+
+                      </div>
+                      <div id="ex-pref-sugestoes" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);max-height:140px;overflow-y:auto;margin-bottom:6px;font-size:12px"></div>
+                      <div id="ex-pref-tags" style="display:flex;flex-wrap:wrap;gap:4px;min-height:28px"></div>
+                      <input type="hidden" id="a-gosta-ex">
+                      <!-- legado -->
+                      <input type="hidden" id="a-gosta">
+                    </div>
+                    <!-- A evitar -->
+                    <div>
+                      <div style="font-size:12px;font-weight:600;color:var(--red,#ff5050);margin-bottom:6px">🚫 Exercícios a evitar</div>
+                      <div style="display:flex;gap:6px;margin-bottom:6px">
+                        <input id="ex-evit-busca" type="text" placeholder="Buscar exercício..." oninput="_exPickerBusca('evit')"
+                          style="flex:1;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:6px 8px;font-size:12px">
+
+                      </div>
+                      <div id="ex-evit-sugestoes" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);max-height:140px;overflow-y:auto;margin-bottom:6px;font-size:12px"></div>
+                      <div id="ex-evit-tags" style="display:flex;flex-wrap:wrap;gap:4px;min-height:28px"></div>
+                      <input type="hidden" id="a-evitar-ex">
+                      <!-- legado -->
+                      <input type="hidden" id="a-preferencias">
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
+          <div class="btn-row" style="margin:0 28px 20px">
+            <button class="btn btn-primary btn-save" onclick="salvarAnamnese()" style="min-width:130px;gap:6px"><span>✓</span> Salvar</button>
+          </div>
           </div>
           <div id="subpanel-anamnese-antro" class="content hidden" style="padding:0">
 
@@ -1831,10 +1837,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 
               <!-- ── FORMULÁRIO DE AVALIAÇÃO (nova ou edição) ── -->
               <div id="antro-form-view" style="display:none">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)">
                   <button type="button" class="btn btn-ghost" onclick="antroVoltarLista()" style="font-size:12px;padding:6px 12px">← Voltar para lista</button>
                   <div id="antro-form-titulo" style="font-size:12px;color:var(--text3);font-weight:500">Nova avaliação</div>
-                  <button type="button" class="btn btn-primary" onclick="antroSalvarAvaliacao()" style="font-size:12px;padding:6px 14px">💾 Salvar Avaliação</button>
                 </div>
 
               <!-- Medidas básicas -->
@@ -1845,11 +1850,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               </div>
               <div class="grid-4" style="gap:12px">
                 <div class="field">
-                  <label>Altura (cm) <span style="color:var(--red)">*</span></label>
+                  <label>Altura (cm) <span style="color:var(--red)">*</label>
                   <input type="number" id="a-altura" oninput="onAnamneseChange();calcIMC();calcComp()" placeholder="—" required>
                 </div>
                 <div class="field">
-                  <label>Peso (kg) <span style="color:var(--red)">*</span></label>
+                  <label>Peso (kg) <span style="color:var(--red)">*</label>
                   <input type="number" step="0.1" id="a-peso" oninput="onAnamneseChange();calcIMC();calcComp()" placeholder="—" required>
                 </div>
                 <div class="field">
@@ -1863,14 +1868,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               </div>
 
               <!-- Composição corporal -->
-              <div class="section-label">Composição Corporal <span style="font-size:11px;color:var(--text3);font-weight:400">(kg ou % — preencha um, o outro calcula sozinho)</span></div>
+              <div class="section-label">Composição Corporal <span style="font-size:11px;color:var(--text3);font-weight:400">(kg ou % — preencha um, o outro calcula sozinho)</div>
 
               <!-- Linha 1: Gordura | Muscular | Óssea -->
               <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
 
                 <!-- Col 1: Gordura (obrigatório) -->
                 <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
-                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Gorda <span style="color:var(--red)">*</span></div>
+                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Gorda <span style="color:var(--red)">*</div>
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                     <div class="field" style="margin:0">
                       <label style="font-size:11px">kg</label>
@@ -1885,7 +1890,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 
                 <!-- Col 2: Muscular (obrigatório) -->
                 <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
-                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Muscular <span style="font-size:9px;opacity:.7">esquelética</span> <span style="color:var(--red)">*</span></div>
+                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Muscular <span style="font-size:9px;opacity:.7">esquelética <span style="color:var(--red)">*</div>
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                     <div class="field" style="margin:0">
                       <label style="font-size:11px">kg</label>
@@ -1900,7 +1905,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 
                 <!-- Col 3: Óssea (opcional) -->
                 <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
-                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Óssea <span style="font-size:9px;opacity:.7">opcional — bioimpedância</span></div>
+                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Óssea <span style="font-size:9px;opacity:.7">opcional — bioimpedância</div>
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                     <div class="field" style="margin:0">
                       <label style="font-size:11px">kg</label>
@@ -1920,7 +1925,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <!-- Linha 2: Magra | Residual (calculados, aparecem depois dos anteriores) -->
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
                 <div style="background:var(--bg4);border:1px solid rgba(0,229,160,.15);border-radius:var(--radius);padding:10px 12px">
-                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Magra <span style="font-size:9px;opacity:.7">auto: peso−gordura</span></div>
+                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px">Massa Magra <span style="font-size:9px;opacity:.7">auto: peso−gordura</div>
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                     <div class="field" style="margin:0">
                       <label style="font-size:11px">kg</label>
@@ -1933,7 +1938,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   </div>
                 </div>
                 <div style="background:var(--bg4);border:1px solid rgba(0,229,160,.15);border-radius:var(--radius);padding:10px 12px">
-                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px"><span id="a-residual-label">Massa Residual</span> <span style="font-size:9px;opacity:.7">auto: depende da Óssea informada</span></div>
+                  <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px"><span id="a-residual-label">Massa Residual <span style="font-size:9px;opacity:.7">auto: depende da Óssea informada</div>
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                     <div class="field" style="margin:0">
                       <label style="font-size:11px">kg</label>
@@ -1972,7 +1977,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                 <!-- COLUNA DIREITA: MEMBROS D / Δ / E -->
                 <div>
                   <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;color:var(--text3);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)">
-                    Membros (cm) <span style="font-size:10px;font-weight:400;opacity:.7">Δ > 1 cm = priorizar unilateral</span>
+                    Membros (cm) <span style="font-size:10px;font-weight:400;opacity:.7">Δ > 1 cm = priorizar unilateral
                   </div>
 
                   <!-- Cabeçalho colunas -->
@@ -2028,6 +2033,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <div class="section-label" style="margin-top:16px">Observações</div>
               <div class="field">
                 <textarea id="a-obs-antro" oninput="onAnamneseChange()" placeholder="Registros adicionais relevantes para prescrição..." style="min-height:55px"></textarea>
+              </div>
+              <div class="btn-row" style="margin-top:20px;padding:0 4px">
+                <button type="button" class="btn btn-primary btn-save" onclick="antroSalvarAvaliacao()" style="min-width:130px;gap:6px"><span>✓</span> Salvar</button>
               </div>
               </div><!-- /antro-form-view -->
             </div>
@@ -2134,7 +2142,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
             <div id="meta-card-divergencia" style="display:none;margin-top:14px;padding:10px 14px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);font-size:13px"></div>
 
             <div class="btn-row" style="margin-top:16px">
-              <button class="btn btn-primary" onclick="salvarMeta()">Salvar Meta</button>
+              <button class="btn btn-primary btn-save" onclick="salvarMeta()" style="min-width:130px;gap:6px"><span>✓</span> Salvar</button>
             </div>
           </div>
           </div>
@@ -2162,7 +2170,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
             </div>
 
             <div id="presc-warning" class="alert alert-amber hidden">
-              <span>⚠</span><div>Preencha o Perfil e a Avaliação antes de gerar a prescrição.</div>
+              <span>⚠<div>Preencha o Perfil e a Avaliação antes de gerar a prescrição.</div>
             </div>
 
             <!-- STEPS -->
@@ -2180,7 +2188,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
             <div id="presc-step1">
               <div style="font-family:var(--mono);font-size:13px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">Base do Treino</div>
               <div class="alert alert-blue" style="margin-bottom:12px;font-size:13px">
-                <span>ℹ</span>
+                <span>ℹ
                 <div id="step1-info">Nível e frequência são importados automaticamente da Avaliação. Confirme ou ajuste abaixo se necessário.</div>
               </div>
               <div id="analise-avaliacao" class="alert alert-amber hidden" style="margin-bottom:12px;flex-direction:column;align-items:flex-start"></div>
@@ -2195,7 +2203,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   </select>
                 </div>
                 <div class="field flex-1">
-                  <label>Objetivo secundário <span style="color:var(--text3);font-size:11px">(opcional)</span></label>
+                  <label>Objetivo secundário <span style="color:var(--text3);font-size:11px">(opcional)</label>
                   <select id="pr-objetivo-sec">
                     <option value="">Nenhum</option>
                     <option value="Recomposição corporal">Recompor o corpo (ganhar músculo e perder gordura)</option>
@@ -2208,10 +2216,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               </div>
 
               <!-- ── GRUPO 2: PERFIL DE TREINO ── -->
-              <div class="section-label" style="margin-top:16px">Perfil de Treino <span style="color:var(--text3);font-size:11px;font-weight:400">importado da Avaliação — ajustar aqui não altera a Avaliação do aluno</span></div>
+              <div class="section-label" style="margin-top:16px">Perfil de Treino <span style="color:var(--text3);font-size:11px;font-weight:400">importado da Avaliação — ajustar aqui não altera a Avaliação do aluno</div>
               <div class="flex-row" style="margin-bottom:4px">
                 <div class="field flex-1">
-                  <label>Nível <span id="nivel-origem" style="font-size:11px;color:var(--accent)"></span></label>
+                  <label>Nível <span id="nivel-origem" style="font-size:11px;color:var(--accent)"></label>
                   <select id="pr-nivel" onchange="onNivelOuFrequenciaChange()">
                     <option value="">Selecionar</option>
                     <option value="Inic">Iniciante</option>
@@ -2220,7 +2228,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   </select>
                 </div>
                 <div class="field flex-1">
-                  <label>Frequência <span id="freq-origem" style="font-size:11px;color:var(--accent)"></span></label>
+                  <label>Frequência <span id="freq-origem" style="font-size:11px;color:var(--accent)"></label>
                   <select id="pr-frequencia" onchange="onNivelOuFrequenciaChange()">
                     <option value="">Selecionar</option>
                     <option value="2x">2x por semana</option>
@@ -2233,7 +2241,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               </div>
 
               <!-- ── GRUPO 3: ROTINA DE TREINO ── -->
-              <div class="section-label" style="margin-top:16px">Rotina de Treino <span style="color:var(--text3);font-size:11px;font-weight:400">importado da Anamnese — ajustar aqui não altera a Anamnese do aluno</span></div>
+              <div class="section-label" style="margin-top:16px">Rotina de Treino <span style="color:var(--text3);font-size:11px;font-weight:400">importado da Anamnese — ajustar aqui não altera a Anamnese do aluno</div>
               <div class="grid-3" style="gap:12px;margin-bottom:4px">
                 <div class="field">
                   <label>Duração por sessão</label>
@@ -2305,7 +2313,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <div class="section-label" style="margin-top:16px">Vigência</div>
               <div class="grid-2" style="gap:12px;margin-bottom:16px">
                 <div class="field">
-                  <label>Validade do treino <span style="color:var(--text3);font-size:11px">(vencimento — só informativo)</span></label>
+                  <label>Validade do treino <span style="color:var(--text3);font-size:11px">(vencimento — só informativo)</label>
                   <select id="pr-validade">
                     <option value="8sem">8 semanas</option>
                     <option value="12sem" selected>12 semanas (padrão)</option>
@@ -2332,19 +2340,19 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   </div>
                 </div>
                 <div class="alert alert-blue mt-12">
-                  <span>ℹ</span>
+                  <span>ℹ
                   <div id="ref-variaveis" style="font-size:13px;line-height:1.7"></div>
                 </div>
               </div>
 
               <!-- ══ RELATÓRIO DA BASE — diagnóstico do sistema (bloqueios/alertas/contexto: dores, lesões, assimetrias) ══ -->
-              <div class="section-label" style="margin-top:4px">Relatório da Base <span style="color:var(--text3);font-size:11px;font-weight:400">identificado automaticamente a partir do Perfil e da Avaliação</span></div>
+              <div class="section-label" style="margin-top:4px">Relatório da Base <span style="color:var(--text3);font-size:11px;font-weight:400">identificado automaticamente a partir do Perfil e da Avaliação</div>
               <div id="triagem-painel" style="display:none;margin-bottom:16px">
 
                 <!-- Resumo de uma linha -->
                 <div id="triagem-resumo" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg4);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:10px;flex-wrap:wrap">
-                  <span id="triagem-icone" style="font-size:16px">🔍</span>
-                  <span id="triagem-texto" style="font-size:13px;color:var(--text);flex:1"></span>
+                  <span id="triagem-icone" style="font-size:16px">🔍
+                  <span id="triagem-texto" style="font-size:13px;color:var(--text);flex:1">
                   <button onclick="toggleTriagemDetalhe()" id="triagem-toggle-btn" style="font-size:11px;font-family:var(--mono);padding:3px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text2);cursor:pointer">ver detalhes ▾</button>
                 </div>
 
@@ -2385,7 +2393,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               </div>
 
               <div class="alert alert-blue" style="margin-bottom:14px;font-size:13px">
-                <span>ℹ</span>
+                <span>ℹ
                 <div>Defina o volume por grupo muscular e escolha o modelo de divisão — os dois se ajustam ao vivo: mudar o volume recalcula o encaixe de cada modelo; trocar de modelo mostra quanto do volume definido cada sessão realmente comporta. Só são exibidos modelos compatíveis com o objetivo escolhido na tela anterior.</div>
               </div>
 
@@ -2393,13 +2401,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <div id="s3-volume" style="border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);margin-bottom:14px;overflow:hidden">
                 <div id="step2-perfil-ctx-anchor"></div>
                 <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer" onclick="toggleVolumeCaixa()">
-                  <span id="vol-collapse-icone" style="font-size:12px;color:var(--text3);transition:transform .15s">▾</span>
+                  <span id="vol-collapse-icone" style="font-size:12px;color:var(--text3);transition:transform .15s">▾
                   <div style="flex:1">
                     <div class="section-label" style="margin-bottom:2px">Volume por Grupo Muscular</div>
                     <div style="font-size:13px;color:var(--text3)">Já calculado pelo sistema a partir do objetivo, nível e sexo — ajuste se necessário.</div>
                   </div>
                   <div style="display:flex;align-items:center;gap:8px" onclick="event.stopPropagation()">
-                    <span style="font-size:13px;color:var(--text3)">Sér/exercício (padrão):</span>
+                    <span style="font-size:13px;color:var(--text3)">Sér/exercício (padrão):
                     <div style="display:flex;align-items:center">
                       <button id="btn-series-menos" style="width:22px;height:28px;background:var(--bg2);border:1px solid var(--border);border-radius:3px 0 0 3px;color:var(--text2);font-size:13px;cursor:pointer;line-height:1;padding:0">−</button>
                       <input type="number" id="vol-series" min="1" max="8" style="width:3.2em;background:var(--bg3);border-top:1px solid var(--border);border-bottom:1px solid var(--border);border-left:none;border-right:none;padding:4px 6px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;text-align:center" oninput="resetSeriesGlobal()">
@@ -2430,7 +2438,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 
                   <!-- Legenda de cores inline -->
                   <div style="display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap;padding:8px 10px;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border)">
-                    <span style="font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:.08em">STATUS DO VOLUME:</span>
+                    <span style="font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:.08em">STATUS DO VOLUME:
                     <div style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text3)"><div style="width:8px;height:8px;border-radius:2px;background:#333;border:1px solid #444"></div>OFF</div>
                     <div style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text3)"><div style="width:8px;height:8px;border-radius:2px;background:#ef4444"></div>Crítico — fora da faixa recuperável</div>
                     <div style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text3)"><div style="width:8px;height:8px;border-radius:2px;background:#f97316"></div>Aceitável — próximo ao limite</div>
@@ -2443,24 +2451,24 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <!-- ── CAIXA 2: MODELOS DE DIVISÃO (filtrados pelo objetivo, ajustados ao volume acima) ─────────── -->
               <div id="s3-divisao" style="border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);margin-bottom:16px;overflow:hidden">
                 <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer" onclick="toggleDivisaoCaixa()">
-                  <span id="div-collapse-icone" style="font-size:12px;color:var(--text3);transition:transform .15s">▾</span>
+                  <span id="div-collapse-icone" style="font-size:12px;color:var(--text3);transition:transform .15s">▾
                   <div class="section-label" style="margin-bottom:0;flex:1">Modelo de Divisão</div>
                   <!-- Limite de séries por sessão -->
                   <div style="display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;flex-shrink:0" onclick="event.stopPropagation()">
-                    <span style="font-size:13px;color:var(--text3)">Limite séries/sessão:</span>
+                    <span style="font-size:13px;color:var(--text3)">Limite séries/sessão:
                     <button id="btn-lim-menos" style="width:20px;height:22px;background:var(--bg2);border:1px solid var(--border);border-radius:3px 0 0 3px;color:var(--text2);font-size:13px;cursor:pointer;padding:0;line-height:1">−</button>
                     <input type="number" id="lim-sessao" min="4" max="60"
                       style="width:3.2em;background:var(--bg4);border-top:1px solid var(--border);border-bottom:1px solid var(--border);border-left:none;border-right:none;padding:3px 4px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;text-align:center"
                       oninput="onLimSessaoChange()">
                     <button id="btn-lim-mais" style="width:20px;height:22px;background:var(--bg2);border:1px solid var(--border);border-radius:0 3px 3px 0;color:var(--text2);font-size:13px;cursor:pointer;padding:0;line-height:1">+</button>
-                    <span style="font-size:13px;color:var(--text3);margin-left:2px">séries</span>
-                    <span id="lim-badge" style="font-size:13px;font-family:var(--mono);padding:1px 5px;border-radius:3px;margin-left:4px;display:inline-block;min-width:8.5em;text-align:center;white-space:nowrap;flex-shrink:0"></span>
+                    <span style="font-size:13px;color:var(--text3);margin-left:2px">séries
+                    <span id="lim-badge" style="font-size:13px;font-family:var(--mono);padding:1px 5px;border-radius:3px;margin-left:4px;display:inline-block;min-width:8.5em;text-align:center;white-space:nowrap;flex-shrink:0">
                   </div>
                 </div>
 
                 <div id="div-collapse-body" style="padding:0 14px 14px">
                   <div class="alert alert-blue" style="margin-bottom:10px;font-size:13px">
-                    <span>ℹ</span>
+                    <span>ℹ
                     <div id="s3-div-info">Modelos compatíveis com o objetivo escolhido, ordenados pelo que melhor equilibra o volume definido acima entre as sessões.</div>
                   </div>
 
@@ -2499,7 +2507,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   </div>
                   <!-- Seletor de divisão inline -->
                   <div style="display:flex;align-items:center;gap:6px">
-                    <span style="font-size:13px;color:var(--text3)">Mudar:</span>
+                    <span style="font-size:13px;color:var(--text3)">Mudar:
                     <select id="ficha-divisao-select" style="font-size:13px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:3px 8px;color:var(--text);outline:none" onchange="mudarDivisaoFicha(this.value)"></select>
                   </div>
                   <button class="tbtn" onclick="voltarDivisao()">← Distribuição</button>
@@ -2536,12 +2544,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
             <!-- STEP 4: APROVADO -->
             <div id="presc-step4" class="hidden">
               <div class="alert alert-green">
-                <span>✓</span>
-                <div><strong>Prescrição aprovada.</strong> Salva no perfil do aluno em <span id="aprovado-data">—</span>.</div>
+                <span>✓
+                <div><strong>Prescrição aprovada.</strong> Salva no perfil do aluno em <span id="aprovado-data">—.</div>
               </div>
               <div class="ficha-editor" style="margin-top:12px">
                 <div class="ficha-toolbar">
-                  <span class="ficha-toolbar-label">Ficha aprovada</span>
+                  <span class="ficha-toolbar-label">Ficha aprovada
                   <div class="ficha-toolbar-spacer"></div>
                   <button class="tbtn" onclick="editarFicha()">✏ Editar</button>
                 </div>
@@ -2607,6 +2615,25 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 <script src="js/supabase-auth.js"></script>
 
 
+
+<!-- Modal: Rascunho não salvo -->
+<div id="modal-draft-recovery-overlay" class="modal-overlay hidden" style="z-index:10000">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-title">⚠️ Dados não salvos encontrados</div>
+    <p style="margin:12px 0 8px;color:var(--text2);font-size:14px">
+      Você tem alterações que <strong>não foram salvas</strong> da última sessão para este aluno.
+    </p>
+    <p style="margin:0 0 20px;color:var(--text2);font-size:13px;opacity:.8">
+      Clique em <strong>Ver alterações</strong> para ir até a página com as informações preenchidas,
+      ou <strong>Ignorar</strong> para descartar e usar a versão salva.
+    </p>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="_draftRecoveryIgnorar()">Ignorar</button>
+      <button class="btn btn-primary" onclick="_draftRecoveryVer()">👁 Ver alterações</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Alterações não salvas -->
 <div id="modal-unsaved-overlay" class="modal-overlay hidden" style="z-index:9999">
   <div class="modal" style="max-width:420px">
@@ -2626,8 +2653,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 (function(){
   const DIRTY_CONTAINERS = [
     'panel-perfil','panel-anamnese','panel-meta','antro-form-view',
-    'screen-locais','screen-biblioteca','screen-distribuicao',
-    'screen-periodizacao','screen-exercicios'
+    'panel-prescricao'
   ];
   document.addEventListener('input', function(e){
     if(typeof _markDirty!=='function') return;

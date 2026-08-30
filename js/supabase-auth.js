@@ -77,34 +77,26 @@ async function supaCarregarDados(){
   const rowStudents = data?.find(r=>r.key==='students');
   const rowLibs      = data?.find(r=>r.key==='libs');
 
-  // BUGFIX 2026-08-27: se este navegador já tem alunos carregados (vieram do
-  // localStorage, via init-seed.js, no início da página), NÃO sobrescreve com
-  // o snapshot da nuvem. O envio pra nuvem é debounced (supaAutoSave, 1.5s) —
-  // um F5/Ctrl+Shift+R logo após salvar podia recarregar a página, puxar a
-  // versão ANTIGA que ainda estava na nuvem, e apagar silenciosamente a
-  // edição recém-feita. Só usa o snapshot da nuvem quando não há nada local
-  // ainda (primeiro acesso neste navegador/dispositivo); havendo dados locais,
-  // eles são a verdade e a nuvem converge pra eles.
-  if(students.length){
-    LIBS = (typeof LIBS!=='undefined' && LIBS && Object.keys(LIBS).length) ? LIBS : ((rowLibs && rowLibs.data && Object.keys(rowLibs.data).length) ? rowLibs.data : gerarLibsDefault());
-    activeId = null;
-    renderObjGrid();
-    renderStudentList();
-    navGo('alunos');
-    supaSalvarAgora(); // converge a nuvem pro que já está salvo neste dispositivo
-    return;
+  // Supabase é sempre fonte de verdade quando logado e tem dados.
+  // Local só prevalece se a nuvem estiver vazia (conta nova / primeiro uso).
+  if(rowStudents && Array.isArray(rowStudents.data) && rowStudents.data.length){
+    students = rowStudents.data;
   }
+  // Nuvem vazia → mantém local (primeiro login nesta conta) e sobe pro Supabase
+  // (students já estava carregado localmente — não faz nada aqui)
 
-  students = (rowStudents && Array.isArray(rowStudents.data)) ? rowStudents.data : [];
-  LIBS = (rowLibs && rowLibs.data && Object.keys(rowLibs.data).length) ? rowLibs.data : gerarLibsDefault();
+  LIBS = (rowLibs && rowLibs.data && Object.keys(rowLibs.data).length)
+    ? rowLibs.data
+    : ((typeof LIBS!=='undefined' && LIBS && Object.keys(LIBS).length) ? LIBS : gerarLibsDefault());
 
   activeId = null;
   renderObjGrid();
   renderStudentList();
   navGo('alunos');
+  if(typeof detectarDraftsNaoSalvos==='function') setTimeout(detectarDraftsNaoSalvos, 400);
 
-  // Conta nova: grava o estado inicial pra já existir registro no banco
-  if(!rowStudents || !rowLibs) supaSalvarAgora();
+  // Conta nova ou LIBS faltando: grava estado inicial no banco
+  if(!rowStudents?.data?.length || !rowLibs?.data) supaSalvarAgora();
 }
 
 // ── Salvar (debounced) ─────────────────────────────────────────────────────

@@ -147,17 +147,20 @@ function attachAutosave(containerId, coletarFn, gravarFn, debounceMs){
 
 // ─── MODAL ────────────────────────────────────────────────────────────────────
 
-function showModal(){ show('modal-overlay'); setTimeout(()=>$('modal-nome').focus(),50); }
-function closeModal(){ hide('modal-overlay'); $('modal-nome').value=''; }
-function confirmNewStudent(){
-  const nome = $('modal-nome').value.trim();
-  if(!nome) return;
-  const s = { id:Date.now(), perfil:{nome}, anamnese:{}, prescricao:{}, reavaliacao:null };
+function showModal(){ abrirNovoAluno(); } // legado — redireciona
+function closeModal(){ hide('modal-overlay'); }
+function confirmNewStudent(){ abrirNovoAluno(); } // legado
+
+function abrirNovoAluno(){
+  hide('modal-overlay');
+  const s = { id:Date.now(), perfil:{nome:''}, anamnese:{}, prescricao:{}, reavaliacao:null };
   students.push(s);
-  closeModal();
   renderStudentList();
+  _formDirty = false;
+  window._skipDraftModal = true; // student novo sem versão salva — sem modal de recuperação
   selectStudent(s.id);
-  saveStudent(); // depende de activeId já apontar pra este aluno (selectStudent acima)
+  // Marca como não salvo imediatamente (novo aluno ainda não foi ao acm-students)
+  setTimeout(()=>{ _formDirty = true; _saveDraft(); }, 250);
 }
 
 // ─── STUDENT LIST ─────────────────────────────────────────────────────────────
@@ -290,7 +293,7 @@ function renderScreenAlunos(){
     // Condições / flags
     const flags = [];
     if((p.condicoes||'').includes('Gestação')) flags.push('🤰');
-    if((p.lesoes||'').length>2) flags.push('⚠️ Lesão');
+    if(p.lesoes && p.lesoes!=='Nenhuma' && p.lesoes.length>2) flags.push('⚠️ Lesão');
     if((p.condicoes||'').includes('Cardiopatia')) flags.push('❤️‍🩹');
     const flagHtml = flags.map(f=>`<span style="font-size:10px">${f}</span>`).join('');
 
@@ -305,7 +308,6 @@ function renderScreenAlunos(){
           ${idade!==null?`<div style="font-size:12px;color:var(--text3);margin-top:1px">${idade} anos</div>`:''}
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">
-          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirSalvarBibliotecaDeAluno(${s.id})" title="Salvar treino na biblioteca" ${temPresc?'':'style="opacity:.3;pointer-events:none"'}>📚</button>
           <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="event.stopPropagation();confirmarDeletarAluno(${s.id})" title="Remover aluno">✕</button>
         </div>
       </div>
@@ -394,10 +396,288 @@ function abrirSalvarBibliotecaDeAluno(id){
 
 
 
+// ─── DRAFT / DIRTY TRACKING ──────────────────────────────────────────────────
+let _formDirty  = false;
+let _pendingNavFn = null;
+
+let _loadingData = false;
+function _markDirty(){ if(_loadingData) return; _formDirty = true; }
+function _clearDirty(){ _formDirty = false; try{ const k='acm-draft-'+(activeId||'_'); localStorage.removeItem(k); localStorage.removeItem(k.replace('acm-draft-','acm-draft-nav-')); }catch(e){} }
+
+function _saveDraft(){
+  const s=getActive(); if(!s) return;
+  try{
+    localStorage.setItem('acm-draft-'+(activeId||'_'), JSON.stringify(s));
+    // Also save current tab/subtab so recovery can restore navigation
+    let tab='perfil';
+    for(const t of ['perfil','anamnese','prescricao','evolucao']){
+      if(document.getElementById('tab-'+t)?.classList.contains('active')){ tab=t; break; }
+    }
+    let subtab='anamnese-hist';
+    const _SUBTABS=['anamnese-hist','anamnese-antro','anamnese-meta'];
+    for(const t of _SUBTABS){
+      if(document.getElementById('subtab-'+t)?.classList.contains('active')){ subtab=t; break; }
+    }
+    localStorage.setItem('acm-draft-nav-'+(activeId||'_'), JSON.stringify({tab,subtab,antroEditId:(typeof _antroEditId!=='undefined'?_antroEditId:null)}));
+  }catch(e){}
+}
+
+function _revertStudent(){
+  try{
+    const saved=JSON.parse(localStorage.getItem('acm-students')||'[]');
+    const snap=saved.find(s=>s.id===activeId);
+    if(snap){ const idx=students.findIndex(s=>s.id===activeId); if(idx>=0) students[idx]=snap; }
+  }catch(e){}
+}
+
+function _saveCurrentContext(){
+  const tabPerf=$('tab-perfil')?.classList.contains('active');
+  const tabAnam=$('tab-anamnese')?.classList.contains('active');
+  if(tabPerf && typeof salvarPerfil==='function'){ salvarPerfil(); return; }
+  if(tabAnam){
+    if(!$('subpanel-anamnese-antro')?.classList.contains('hidden') && typeof antroSalvarAvaliacao==='function'){ antroSalvarAvaliacao(); return; }
+    if(!$('subpanel-anamnese-meta')?.classList.contains('hidden') && typeof salvarMeta==='function'){ salvarMeta(); return; }
+    if(typeof salvarAnamnese==='function'){ salvarAnamnese(); return; }
+  }
+  saveStudent();
+}
+
+function _guardNav(navFn){
+  if(!_formDirty){ navFn(); return; }
+  _pendingNavFn = navFn;
+  const el=document.getElementById('modal-unsaved-overlay');
+  if(el) el.classList.remove('hidden');
+}
+
+function _unsavedSair(){
+  const el=document.getElementById('modal-unsaved-overlay');
+  if(el) el.classList.add('hidden');
+  _revertStudent();
+  _clearDirty();
+  // Refresh form so UI reflects reverted data
+  const s=getActive(); if(s) loadStudentData(s);
+  const fn=_pendingNavFn; _pendingNavFn=null;
+  if(fn) fn();
+}
+
+function salvarPerfil(){
+  if(typeof onPerfilChange==='function') onPerfilChange();
+  if(typeof saveStudent==='function') saveStudent();
+}
+function salvarAnamnese(){
+  if(typeof onAnamneseChange==='function') onAnamneseChange();
+  if(typeof saveStudent==='function') saveStudent();
+}
+
+function _unsavedSalvar(){
+  const el=document.getElementById('modal-unsaved-overlay');
+  if(el) el.classList.add('hidden');
+  _saveCurrentContext();
+  _clearDirty();
+  const fn=_pendingNavFn; _pendingNavFn=null;
+  if(fn) fn();
+}
+
+function _showDraftRecoveryModal(id, draftKey){
+  const overlay = document.getElementById('modal-draft-recovery-overlay');
+  if(overlay){ overlay.classList.remove('hidden'); }
+  window._draftRecoveryKey = draftKey;
+  window._draftRecoveryId  = id;
+}
+
+function _draftRecoveryIgnorar(){
+  const overlay = document.getElementById('modal-draft-recovery-overlay');
+  if(overlay) overlay.classList.add('hidden');
+  // Force dirty=false FIRST so no guard or beforeunload fires
+  _formDirty = false;
+  try{
+    const saved = JSON.parse(localStorage.getItem('acm-students')||'[]');
+    const snap  = saved.find(s=>s.id===window._draftRecoveryId);
+    if(snap){ const i2=students.findIndex(s=>s.id===window._draftRecoveryId); if(i2>=0) students[i2]=snap; }
+    // Remove draft by both possible keys
+    localStorage.removeItem(window._draftRecoveryKey);
+    localStorage.removeItem('acm-draft-' + activeId);
+  }catch(e){}
+  _formDirty = false; // ensure stays false
+  loadStudentData(getActive());
+}
+
+function _draftRecoveryVer(){
+  const overlay = document.getElementById('modal-draft-recovery-overlay');
+  if(overlay) overlay.classList.add('hidden');
+  // Data already merged into students[] and loaded by selectStudent.
+  // Just mark dirty so the guard activates on next navigation.
+  _formDirty = true;
+}
+
+window.addEventListener('beforeunload', ()=>{
+  if(_formDirty){
+    try{
+      // Sync antro form fields → s.avaliacoesAntro if antro form is open
+      const antroFv = document.getElementById('antro-form-view');
+      if(antroFv && antroFv.style.display !== 'none' && typeof autosalvarAvaliacaoAtual==='function'){
+        autosalvarAvaliacaoAtual();
+      }
+      // Sync anamnese-hist fields → s.anamnese if that panel is active
+      if(typeof onAnamneseChange==='function'){
+        const panelAnam = document.getElementById('panel-anamnese');
+        if(panelAnam && !panelAnam.classList.contains('hidden')) onAnamneseChange();
+      }
+      // Sync perfil fields → s.perfil if that panel is active
+      if(typeof onPerfilChange==='function'){
+        const panelPerf = document.getElementById('panel-perfil');
+        if(panelPerf && !panelPerf.classList.contains('hidden')) onPerfilChange();
+      }
+    }catch(ex){}
+    _saveDraft();
+  }
+});
+// ─── FIM DRAFT / DIRTY ───────────────────────────────────────────────────────
+
+
+// ─── DRAFT DETECTION ON APP LOAD ──────────────────────────────────────────────
+function detectarDraftsNaoSalvos(){
+  const drafts = [];
+  try{
+    for(let i=0; i<localStorage.length; i++){
+      const key = localStorage.key(i);
+      if(!key || !key.startsWith('acm-draft-') || key.includes('-nav-')) continue;
+      const rawId = key.replace('acm-draft-','');
+      const numId = isNaN(rawId) ? rawId : Number(rawId);
+      const savedStudent = students.find(s=>s.id===numId || s.id===rawId);
+      let student = savedStudent;
+      const isOrphan = !savedStudent;
+      if(!student){
+        // Orphan draft = new student never saved to acm-students
+        try{ const d=JSON.parse(localStorage.getItem(key)||'null'); if(d) student=d; }catch(e){}
+      } else {
+        // Draft exists for a saved student — compare; if identical, discard silently
+        try{
+          const draftData = JSON.parse(localStorage.getItem(key)||'null');
+          if(draftData && JSON.stringify(draftData) === JSON.stringify(savedStudent)){
+            localStorage.removeItem(key);
+            continue;
+          }
+        }catch(e){}
+      }
+      if(student) drafts.push({key, student, orphan: isOrphan});
+    }
+  }catch(e){}
+  if(!drafts.length) return;
+
+  // Show blocking modal (prevents user from clicking other elements before deciding)
+  let existing = document.getElementById('draft-pending-banner');
+  if(existing) existing.remove();
+
+  const names = drafts.map(d=>d.student.perfil?.nome||'Aluno sem nome').join(', ');
+  const overlay = document.createElement('div');
+  overlay.id = 'draft-pending-banner';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:var(--bg2,#fff);border-radius:12px;padding:28px 32px;max-width:440px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+      <div style="font-size:17px;font-weight:700;margin-bottom:10px">⚠️ Alterações não salvas</div>
+      <p style="color:var(--text2,#555);font-size:14px;margin-bottom:6px">Há alterações não salvas para:</p>
+      <p style="font-weight:600;font-size:14px;margin-bottom:18px">${names}</p>
+      <p style="color:var(--text3,#888);font-size:13px;margin-bottom:20px">Clique em <strong>Ver alterações</strong> para recuperar os dados, ou <strong>Ignorar</strong> para descartá-los.</p>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button onclick="_bannerIgnorarTodos()" class="btn btn-ghost" style="font-size:13px">Ignorar</button>
+        <button onclick="_bannerVerAlteracoes()" class="btn btn-primary" style="font-size:13px">👁 Ver alterações</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  window._pendingDrafts = drafts;
+}
+
+function _bannerIgnorarTodos(){
+  const banner = document.getElementById('draft-pending-banner');
+  if(banner) banner.remove();
+  try{
+    (window._pendingDrafts||[]).forEach(d=>localStorage.removeItem(d.key));
+  }catch(e){}
+  window._pendingDrafts = [];
+}
+
+function _bannerVerAlteracoes(){
+  const banner = document.getElementById('draft-pending-banner');
+  if(banner) banner.remove();
+  const drafts = window._pendingDrafts||[];
+  if(!drafts.length) return;
+  const first = drafts[0];
+  _formDirty = false;
+  window._skipDraftModal = true;
+  if(first.orphan){
+    // New student never saved — load from draft directly into memory
+    if(!students.find(s=>s.id===first.student.id)) students.push(first.student);
+  }
+  if(typeof selectStudent==='function') selectStudent(first.student.id);
+  // Restore the tab they were editing before the refresh
+  try{
+    let navRaw = localStorage.getItem('acm-draft-nav-'+first.student.id);
+    if(!navRaw){
+      // Try numeric id (id may be stored as number)
+      const numId = Number(first.student.id);
+      navRaw = localStorage.getItem('acm-draft-nav-'+numId);
+    }
+    if(navRaw){
+      const nav=JSON.parse(navRaw);
+      if(nav.tab && nav.tab!=='perfil') switchTabForcado(nav.tab);
+      if(nav.subtab && nav.tab==='anamnese'){
+        _switchSubtabForcado(nav.subtab);
+        // If antro form was open (editing or new eval in progress), reopen it
+        if(nav.subtab==='anamnese-antro'){
+          setTimeout(()=>{
+            if(nav.antroEditId){
+              // Was editing an existing evaluation — reopen in form view
+              if(typeof antroEditarAvaliacao==='function') antroEditarAvaliacao(nav.antroEditId);
+            } else {
+              // Was creating a new evaluation — open new form if there's a partial entry
+              const s2=getActive();
+              if(s2 && s2.avaliacoesAntro && s2.avaliacoesAntro.length){
+                const last=s2.avaliacoesAntro[s2.avaliacoesAntro.length-1];
+                // Only auto-open if it looks like an unsaved partial (no required fields)
+                if(!last.massa_gorda && !last.massa_muscular && typeof antroEditarAvaliacao==='function'){
+                  antroEditarAvaliacao(last.id);
+                }
+              }
+            }
+          }, 200);
+        }
+      }
+    }
+  }catch(e){}
+  // Delay dirty=true so it fires AFTER loadStudentData's 150ms timeout that clears it
+  setTimeout(()=>{ _formDirty = true; }, 250);
+}
+// ─── FIM DRAFT DETECTION ─────────────────────────────────────────────────────
+
 // ─── SELECT / LOAD STUDENT ────────────────────────────────────────────────────
 
 function selectStudent(id){
+  _formDirty = false; // reset flag only — do NOT delete draft for the incoming student
   activeId = id;
+  // Check for unrestored draft from previous session
+  const draftKey = 'acm-draft-' + id;
+  try{
+    const draftRaw = localStorage.getItem(draftKey);
+    if(draftRaw){
+      const draft = JSON.parse(draftRaw);
+      const idx2 = students.findIndex(s=>s.id===id);
+      if(idx2>=0){
+        // Se draft == dado salvo, é stale — descarta silenciosamente
+        if(JSON.stringify(draft) === JSON.stringify(students[idx2])){
+          try{ localStorage.removeItem(draftKey); }catch(e){}
+        } else {
+          // Merge draft over saved student
+          students[idx2] = draft;
+          // Show recovery modal after short delay (let UI render first)
+          setTimeout(()=>{
+            if(window._skipDraftModal){ window._skipDraftModal=false; _formDirty=true; return; }
+            _showDraftRecoveryModal(id, draftKey);
+          }, 300);
+        }
+      }
+    }
+  }catch(e){}
   // Hide all screens, show student-view
   NAV_SCREENS.forEach(sid=>{ const el=$(sid); if(el) el.classList.add('hidden'); });
   NAV_ITEMS.forEach(nid=>{ const el=$(nid); if(el) el.classList.remove('active'); });
@@ -405,13 +685,14 @@ function selectStudent(id){
   sv.classList.remove('hidden');
   sv.style.display='flex';
   loadStudentData(getActive());
-  switchTab('perfil');
+  switchTabForcado('perfil');
   // Update sidebar nav active
   const nav=$('nav-alunos'); if(nav) nav.classList.add('active');
   renderStudentList();
 }
 
 function loadStudentData(s){
+  _loadingData = true;
   const p=s.perfil, a=s.anamnese, pr=getUltimoTreino(s);
 
   // Perfil
@@ -442,15 +723,22 @@ function loadStudentData(s){
    'frequencia','duracao','horario','local','sono','estresse','alcool',
    'pretreino','gosta','preferencias','tabagismo','cirurgias',
    'lesoes_passadas','motivo_pausa','gestacao','trimestre'];
-  anaBase.forEach(k=>{ setVal('a-'+k, a[k]||''); });
+  anaBase.forEach(k=>{ setVal('a-'+k.replace(/_/g,'-'), a[k]||''); });
   toggleTrimestre();
-  setVal('a-objetivo-ef', a.objetivo_ef||'');
-  setVal('a-objetivo-sec', a.objetivo_sec||'');
+  // Objetivos — backward compat: converte texto antigo para code
+  const _OBJ_TEXT2CODE = {'Hipertrofia':'Hip','Emagrecimento':'Emagr','Força':'Forca','Saúde':'Saude','Reabilitação':'Reab',
+    'Composição Corporal':'Comp','Resistência Muscular':'Resist','Cond. Cardiorrespiratório':'CardioR',
+    'Funcional / Mobilidade':'Func','Performance Esportiva':'Esport','Envelhecimento Ativo':'Envelhec'};
+  const _efCode = _OBJ_TEXT2CODE[a.objetivo_ef] || a.objetivo_ef || '';
+  const _secCode = _OBJ_TEXT2CODE[a.objetivo_sec] || a.objetivo_sec || '';
+  _initObjetivoAnamnese(_efCode, _secCode);
+  _populateLocalSelect(a.local||'');
   carregarModalidades(a.modalidades||'');
   carregarSuplementos(a.suplementos||'');
   carregarExtras(a.extras||'');
   carregarSintomas(a.sintomas||'');
   carregarHistFamiliar(a.hist_familiar||'');
+  _exPickerLoad(a.gosta_ex||'', a.evitar_ex||'');
 
   // Antropométrica
   const anaAntro = ['peso','altura','gordura','mgorda','mmuscular','mmuscular-pct','osso','osso-pct','residual','residual-pct',
@@ -545,6 +833,8 @@ function loadStudentData(s){
   if(typeof treinosMostrarLista==='function') treinosMostrarLista();
 
   updateHeader(s);
+
+  setTimeout(()=>{ _loadingData = false; _formDirty = false; }, 150);
 }
 
 // ─── HEADER ───────────────────────────────────────────────────────────────────
@@ -582,7 +872,7 @@ function onPerfilChange(){
   $('student-header-name').textContent = s.perfil.nome||'Aluno';
   calcFCMax();
   renderStudentList();
-  saveStudent(); // BUGFIX 2026-08-27: sem isso, edições de Perfil nunca eram persistidas (só ficavam em memória)
+  if(!_loadingData){ _markDirty(); _saveDraft(); }
 }
 
 // ── Flexibilidade ─────────────────────────────────────────────────────────────
@@ -1756,8 +2046,162 @@ function carregarLesoes(valorSalvo){
 }
 
 function toggleFeminino(){
-  toggle('perfil-feminino', val('p-sexo')==='F');
+  const isF = val('p-sexo')==='F';
+  toggle('perfil-feminino', isF);
+  const fg = document.getElementById('field-gestacao');
+  if(fg) fg.style.display = isF ? '' : 'none';
 }
+
+// ─── OBJETIVOS ANAMNESE ───────────────────────────────────────────────────────
+
+function _initObjetivoAnamnese(valorEf, valorSec){
+  const selEf  = document.getElementById('a-objetivo-ef');
+  const selSec = document.getElementById('a-objetivo-sec');
+  if(!selEf || !selSec) return;
+
+  // Populate principal from OBJETIVOS
+  selEf.innerHTML = '<option value="">Selecionar</option>' +
+    OBJETIVOS.map(o=>`<option value="${o.code}">${o.icon} ${o.label}</option>`).join('');
+  selEf.value = valorEf || '';
+
+  // Populate secondary excluding current primary
+  _refreshObjetivoSec(valorEf, valorSec);
+}
+
+function _refreshObjetivoSec(valorEf, valorSec){
+  const selSec = document.getElementById('a-objetivo-sec');
+  if(!selSec) return;
+  selSec.disabled = !valorEf;
+  selSec.innerHTML = '<option value="">Nenhum</option>' +
+    OBJETIVOS.filter(o=>o.code !== valorEf)
+      .map(o=>`<option value="${o.code}">${o.icon} ${o.label}</option>`).join('');
+  if(valorSec && valorSec !== valorEf) selSec.value = valorSec;
+}
+
+function _onObjetivoEfChange(){
+  const selEf  = document.getElementById('a-objetivo-ef');
+  const selSec = document.getElementById('a-objetivo-sec');
+  const novoEf = selEf ? selEf.value : '';
+  const secAtual = selSec ? selSec.value : '';
+  // Se secundário igual ao novo principal, limpa secundário
+  if(secAtual === novoEf) { if(selSec) selSec.value=''; }
+  _refreshObjetivoSec(novoEf, secAtual === novoEf ? '' : secAtual);
+  onAnamneseChange();
+}
+
+function _onObjetivoSecChange(){
+  onAnamneseChange();
+}
+
+// ─── LOCAL DE TREINO — popula com LIBS.locais ─────────────────────────────────
+
+function _populateLocalSelect(valorSalvo){
+  const sel = document.getElementById('a-local');
+  if(!sel) return;
+  const locaisCustom = (typeof LIBS !== 'undefined' && LIBS?.locais) ? LIBS.locais : [];
+  sel.innerHTML = '<option value="">Selecionar</option>' +
+    '<option value="academia">Academia completa (todos os equipamentos)</option>' +
+    locaisCustom.map(l=>`<option value="${l.nome||l.id}">${l.nome||l.id}</option>`).join('');
+  if(valorSalvo) sel.value = valorSalvo;
+}
+
+// ─── EXERCISE PICKER — preferidos e a evitar ─────────────────────────────────
+
+let _exPickerPref = []; // array de {id, nome}
+let _exPickerEvit = []; // array de {id, nome}
+let _exPickerBuscaAtiva = null; // 'pref' | 'evit'
+
+function _exPickerBusca(tipo){
+  const inpId = tipo==='pref' ? 'ex-pref-busca' : 'ex-evit-busca';
+  const sugId = tipo==='pref' ? 'ex-pref-sugestoes' : 'ex-evit-sugestoes';
+  const inp = document.getElementById(inpId);
+  const sug = document.getElementById(sugId);
+  if(!inp||!sug) return;
+  const termo = inp.value.trim().toLowerCase();
+  if(!termo){ sug.style.display='none'; return; }
+  const db = (typeof DB_EXERCICIOS !== 'undefined') ? DB_EXERCICIOS : [];
+  const atual = tipo==='pref' ? _exPickerPref : _exPickerEvit;
+  const jaIds = new Set(atual.map(e=>e.id));
+  const matches = db.filter(e=>!jaIds.has(e.id) && (e.n||'').toLowerCase().includes(termo)).slice(0,20);
+  if(!matches.length){ sug.style.display='none'; return; }
+  _exPickerBuscaAtiva = tipo;
+  sug.style.display = 'block';
+  sug.innerHTML = matches.map(e=>
+    `<div onclick="_exPickerSelect('${tipo}',${e.id},'${(e.n||'').replace(/'/g,"\'")}')"
+      style="padding:6px 10px;cursor:pointer;border-bottom:1px solid var(--border)"
+      onmouseenter="this.style.background='var(--bg4)'" onmouseleave="this.style.background=''"
+    >${e.n}</div>`
+  ).join('');
+}
+
+function _exPickerSelect(tipo, id, nome){
+  const arr = tipo==='pref' ? _exPickerPref : _exPickerEvit;
+  if(!arr.find(e=>e.id===id)) arr.push({id, nome});
+  _exPickerRenderTags(tipo);
+  // clear search
+  const inpId = tipo==='pref' ? 'ex-pref-busca' : 'ex-evit-busca';
+  const sugId = tipo==='pref' ? 'ex-pref-sugestoes' : 'ex-evit-sugestoes';
+  const inp = document.getElementById(inpId);
+  const sug = document.getElementById(sugId);
+  if(inp) inp.value='';
+  if(sug) sug.style.display='none';
+  _exPickerSyncHidden();
+  onAnamneseChange();
+}
+
+function _exPickerAdd(tipo){
+  // Adiciona o primeiro resultado da busca ativa
+  const inpId = tipo==='pref' ? 'ex-pref-busca' : 'ex-evit-busca';
+  const sugId = tipo==='pref' ? 'ex-pref-sugestoes' : 'ex-evit-sugestoes';
+  const sug = document.getElementById(sugId);
+  if(sug && sug.style.display!=='none'){
+    const first = sug.querySelector('div');
+    if(first){ first.click(); return; }
+  }
+  // Se não tem sugestão visível, abre buscando com o texto atual
+  _exPickerBusca(tipo);
+  const sug2 = document.getElementById(sugId);
+  if(sug2) sug2.style.display = sug2.children.length ? 'block' : 'none';
+}
+
+function _exPickerRemove(tipo, id){
+  if(tipo==='pref') _exPickerPref = _exPickerPref.filter(e=>e.id!==id);
+  else              _exPickerEvit = _exPickerEvit.filter(e=>e.id!==id);
+  _exPickerRenderTags(tipo);
+  _exPickerSyncHidden();
+  onAnamneseChange();
+}
+
+function _exPickerRenderTags(tipo){
+  const arr = tipo==='pref' ? _exPickerPref : _exPickerEvit;
+  const tagId = tipo==='pref' ? 'ex-pref-tags' : 'ex-evit-tags';
+  const cor = tipo==='pref' ? 'var(--accent)' : 'var(--red,#ff5050)';
+  const corDim = tipo==='pref' ? 'var(--accent-dim)' : 'rgba(255,80,80,.1)';
+  const el = document.getElementById(tagId);
+  if(!el) return;
+  el.innerHTML = arr.map(e=>
+    `<span style="display:inline-flex;align-items:center;gap:4px;background:${corDim};border:1px solid ${cor};color:${cor};border-radius:4px;padding:2px 8px;font-size:11px;font-family:var(--mono)">
+      ${e.nome}
+      <span onclick="_exPickerRemove('${tipo}',${e.id})" style="cursor:pointer;font-size:13px;line-height:1;opacity:.7">×</span>
+    </span>`
+  ).join('');
+}
+
+function _exPickerSyncHidden(){
+  const hPref = document.getElementById('a-gosta-ex');
+  const hEvit = document.getElementById('a-evitar-ex');
+  if(hPref) hPref.value = JSON.stringify(_exPickerPref);
+  if(hEvit) hEvit.value = JSON.stringify(_exPickerEvit);
+}
+
+function _exPickerLoad(prefVal, evitVal){
+  try{ _exPickerPref = prefVal ? JSON.parse(prefVal) : []; }catch(e){ _exPickerPref=[]; }
+  try{ _exPickerEvit = evitVal ? JSON.parse(evitVal) : []; }catch(e){ _exPickerEvit=[]; }
+  _exPickerRenderTags('pref');
+  _exPickerRenderTags('evit');
+  _exPickerSyncHidden();
+}
+
 
 
 // ─── ANAMNESE CHANGE ──────────────────────────────────────────────────────────
@@ -1786,6 +2230,7 @@ function onAnamneseChange(){
     frequencia:val('a-frequencia'), duracao:val('a-duracao'),
     horario:val('a-horario'), local:val('a-local'),
     gosta:val('a-gosta'), preferencias:val('a-preferencias'),
+    gosta_ex:val('a-gosta-ex'), evitar_ex:val('a-evitar-ex'),
     // Antropométrica
     peso:val('a-peso'), altura:val('a-altura'), data_avaliacao:val('a-data-avaliacao'),
     gordura: (()=>{ const v=val('a-gordura'); return v?parseFloat(v):'' })(),
@@ -1837,7 +2282,7 @@ function onAnamneseChange(){
   calcIMC(); calcRCQ();
   calcExtras();
   renderStudentList();
-  saveStudent(); // BUGFIX 2026-08-27: sem isso, edições de Anamnese nunca eram persistidas (só ficavam em memória)
+  if(!_loadingData){ _markDirty(); _saveDraft(); }
 }
 
 // ─── NOVOS CAMPOS DE TRIAGEM (Bloco 1 — Histórico de Saúde) ─────────────────
@@ -1859,11 +2304,18 @@ function onSintomaChange(el){
 
 function carregarSintomas(valorSalvo){
   document.querySelectorAll('.sintoma-check').forEach(c=>c.checked=false);
-  if(!valorSalvo) return;
+  const hiddenS = document.getElementById('a-sintomas');
+  if(!valorSalvo){
+    const n=document.querySelector('.sintoma-check[value="Nenhum"]');
+    if(n) n.checked=true;
+    if(hiddenS) hiddenS.value='Nenhum';
+    return;
+  }
   valorSalvo.split(' | ').forEach(v=>{
     const el = document.querySelector(`.sintoma-check[value="${v}"]`);
     if(el) el.checked = true;
   });
+  if(hiddenS) hiddenS.value = valorSalvo;
 }
 
 function onHistFamiliarChange(el){
@@ -1882,11 +2334,18 @@ function onHistFamiliarChange(el){
 
 function carregarHistFamiliar(valorSalvo){
   document.querySelectorAll('.histfam-check').forEach(c=>c.checked=false);
-  if(!valorSalvo) return;
+  const hiddenH = document.getElementById('a-hist-familiar');
+  if(!valorSalvo){
+    const n=document.querySelector('.histfam-check[value="Nenhum conhecido"]');
+    if(n) n.checked=true;
+    if(hiddenH) hiddenH.value='Nenhum conhecido';
+    return;
+  }
   valorSalvo.split(' | ').forEach(v=>{
     const el = document.querySelector(`.histfam-check[value="${v}"]`);
     if(el) el.checked = true;
   });
+  if(hiddenH) hiddenH.value = valorSalvo;
 }
 
 // ─── SUBABAS DA AVALIAÇÃO ────────────────────────────────────────────────────
@@ -2007,7 +2466,9 @@ function antroSalvarAvaliacao(){
   s.avaliacoesAntro.sort((a,b)=>(b.data_avaliacao||'').localeCompare(a.data_avaliacao||''));
   _antroEditId = null;
   onAnamneseChange(); // sincroniza s.anamnese com os campos atuais (mantém os motores de cálculo funcionando)
-  saveStudent(); _clearDirty();;
+  saveStudent(); _clearDirty();
+  antroLimparForm();
+  setTimeout(()=>_clearDirty(), 500);
   antroMostrarLista();
 }
 
@@ -2321,11 +2782,14 @@ function onMetaFonteChange(){
   _autosaveMeta(); // autosave — evita perder a escolha de fonte ao trocar de aba
 }
 
-function onMetaManualChange(){
+function _updateMetaLabels(){
   const kg = document.querySelector('input[name="meta-unidade"]:checked')?.value==='kg';
   $('meta-manual-musculo-label').textContent = kg?'Músculo (kg) — opcional':'Músculo (%) — opcional';
   $('meta-manual-gordura-label').innerHTML = kg?'<b>Gordura (kg) *</b>':'<b>Gordura (%) *</b>';
   atualizarBadgeFonte();
+}
+function onMetaManualChange(){
+  _updateMetaLabels();
   _autosaveMeta(); // autosave — evita perder os dados manuais digitados ao trocar de aba
 }
 
@@ -2508,7 +2972,7 @@ function renderMeta(){
   setVal('meta-manual-gordura', m.manual_gordura||'');
   const unidadeEl=document.querySelector(`input[name="meta-unidade"][value="${m.manual_unidade||'pct'}"]`);
   if(unidadeEl) unidadeEl.checked=true;
-  onMetaManualChange(); // ajusta labels kg/%
+  _updateMetaLabels(); // ajusta labels kg/% (sem marcar dirty)
   // Nível/IMC/Peso/%Gordura
   setVal('meta-nivel', m.nivel||'');
   setVal('meta-imc', m.imc||'');
@@ -2796,16 +3260,6 @@ function calcDelta(curId, antId, outId, higherIsBetter){
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 
-function switchTabForcado(name){
-  // Sair da aba Prescrição com um ajuste de sessões não salvo (Modelo de
-  // Divisão) pede confirmação antes — sem isso, o ajuste some em silêncio.
-  const abaAtualEhPrescricao = $('tab-prescricao')?.classList.contains('active');
-  if(abaAtualEhPrescricao && name!=='prescricao' && typeof temEdicaoDivisaoNaoSalva==='function' && temEdicaoDivisaoNaoSalva()){
-    confirmarSairEdicaoDivisao(() => switchTabForcado(name));
-    return;
-  }
-  switchTabForcado(name);
-}
 function switchTab(name){
   const abaAtualEhPrescricao = $('tab-prescricao')?.classList.contains('active');
   if(abaAtualEhPrescricao && name!=='prescricao' && typeof temEdicaoDivisaoNaoSalva==='function' && temEdicaoDivisaoNaoSalva()){
@@ -2835,11 +3289,14 @@ function renderObjGrid(){
   if(!selectedObj){
     const s=getActive();
     if(s&&s.anamnese&&s.anamnese.objetivo_ef){
+      // objetivo_ef now stores codes directly; text values = legacy backward compat
       const mapa={
-        'Hipertrofia':'Hip','Emagrecimento':'Emagr',
-        'Força':'Forca','Saúde':'Saude','Reabilitação':'Reab'
+        'Hipertrofia':'Hip','Emagrecimento':'Emagr','Força':'Forca','Saúde':'Saude','Reabilitação':'Reab',
+        'Composição Corporal':'Comp','Resistência Muscular':'Resist','Cond. Cardiorrespiratório':'CardioR',
+        'Funcional / Mobilidade':'Func','Performance Esportiva':'Esport','Envelhecimento Ativo':'Envelhec'
       };
-      selectedObj = mapa[s.anamnese.objetivo_ef] || '';
+      const ef = s.anamnese.objetivo_ef || '';
+      selectedObj = OBJETIVOS.find(o=>o.code===ef) ? ef : (mapa[ef] || '');
     }
   }
   const sel=$('pr-objetivo-principal'); if(!sel) return;
