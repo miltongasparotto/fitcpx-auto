@@ -76,10 +76,11 @@ function registrarHistoricoSeries(s, objetivoAprovado, exerciciosDoTreino, objet
   if(moda != null) s.historicoSeries[objetivoAprovado] = moda;
 }
 
+// Reps de referência — valor fixo por objetivo (médio da faixa técnica)
 const REPS_REF = {
-  Hip:'6–12',     Forca:'1–5',   Emagr:'6–12',  Comp:'6–12',
-  Resist:'15+',   CardioR:'15+', Func:'15+',    Saude:'15+',
-  Esport:'1–5',   Reab:'10–20',  Envelhec:'15+', Gestacao:'12–15',
+  Hip:'10',    Forca:'4',   Emagr:'12',  Comp:'10',
+  Resist:'15', CardioR:'20', Func:'15',  Saude:'15',
+  Esport:'4',  Reab:'15',   Envelhec:'15', Gestacao:'12',
 };
 
 const INT_REF = {
@@ -89,10 +90,11 @@ const INT_REF = {
   Reab:'20–50% 1RM', Envelhec:'40–65% 1RM', Gestacao:'40–60% 1RM',
 };
 
+// Intervalo de descanso — valor fixo por objetivo (médio da faixa técnica)
 const INT_DESCANSO = {
-  Hip:'60–120s', Forca:'180–300s', Emagr:'30–60s', Comp:'45–90s',
-  Resist:'30–45s', CardioR:'30–45s', Func:'60–90s', Saude:'60–90s',
-  Esport:'120–240s', Reab:'90–120s', Envelhec:'90–120s', Gestacao:'90–120s',
+  Hip:'90s',   Forca:'240s', Emagr:'45s',  Comp:'60s',
+  Resist:'40s', CardioR:'40s', Func:'75s', Saude:'75s',
+  Esport:'180s', Reab:'90s', Envelhec:'90s', Gestacao:'90s',
 };
 
 
@@ -3438,20 +3440,27 @@ function renderPreviewVolSemanal(targetId){
     } else {
       status='Acima MRV ⚠️'; cor='var(--red)'; icon='🔴';
     }
-    // Barra de progresso visual
-    const pct = Math.min(100, Math.round(v/lim.mrv*100));
-    const barColor = v>lim.mrv?'var(--red)':v>lim.mav?'var(--amber)':'var(--accent)';
+    // Barra segmentada com zonas MEV / MAV / MRV
+    const pctMev  = Math.min(99, Math.round(lim.mev/lim.mrv*100));
+    const pctMav  = Math.min(99, Math.round(lim.mav/lim.mrv*100));
+    const pctFill = Math.min(100, Math.round(v/lim.mrv*100));
+    const fillColor = v>lim.mrv?'var(--red)':v>lim.mav?'var(--amber)':v>=lim.mev?'var(--accent)':'var(--text3)';
+    const barHtml = `<div style="position:relative;height:8px;min-width:100px;border-radius:4px;overflow:hidden;background:var(--bg4)">
+      <!-- zona MEV→MAV (verde suave) -->
+      <div style="position:absolute;left:${pctMev}%;right:${100-pctMav}%;top:0;bottom:0;background:rgba(100,220,130,.12)"></div>
+      <!-- zona MAV→MRV (âmbar suave) -->
+      <div style="position:absolute;left:${pctMav}%;right:0;top:0;bottom:0;background:rgba(255,180,0,.10)"></div>
+      <!-- preenchimento atual -->
+      <div style="position:absolute;left:0;top:0;height:100%;width:${pctFill}%;background:${fillColor};border-radius:4px;transition:width .3s;opacity:.9"></div>
+      <!-- marcadores de zona -->
+      <div style="position:absolute;left:${pctMev}%;top:0;width:1px;height:100%;background:rgba(255,255,255,.35)"></div>
+      <div style="position:absolute;left:${pctMav}%;top:0;width:1px;height:100%;background:rgba(255,255,255,.25)"></div>
+    </div>`;
     return `<tr>
       <td style="font-size:12px;color:var(--text2);padding:5px 8px">${g}</td>
       <td style="padding:5px 8px;font-family:var(--mono);font-size:13px;font-weight:700;color:${cor};text-align:center">${v}</td>
       <td style="padding:5px 8px;font-size:10px;color:var(--text3);text-align:center">${lim.mev}→${lim.mav}→${lim.mrv}</td>
-      <td style="padding:5px 12px">
-        <div style="background:var(--bg4);border-radius:3px;height:6px;min-width:80px;position:relative">
-          <div style="background:${barColor};height:6px;border-radius:3px;width:${pct}%;max-width:100%"></div>
-          <div style="position:absolute;left:${Math.min(99,Math.round(lim.mev/lim.mrv*100))}%;top:-3px;width:1px;height:12px;background:rgba(255,255,255,.3)"></div>
-          <div style="position:absolute;left:${Math.min(99,Math.round(lim.mav/lim.mrv*100))}%;top:-3px;width:1px;height:12px;background:rgba(255,255,255,.3)"></div>
-        </div>
-      </td>
+      <td style="padding:5px 12px">${barHtml}</td>
       <td style="font-size:10px;color:${cor};padding:5px 8px;white-space:nowrap">${icon} ${status}</td>
     </tr>`;
   }).join('');
@@ -3484,9 +3493,8 @@ function renderFichaTabs(){
   f.treinos.forEach((t,i) => {
     const tab = document.createElement('div');
     tab.className = 'tab' + (i===_s3.treinoAtivo?' active':'');
-    tab.style.fontSize = '11px';
-    const totalSeries = t.exercicios.reduce((acc,ex)=>acc+parseInt(ex.series||0),0);
-    tab.innerHTML = `${t.label.split(' — ')[0]} <span style="color:var(--text3);font-size:9px">${totalSeries}s</span>`;
+    tab.style.cssText = 'font-size:14px;font-weight:600;padding:9px 22px';
+    tab.textContent = t.label.split(' — ')[0];
     tab.onclick = () => { _s3.treinoAtivo = i; renderFichaTabs(); };
     tabs.appendChild(tab);
   });
@@ -3537,131 +3545,483 @@ function _htmlBarraArticular(exercicios){
   </div>`;
 }
 
+// ── Painel de info da sessão ─────────────────────────────────────────────────
+function _htmlSessaoInfo(treino, fichaObj, objetivoStr){
+  // Volume por músculo na sessão atual
+  const volSessao = {};
+  treino.exercicios.forEach(ex => {
+    volSessao[ex.musculo] = (volSessao[ex.musculo]||0) + parseInt(ex.series||0);
+  });
+  const totalSessao = Object.values(volSessao).reduce((a,b)=>a+b,0);
+
+  // Volume semanal total (todas as sessões) para indicador MEV/MAV/MRV
+  const volSem = {};
+  fichaObj.treinos.forEach(t => t.exercicios.forEach(ex => {
+    volSem[ex.musculo] = (volSem[ex.musculo]||0) + parseInt(ex.series||0);
+  }));
+
+  const LIMIARES = {
+    Hip:{mev:10,mav:20,mrv:25},Forca:{mev:8,mav:16,mrv:20},
+    Emagr:{mev:8,mav:18,mrv:22},Comp:{mev:10,mav:18,mrv:22},
+    Resist:{mev:8,mav:16,mrv:20},CardioR:{mev:6,mav:12,mrv:16},
+    Func:{mev:6,mav:14,mrv:18},Saude:{mev:8,mav:14,mrv:18},
+    Esport:{mev:10,mav:20,mrv:25},Reab:{mev:6,mav:12,mrv:16},
+    Envelhec:{mev:6,mav:12,mrv:16},Gestacao:{mev:6,mav:10,mrv:14},
+  };
+  const lim = LIMIARES[objetivoStr] || {mev:8,mav:16,mrv:20};
+
+  const muscChips = Object.entries(volSessao).map(([m,v]) => {
+    const vSem = volSem[m] || 0;
+    let cor;
+    if(vSem < lim.mev)      cor = 'var(--red)';
+    else if(vSem <= lim.mav) cor = 'var(--accent)';
+    else if(vSem <= lim.mrv) cor = 'var(--amber)';
+    else                     cor = 'var(--red)';
+    const mLabel = m.replace('Isquiossurais','Isquio').replace('RetoAbdominal','Abd').replace('Panturrilhas','Pant');
+    return `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;font-size:11px;color:var(--text2)">
+      <span style="width:6px;height:6px;border-radius:50%;background:${cor};flex-shrink:0"></span>
+      ${mLabel} <strong style="color:var(--text);font-family:var(--mono)">${v}s</strong>
+    </span>`;
+  }).join('');
+
+  // Articulações solicitadas com série count + escala de calor
+  const contArtic = {};
+  treino.exercicios.forEach(ex => {
+    (ex._artic||[]).forEach(a => { if(a) contArtic[a] = (contArtic[a]||0) + parseInt(ex.series||1); });
+  });
+  const maxArtic = contArtic && Object.keys(contArtic).length ? Math.max(...Object.values(contArtic)) : 1;
+  const articChips = Object.keys(contArtic).sort((a,b)=>{
+    const ia=ORDEM_ARTIC_AQUECIMENTO.indexOf(a),ib=ORDEM_ARTIC_AQUECIMENTO.indexOf(b);
+    return (ia<0?999:ia)-(ib<0?999:ib);
+  }).map(a => {
+    const n = contArtic[a];
+    const pct = Math.round((n/maxArtic)*100);
+    const cor = pct>=80?'#e05252':pct>=55?'#e8a020':pct>=30?'var(--accent)':'var(--text3)';
+    return `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;background:var(--bg3);border:1px solid ${cor}44;border-left:3px solid ${cor};border-radius:4px;font-size:10px;color:${cor};font-weight:600">
+      ${a}<span style="opacity:.65;font-weight:400">×${n}</span>
+    </span>`;
+  }).join('');
+
+  // Tempo estimado
+  const tempoEstimado = calcularTempoEstimadoTreino(treino);
+  const duracaoAlvoMin = fichaObj.duracaoAlvoMin || 60;
+  const difMin = tempoEstimado.minutos - duracaoAlvoMin;
+  const corTempo = Math.abs(difMin)<=5?'var(--text3)':(difMin>0?'#ffb400':'var(--text3)');
+
+  return `<div style="padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+      <div style="font-size:14px;font-weight:700;color:var(--text)">${treino.label}</div>
+      <div style="display:flex;align-items:center;gap:10px;font-size:11px;color:var(--text3)">
+        <span style="font-family:var(--mono);font-weight:700;color:var(--accent)">${totalSessao} séries</span>
+        <span style="color:${corTempo}" title="Estimativa de duração">⏱ ~${tempoEstimado.minutos}min${difMin>5?` (+${difMin})`:''}</span>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${articChips?'10px':'0'}">${muscChips}</div>
+    ${articChips ? `<div style="margin-top:8px"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">🦴 Solicitação articular</div><div style="display:flex;flex-wrap:wrap;gap:5px">${articChips}</div></div>` : ''}
+  </div>`;
+}
+
 function renderTreinoAtivo(){
   const f = _s3.fichaObj; if(!f) return;
   const treino = f.treinos[_s3.treinoAtivo];
   const cont   = $('ficha-treinos-content');
-  const volSessao = {};
-  treino.exercicios.forEach(ex => { volSessao[ex.musculo] = (volSessao[ex.musculo]||0) + parseInt(ex.series||0); });
-  const resumo = Object.entries(volSessao).map(([m,s]) =>
-    `<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">${m.replace('Isquiossurais','Isquio').replace('RetoAbdominal','Abd').replace('Panturrilhas','Pant')}: <strong style="color:var(--accent)">${s}</strong></span>`
-  ).join(' &nbsp;·&nbsp; ');
-  const totalSessao = Object.values(volSessao).reduce((a,b)=>a+b,0);
+  const obj    = selectedObj || getUltimoTreino(getActive()).objetivo || 'Saude';
 
-  // Fase F — tempo estimado de treino: informativo, ao lado do total de séries.
-  const tempoEstimado = calcularTempoEstimadoTreino(treino);
-  const duracaoAlvoMin = f.duracaoAlvoMin || 60;
-  const difMin = tempoEstimado.minutos - duracaoAlvoMin;
-  const corTempo = Math.abs(difMin) <= 5 ? 'var(--text3)' : (difMin > 0 ? '#ffb400' : 'var(--text3)');
-  const tempoHtml = `<span style="font-family:var(--mono);font-size:10px;color:${corTempo}" title="Estimativa — soma tempo de execução e descanso dos exercícios desta sessão">⏱ ~${tempoEstimado.minutos} min (alvo: ${duracaoAlvoMin} min)${difMin>5?` — ${difMin} min acima do combinado`:''}</span>`;
+  // ── Painel de info da sessão ────────────────────────────────────────────
+  const sessaoInfoHtml = _htmlSessaoInfo(treino, f, obj);
 
-  // ── Bloco de Aquecimento — RASCUNHO ──────────────────────────────────────
-  // Gerado automaticamente a partir das articulações dos exercícios principais
-  // desta sessão (ver gerarAquecimentoArticular). Fica separado, ANTES da parte
-  // principal — não conta série/volume, é preparação. Fichas antigas (salvas
-  // antes desse recurso existir) não têm `.aquecimento` — trata como vazio.
+  // ── Bloco de Aquecimento — 3 seções separadas ──────────────────────────────
   const aquecimento = treino.aquecimento || [];
-  const aquecimentoHtml = aquecimento.length ? `
-    <div style="margin-bottom:14px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap">
-        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">🔥 Aquecimento</div>
-        <div style="display:flex;align-items:center;gap:6px;flex:1;justify-content:center;flex-wrap:wrap">
-          ${Object.keys(TIPOS_AQUECIMENTO).map(label => {
-            const sel = (_s3.aquecTipos||['Mobilidade']).includes(TIPOS_AQUECIMENTO[label]);
-            const short = label==='Liberação Miofascial'?'Liberação':label;
-            return `<button onclick="toggleAquecTipo('${TIPOS_AQUECIMENTO[label]}')" style="font-size:10px;padding:2px 10px;border-radius:20px;border:1px solid ${sel?'var(--accent)':'var(--border)'};background:${sel?'var(--accent)':'transparent'};color:${sel?'#fff':'var(--text3)'};cursor:pointer;transition:all .15s">${short}</button>`;
-          }).join('')}
-        </div>
-        <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="regerarAquecimentoTreinoAtivo()">🔄 Sortear</button>
+  const ti = _s3.treinoAtivo;
+
+  // Articulações e músculos presentes no treino
+  const articsTreinoSet = new Set();
+  treino.exercicios.forEach(ex => { (ex._artic||[]).forEach(a => { if(a && ARTIC_MOBILIDADE_VALIDAS.has(a)) articsTreinoSet.add(a); }); });
+  const sortedArtics = [...articsTreinoSet].sort((a,b) =>
+    (ORDEM_ARTIC_AQUECIMENTO.indexOf(a)<0?999:ORDEM_ARTIC_AQUECIMENTO.indexOf(a)) -
+    (ORDEM_ARTIC_AQUECIMENTO.indexOf(b)<0?999:ORDEM_ARTIC_AQUECIMENTO.indexOf(b)));
+  const musculosTreinoArr = [...new Set(treino.exercicios.map(ex => ex.musculo).filter(Boolean))];
+
+  // Helper: renderiza uma row de item de aquecimento
+  function _rowAquecItem(a, ai){
+    const refLabel = a.tipo==='Mobilidade' ? (a.artic||'—') : (a.musculo||'—');
+    const videoBtn = a.url
+      ? `<a data-url="${a.url}" data-nome="${(a.nome||'').replace(/"/g,'&quot;')}" onclick="abrirVideoModal(this.dataset.url,this.dataset.nome)" style="font-size:9px;color:var(--accent);text-decoration:none;cursor:pointer;margin-left:4px" title="Ver vídeo">▶</a>`
+      : '';
+    return `<div style="padding:7px 12px;border-top:1px solid var(--border);background:var(--bg4);transition:background .15s"
+      onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background='var(--bg4)'">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--text3);min-width:72px;flex-shrink:0">${refLabel}</span>
+        <span style="flex:1;font-size:12px;color:var(--text);min-width:100px">${a.nome}${videoBtn}</span>
+        <span style="font-size:11px;color:var(--text2);white-space:nowrap;font-family:var(--mono)">${a.duracao}</span>
+        <button class="tbtn" style="font-size:10px;padding:2px 8px;flex-shrink:0"
+          onclick="abrirListaAquecimento(${ti},${ai})" title="Alternativos">▼</button>
+        <button class="tbtn" style="font-size:10px;padding:2px 6px;flex-shrink:0;color:var(--red);border-color:var(--red)"
+          onclick="removerItemAquecimento(${ti},${ai})" title="Remover">✕</button>
       </div>
-      <table class="treino-table" style="margin:0">
-        <thead><tr><th>Articulação</th><th>Mobilização</th><th>Duração</th></tr></thead>
-        <tbody>
-          ${aquecimento.map(a => `<tr>
-            <td style="font-size:11px;color:var(--text3)">${a.artic}</td>
-            <td style="font-size:12px">${a.nome}${a.url?` <a data-url="${a.url}" data-nome="${(a.nome||'').replace(/"/g,'&quot;')}" onclick="abrirVideoModal(this.dataset.url,this.dataset.nome)" style="font-size:9px;color:var(--accent);text-decoration:none;cursor:pointer" title="Ver vídeo">▶</a>`:''}</td>
-            <td style="font-size:11px;color:var(--text2)">${a.duracao}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>` : `
-    <div style="margin-bottom:14px;font-size:11px;color:var(--text3);font-style:italic">Sem aquecimento sugerido para esta sessão (nenhuma articulação identificada ou sem mobilização compatível nos filtros atuais).</div>`;
+      <div id="lista-aquec-${ti}-${ai}" class="hidden"
+        style="margin-top:6px;max-height:160px;overflow-y:auto;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:4px"></div>
+    </div>`;
+  }
 
-  const barraArticular = _htmlBarraArticular(treino.exercicios);
+  // Helper: chips de articulações para Mobilidade
+  function _chipsArticMob(){
+    if(!sortedArtics.length) return `<span style="font-size:10px;color:var(--text3);font-style:italic">Nenhuma articulação identificada</span>`;
+    return sortedArtics.map(artic => {
+      const inDB = DB_EXERCICIOS.some(e => (e.tp||[]).some(t=>t.nome==='Mobilidade') && (e.artic||[]).some(a=>a.nome===artic));
+      const sel  = aquecimento.some(x => x.tipo==='Mobilidade' && x.artic===artic);
+      if(!inDB) return `<span style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);color:var(--text3);opacity:.4">${artic}</span>`;
+      return `<button onclick="toggleAquecArtic(${ti},'${artic.replace(/'/g,"\\'")}')"
+        style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid ${sel?'var(--accent)':'var(--border)'};background:${sel?'var(--accent)':'transparent'};color:${sel?'#fff':'var(--text2)'};cursor:pointer;transition:all .15s"
+        >${artic}${sel?' ✓':''}</button>`;
+    }).join('');
+  }
 
-  cont.innerHTML = `
-    ${aquecimentoHtml}
-    <div style="padding:8px 0 6px;border-bottom:1px solid var(--border);margin-bottom:8px">
-      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">💪 Parte Principal</div>
-      <div style="font-size:11px;color:var(--text2);margin-bottom:4px">${treino.label} — <strong style="color:var(--accent)">${totalSessao} séries totais</strong> &nbsp;·&nbsp; ${tempoHtml}</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${barraArticular?'8px':'0'}">${resumo}</div>
+  // Helper: chips de músculos para Flex ou Lib
+  function _chipsMuscTipo(tipo, color){
+    if(!musculosTreinoArr.length) return `<span style="font-size:10px;color:var(--text3);font-style:italic">Nenhum grupo identificado</span>`;
+    return musculosTreinoArr.map(m => {
+      const inDB = DB_EXERCICIOS.some(e => (e.tp||[]).some(t=>t.nome===tipo) && (e.g||[]).some(g=>g.nome===m));
+      const sel  = aquecimento.some(x => x.tipo===tipo && x.musculo===m);
+      const mSafe = m.replace(/'/g,"\\'");
+      if(!inDB) return `<span style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);color:var(--text3);opacity:.4">${m}</span>`;
+      return `<button onclick="toggleAquecMusculo(${ti},'${mSafe}','${tipo}')"
+        style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid ${sel?color:'var(--border)'};background:${sel?color:'transparent'};color:${sel?'#fff':'var(--text2)'};cursor:pointer;transition:all .15s"
+        >${m}${sel?' ✓':''}</button>`;
+    }).join('');
+  }
+
+  // ── Tabela unificada de aquecimento ──────────────────────────────────────
+  function _rowAquecUnif(a, ai){
+    const isMob  = a.tipo==='Mobilidade';
+    const isFlex = a.tipo==='Flexibilidade';
+    // Chip visual: MOB azul-ciano / FLEX verde / LIB âmbar
+    const tipBg  = isMob ? 'rgba(0,188,212,.18)' : isFlex ? 'rgba(56,142,60,.18)' : 'rgba(255,152,0,.18)';
+    const tipFg  = isMob ? '#00bcd4'             : isFlex ? '#66bb6a'              : 'var(--amber)';
+    const tipLbl = isMob ? 'MOB'                 : isFlex ? 'FLEX'                 : 'LIB';
+    const refLabel = isMob ? (a.artic||'—') : (a.musculo||'—');
+    const videoBtn = a.url
+      ? `<button class="excv2-iconbtn excv2-video" title="Ver vídeo"
+          onclick="abrirVideoModal('${a.url.replace(/'/g,"\\'")}','${(a.nome||'').replace(/'/g,"\\'")}')">▶</button>`
+      : `<button class="excv2-iconbtn excv2-video" title="Sem vídeo" disabled style="opacity:.3">▶</button>`;
+    const podeSubir  = ai > 0;
+    const podeDescer = ai < aquecimento.length - 1;
+    return `<div style="border-top:1px solid var(--border);position:relative">
+      <div class="aqv2-row">
+        <span class="excv2-drag" title="Arrastar">⋮⋮</span>
+        <div class="excv2-arrows" style="flex-shrink:0">
+          <button class="excv2-arr" title="Subir" ${podeSubir?`onclick="moverAquecimento(${ti},${ai},-1)"`:'disabled'}>▲</button>
+          <button class="excv2-arr" title="Descer" ${podeDescer?`onclick="moverAquecimento(${ti},${ai},1)"`:'disabled'}>▼</button>
+        </div>
+        <span class="aqv2-tipc" style="background:${tipBg};color:${tipFg}">${tipLbl}</span>
+        <span class="aqv2-artic" title="${refLabel}">${refLabel}</span>
+        <div style="flex:1;min-width:0;position:relative" id="aqv2-nw-${ti}-${ai}">
+          <button class="excv2-namebtn" onclick="abrirListaAquecimento(${ti},${ai})">
+            <span class="nm">${a.nome}</span>
+            <span class="caret">▾</span>
+          </button>
+          <div id="lista-aquec-${ti}-${ai}" class="hidden excv2-sdrop"
+            style="max-height:220px;overflow-y:auto;padding:4px 0"></div>
+        </div>
+        <div class="aqv2-durctrl">
+          <button class="aqv2-dpm mi" onclick="_pmAquecimento(${ti},${ai},-1)">−</button>
+          <input id="aqv2-dur-${ti}-${ai}" type="text" value="${a.duracao}"
+            onblur="(function(v){const t=_s3.fichaObj?.treinos[${ti}];if(t?.aquecimento?.[${ai}])t.aquecimento[${ai}].duracao=v;})(this.value)">
+          <button class="aqv2-dpm pl" onclick="_pmAquecimento(${ti},${ai},1)">+</button>
+        </div>
+        ${videoBtn}
+        <button class="aqv2-rmbtn" onclick="removerItemAquecimento(${ti},${ai})" title="Remover">✕</button>
+      </div>
+    </div>`;
+  }
+
+  const warningHtml = treino._aquecDesatualizado
+    ? `<div style="padding:6px 12px;background:rgba(255,180,0,.12);border-bottom:1px solid rgba(255,180,0,.3);font-size:11px;color:#ffb400;display:flex;align-items:center;gap:8px">
+        <span>⚠️ Exercícios da parte principal foram alterados — revise o aquecimento</span>
+        <button onclick="_s3.fichaObj.treinos[${ti}]._aquecDesatualizado=false;renderTreinoAtivo()"
+          style="font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;text-decoration:underline;flex-shrink:0">Dispensar</button>
+      </div>` : '';
+
+  const tabelaAquecHtml = aquecimento.length
+    ? aquecimento.map((a,ai) => _rowAquecUnif(a,ai)).join('')
+    : `<div style="padding:12px;font-size:11px;color:var(--text3);text-align:center;font-style:italic">Clique nos chips acima para adicionar exercícios ao aquecimento</div>`;
+
+  const aquecPickerId = `picker-add-aquec-${ti}`;
+
+  const aquecimentoHtml = `<div style="margin-bottom:16px;border:1px solid var(--border);border-radius:var(--radius);overflow:visible">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border);gap:8px">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">🔥 Aquecimento</div>
+      <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="regerarAquecimentoTreinoAtivo()">🔄 Gerar</button>
     </div>
-    ${barraArticular}
-    <table class="treino-table">
-      <thead><tr><th>#</th><th>Músculo</th><th>Porção</th><th>Exercício <span style="color:var(--text3);font-weight:400;font-size:10px">(↕ trocar)</span></th><th>Séries</th><th>Reps</th><th>Intensidade</th><th>Intervalo</th><th>Bi/Tri-set</th></tr></thead>
-      <tbody id="tbody-treino"></tbody>
-    </table>`;
+    ${warningHtml}
+    <!-- 3 linhas de filtro -->
+    <div style="border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--border)">
+        <span style="font-size:10px;font-weight:700;color:var(--accent);min-width:80px;flex-shrink:0">Mobilidade</span>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${_chipsArticMob()}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--border)">
+        <span style="font-size:10px;font-weight:700;color:var(--accent2);min-width:80px;flex-shrink:0">Flexibilidade</span>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${_chipsMuscTipo('Flexibilidade','var(--accent2)')}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 12px">
+        <span style="font-size:10px;font-weight:700;color:var(--amber);min-width:80px;flex-shrink:0">Liberação</span>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${_chipsMuscTipo('Liberação Miofascial','var(--amber)')}</div>
+      </div>
+    </div>
+    <!-- tabela unificada -->
+    ${tabelaAquecHtml}
+    <!-- botão adicionar -->
+    <div style="padding:5px 12px 8px;border-top:1px solid var(--border)">
+      <button onclick="abrirPickerAdicionarAquecNovo('${aquecPickerId}',${ti})"
+        style="font-size:10px;padding:3px 10px;border-radius:var(--radius);border:1px dashed var(--border);background:transparent;color:var(--text3);cursor:pointer;transition:all .15s"
+        onmouseenter="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+        onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">+ Adicionar exercício</button>
+      <div id="${aquecPickerId}" class="hidden" data-ti="${ti}" style="margin-top:6px"></div>
+    </div>
+  </div>`;
 
-  const tbody = $('tbody-treino');
+  // ── Parte Principal ──────────────────────────────────────────────────────
+  cont.innerHTML = `
+    ${sessaoInfoHtml}
+    ${aquecimentoHtml}
+    <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:8px">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border)">💪 Parte Principal</div>
+      <div id="cards-treino"></div>
+      <div style="padding:5px 12px 8px;border-top:1px solid var(--border)">
+        <button onclick="abrirPickerPrincipal(${ti},'picker-add-principal-${ti}')"
+          style="font-size:10px;padding:3px 10px;border-radius:var(--radius);border:1px dashed var(--border);background:transparent;color:var(--text3);cursor:pointer;transition:all .15s"
+          onmouseenter="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'"
+          onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">+ Adicionar exercício</button>
+        <div id="picker-add-principal-${ti}" class="hidden" data-ti="${ti}" style="margin-top:6px"></div>
+      </div>
+    </div>`;
+
+  // ── Cards de exercício (novo layout) ────────────────────────────────────
+  const cardsEl = $('cards-treino');
   const gruposInfo = _computarGruposExercicios(treino.exercicios);
+
+  // Injetar CSS do novo card se ainda não estiver na página
+  if(!document.getElementById('ex-card-v2-styles')){
+    const st = document.createElement('style');
+    st.id = 'ex-card-v2-styles';
+    st.textContent = `
+      .excv2-row{display:flex;align-items:center;gap:5px;padding:8px 10px;}
+      .excv2-drag{color:var(--text3);cursor:grab;font-size:12px;letter-spacing:-1px;user-select:none;flex-shrink:0;width:16px}
+      .excv2-drag:hover{color:var(--text2)}
+      .excv2-arrows{display:flex;flex-direction:column;gap:1px;flex-shrink:0}
+      .excv2-arr{background:none;border:1px solid var(--border);border-radius:3px;color:var(--text3);width:16px;height:13px;font-size:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;line-height:1}
+      .excv2-arr:hover{border-color:var(--text2);color:var(--text2);background:var(--bg4)}
+      .excv2-arr:disabled{opacity:.2;cursor:default}
+      .excv2-chip{flex-shrink:0;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:10px;white-space:nowrap}
+      .excv2-namewrap{flex:1;min-width:0;position:relative}
+      .excv2-namebtn{display:flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:5px 9px;color:var(--text);font-size:12px;font-weight:500;cursor:pointer;width:100%;transition:border-color .12s;text-align:left}
+      .excv2-namebtn:hover{border-color:var(--accent2)}
+      .excv2-namebtn.open{border-color:var(--accent2);background:var(--bg4)}
+      .excv2-namebtn .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .excv2-namebtn .caret{color:var(--text3);font-size:9px;flex-shrink:0}
+      .excv2-iconbtn{flex-shrink:0;background:none;border:1px solid var(--border);border-radius:4px;width:27px;height:27px;color:var(--text2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s}
+      .excv2-iconbtn:hover{border-color:var(--text2);background:var(--bg4);color:var(--text)}
+      .excv2-video{color:var(--accent2);border-color:rgba(91,140,247,.3)}
+      .excv2-video:hover{background:rgba(91,140,247,.12)!important}
+      .excv2-more.act{border-color:var(--border2);background:var(--bg5)}
+      .excv2-params{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 10px 8px 47px}
+      .excv2-pg{display:flex;flex-direction:column;gap:3px}
+      .excv2-plbl{font-size:9px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text3)}
+      .excv2-pctrl{display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:5px;overflow:hidden}
+      .excv2-pctrl input{background:none;border:none;outline:none;color:var(--text);font-family:var(--mono);font-size:12px;font-weight:500;width:100%;text-align:center;padding:5px 2px}
+      .excv2-pm{background:none;border:none;color:var(--text3);font-size:14px;width:21px;min-width:21px;height:27px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .1s;line-height:1}
+      .excv2-pm.mi{border-right:1px solid var(--border)}
+      .excv2-pm.pl{border-left:1px solid var(--border)}
+      .excv2-pm:hover{background:var(--bg5);color:var(--text)}
+      /* floating search dropdown */
+      .excv2-sdrop{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);box-shadow:0 6px 28px rgba(0,0,0,.55);z-index:900}
+      .excv2-sbar{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--border);background:var(--bg3);border-radius:var(--radius) var(--radius) 0 0}
+      .excv2-sinput{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:12px;caret-color:var(--accent2)}
+      .excv2-sinput::placeholder{color:var(--text3)}
+      .excv2-ftrig{background:var(--bg4);border:1px solid var(--border2);border-radius:4px;color:var(--accent2);font-size:10px;font-weight:600;padding:3px 8px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px;transition:all .12s;font-family:inherit}
+      .excv2-ftrig:hover{background:rgba(91,140,247,.15)}
+      .excv2-slist{max-height:240px;overflow-y:auto}
+      .excv2-slist::-webkit-scrollbar{width:4px}
+      .excv2-slist::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+      .excv2-sitem{padding:7px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;transition:background .1s}
+      .excv2-sitem:last-child{border-bottom:none}
+      .excv2-sitem:hover{background:var(--bg4)}
+      .excv2-sname{font-size:12px;color:var(--text)}
+      .excv2-sname mark{background:none;color:var(--accent2);font-weight:600}
+      .excv2-smeta{font-size:10px;color:var(--text3)}
+      .excv2-scnt{padding:5px 12px;font-size:10px;color:var(--text3);border-top:1px solid var(--border);background:var(--bg3);border-radius:0 0 var(--radius) var(--radius)}
+      /* options menu */
+      .excv2-omenu{position:absolute;top:calc(100% + 2px);right:0;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);box-shadow:0 6px 28px rgba(0,0,0,.55);z-index:900;min-width:150px;overflow:hidden}
+      .excv2-oi{display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:12px;color:var(--text2);cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s}
+      .excv2-oi:last-child{border-bottom:none}
+      .excv2-oi:hover{background:var(--bg5);color:var(--text)}
+      .excv2-oi.danger{color:var(--red)}
+      .excv2-oi.danger:hover{background:rgba(240,90,90,.1)}
+      .excv2-oi.delink{color:var(--accent)}
+      .excv2-oi.delink:hover{background:var(--accent-dim)}
+      /* note area */
+      .excv2-notearea{padding:5px 10px 7px}
+      .excv2-noteinput{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;font-family:inherit;padding:6px 8px;outline:none;resize:none;transition:border-color .12s}
+      .excv2-noteinput:focus{border-color:var(--amber)}
+      /* bi-set connector */
+      .excv2-bisetbar{height:3px;background:linear-gradient(90deg,var(--accent) 0%,var(--accent2) 100%);margin:0 10px 0 47px;opacity:.6}
+      .excv2-bisetctrl{display:flex;align-items:center;justify-content:space-between;padding:3px 10px 3px 47px;background:rgba(91,140,247,.06);border-top:1px solid rgba(91,140,247,.18);border-bottom:1px solid rgba(91,140,247,.18)}
+      .excv2-bisetlbl{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent2);display:flex;align-items:center;gap:5px}
+      .excv2-bisetreorder{display:flex;gap:4px;align-items:center}
+      .excv2-bisetreorder span{font-size:9px;color:var(--text3)}
+      .excv2-bisetreorder button{background:none;border:1px solid rgba(91,140,247,.35);border-radius:3px;color:var(--accent2);width:19px;height:16px;font-size:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s}
+      .excv2-bisetreorder button:hover{background:rgba(91,140,247,.15)}
+      .excv2-bisetreorder button:disabled{opacity:.2;cursor:default}
+      /* aquecimento card */
+      .aqv2-row{display:flex;align-items:center;gap:5px;padding:7px 10px}
+      .aqv2-tipc{flex-shrink:0;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:10px;white-space:nowrap}
+      .aqv2-artic{flex-shrink:0;font-size:10px;font-weight:600;color:var(--text3);min-width:56px;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .aqv2-durctrl{flex-shrink:0;display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:5px;overflow:hidden;width:76px}
+      .aqv2-durctrl input{background:none;border:none;outline:none;color:var(--text);font-family:var(--mono);font-size:11px;width:100%;text-align:center;padding:4px 2px}
+      .aqv2-dpm{background:none;border:none;color:var(--text3);font-size:13px;width:19px;min-width:19px;height:25px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .1s}
+      .aqv2-dpm.mi{border-right:1px solid var(--border)}
+      .aqv2-dpm.pl{border-left:1px solid var(--border)}
+      .aqv2-dpm:hover{background:var(--bg5);color:var(--text)}
+      .aqv2-rmbtn{flex-shrink:0;background:none;border:1px solid var(--border);border-radius:4px;width:24px;height:24px;color:var(--text3);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s}
+      .aqv2-rmbtn:hover{border-color:var(--red);color:var(--red);background:rgba(240,90,90,.1)}
+      /* filter overlay */
+      .excv2-foverlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center}
+      .excv2-fmodal{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;box-shadow:0 6px 28px rgba(0,0,0,.55);width:90%;max-width:500px;overflow:hidden}
+      .excv2-fhead{background:var(--bg3);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+      .excv2-ftitle{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
+      .excv2-fclose{background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;line-height:1}
+      .excv2-fclose:hover{color:var(--text)}
+      .excv2-fbody{padding:12px 14px}
+      .excv2-fgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+      .excv2-fg label{display:block;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:3px}
+      .excv2-fsel{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text2);font-size:11px;font-family:inherit;padding:5px 8px;outline:none;appearance:none;cursor:pointer;transition:border-color .12s}
+      .excv2-fsel:focus{border-color:var(--accent2);color:var(--text)}
+      .excv2-ffoot{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px}
+      .excv2-fbtn-clear{background:none;border:1px solid var(--border);border-radius:4px;color:var(--text3);font-size:11px;padding:6px 12px;cursor:pointer;font-family:inherit;transition:all .12s}
+      .excv2-fbtn-clear:hover{border-color:var(--text2);color:var(--text2)}
+      .excv2-fbtn-apply{background:var(--accent2);border:none;border-radius:4px;color:#fff;font-size:11px;font-weight:700;padding:6px 18px;cursor:pointer;flex:1;font-family:inherit;transition:opacity .12s}
+      .excv2-fbtn-apply:hover{opacity:.85}
+    `;
+    document.head.appendChild(st);
+  }
+
   treino.exercicios.forEach((ex, rowIdx) => {
-    const tr = document.createElement('tr');
     const info = gruposInfo[rowIdx];
-    // Grupo (bi-set/tri-set): borda colorida na lateral esquerda da linha marca
-    // visualmente que ela pertence a um bloco vinculado, igual ao badge 1/2, 2/2
-    // que o FitCpx real mostra — sem isso não dá pra registrar treino com
-    // exercícios combinados (o personal digita tudo separado e perde a intenção).
-    if(info) tr.style.borderLeft = '3px solid ' + _corGrupo(info.grupoIdx);
-    const badgeGrupo = info
-      ? `<span style="font-size:9px;font-weight:700;color:#fff;background:${_corGrupo(info.grupoIdx)};padding:1px 6px;border-radius:10px;margin-right:5px">${info.pos}/${info.total}</span>`
-      : '';
-    // Nota clínica inline se existir
-    const notaHtml = ex.nota_clinica
-      ? `<div style="font-size:10px;color:#ffb400;margin-top:3px;line-height:1.4">${ex.nota_clinica}</div>`
-      : '';
-    const podeSubir = rowIdx > 0;
+    const podeSubir  = rowIdx > 0;
     const podeDescer = rowIdx < treino.exercicios.length - 1;
     const vinculadoProximo = !!ex._vinculadoProximo;
-    tr.innerHTML = `
-      <td style="font-family:var(--mono);color:var(--text3)">
-        <div style="display:flex;align-items:center;gap:2px">
-          ${badgeGrupo}<span>${rowIdx+1}</span>
+    // Pertence a um grupo bi-set?
+    const emGrupo = !!info;
+    const podeSubirNoGrupo  = emGrupo && info.pos > 1;
+    const podeDescerNoGrupo = emGrupo && info.pos < info.total;
+
+    const corChip = _corChipMusculo(ex.musculo);
+    const mLabel  = ex.musculo.replace('Isquiossurais','Isquio').replace('RetoAbdominal','Abd.').replace('Panturrilhas','Pant.');
+    const porcaoSafe = (ex.porcao==='Geral'||!ex.porcao)?'null':ex.porcao.replace(/'/g,'');
+    const dropId  = `excv2-drop-${ti}-${rowIdx}`;
+    const menuId  = `excv2-menu-${ti}-${rowIdx}`;
+    const noteId  = `excv2-note-${ti}-${rowIdx}`;
+    const obsOpen = ex._obsAberta ? '' : 'hidden';
+
+    const videoBtn = (() => {
+      const dbEx = DB_EXERCICIOS.find(e => e.n === ex.nome);
+      const url  = dbEx?.url || '';
+      if(!url) return `<button class="excv2-iconbtn excv2-video" title="Sem vídeo" disabled style="opacity:.3">▶</button>`;
+      return `<button class="excv2-iconbtn excv2-video" title="Ver vídeo"
+        onclick="abrirVideoModal('${url.replace(/'/g,"\\'")}','${ex.nome.replace(/'/g,"\\'")}')">▶</button>`;
+    })();
+
+    const card = document.createElement('div');
+    card.style.cssText = `border-bottom:1px solid var(--border);${emGrupo?`border-left:3px solid ${_corGrupo(info.grupoIdx)};background:rgba(91,140,247,.025)`:'border-left:3px solid transparent'};overflow:visible`;
+
+    // Biset control bar (aparece ANTES do próximo card, ou seja, depois deste se vinculadoProximo)
+    // Montado depois de cada card vinculado
+
+    card.innerHTML = `
+      <!-- linha principal -->
+      <div class="excv2-row">
+        <span class="excv2-drag" title="Arrastar">⋮⋮</span>
+        <div class="excv2-arrows">
+          <button class="excv2-arr" title="Subir" ${podeSubir?`onclick="moverExercicio(${ti},${rowIdx},-1)"`:'disabled'}>▲</button>
+          <button class="excv2-arr" title="Descer" ${podeDescer?`onclick="moverExercicio(${ti},${rowIdx},1)"`:'disabled'}>▼</button>
         </div>
-        <div style="display:flex;gap:2px;margin-top:3px">
-          <button class="tbtn" title="Subir" style="font-size:9px;padding:1px 5px;${podeSubir?'':'opacity:.3;cursor:default'}"
-            ${podeSubir?`onclick="moverExercicio(${_s3.treinoAtivo},${rowIdx},-1)"`:'disabled'}>▲</button>
-          <button class="tbtn" title="Descer" style="font-size:9px;padding:1px 5px;${podeDescer?'':'opacity:.3;cursor:default'}"
-            ${podeDescer?`onclick="moverExercicio(${_s3.treinoAtivo},${rowIdx},1)"`:'disabled'}>▼</button>
+        <span class="excv2-chip" style="background:${corChip.bg};color:${corChip.fg}">${mLabel}</span>
+        <div class="excv2-namewrap" id="excv2-nw-${ti}-${rowIdx}">
+          <button class="excv2-namebtn" id="excv2-nb-${ti}-${rowIdx}"
+            onclick="_toggleBuscaExercicio(${ti},${rowIdx},'${ex.musculo}','${porcaoSafe}')">
+            <span class="nm">${ex.nome}</span>
+            <span class="caret">▾</span>
+          </button>
+          <!-- dropdown montado dinamicamente -->
+          <div id="${dropId}" class="hidden"></div>
         </div>
-      </td>
-      <td style="font-size:11px">${ex.musculo.replace('Isquiossurais','Isquio').replace('RetoAbdominal','Abd').replace('Panturrilhas','Pant')}</td>
-      <td style="font-size:10px;color:var(--text3)">${ex.porcao||'—'}</td>
-      <td>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:12px" id="ex-nome-${_s3.treinoAtivo}-${rowIdx}">${ex.nome}</span>
-          <button class="tbtn" style="font-size:9px;padding:2px 7px;flex-shrink:0"
-            onclick="abrirListaExercicios(${_s3.treinoAtivo},${rowIdx},'${ex.musculo}','${(ex.porcao==='Geral'||!ex.porcao)?'null':ex.porcao.replace(/'/g,'')}')">↕</button>
+        ${videoBtn}
+        <div style="position:relative;flex-shrink:0">
+          <button class="excv2-iconbtn excv2-more" id="excv2-morebtn-${ti}-${rowIdx}"
+            onclick="_toggleMenuExercicio(${ti},${rowIdx})" title="Mais opções">⋮</button>
+          <div id="${menuId}" class="excv2-omenu hidden">
+            <div class="excv2-oi" onclick="_toggleObsExercicio(${ti},${rowIdx})"><span>📝</span> Observação</div>
+            ${podeDescer ? `<div class="excv2-oi ${vinculadoProximo?'delink':''}"
+              onclick="toggleVinculoProximo(${ti},${rowIdx})">${vinculadoProximo?'<span>🔓</span> Desagrupar':'<span>🔗</span> Bi-set (agrupar)'}</div>` : ''}
+            <div class="excv2-oi danger" onclick="_removerExercicio(${ti},${rowIdx})"><span>🗑</span> Remover</div>
+          </div>
         </div>
-        ${notaHtml}
-        <div id="lista-ex-${_s3.treinoAtivo}-${rowIdx}" class="hidden"
-          style="margin-top:6px;max-height:160px;overflow-y:auto;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:4px"></div>
-      </td>
-      <td><input type="number" value="${ex.series}" min="1" max="10"
-        style="width:3.2em;background:transparent;border:1px solid transparent;padding:4px 5px;color:var(--text);font-family:var(--mono);font-size:12px;border-radius:3px;outline:none"
-        onfocus="this.style.borderColor='var(--accent2)';this.style.background='var(--bg4)'"
-        onblur="this.style.borderColor='transparent';this.style.background='transparent';atualizarCampo(${_s3.treinoAtivo},${rowIdx},'series',this.value)"></td>
-      <td><input type="text" value="${ex.reps}"
-        style="width:54px;background:transparent;border:1px solid transparent;padding:4px 5px;color:var(--text);font-family:var(--mono);font-size:12px;border-radius:3px;outline:none"
-        onfocus="this.style.borderColor='var(--accent2)';this.style.background='var(--bg4)'"
-        onblur="this.style.borderColor='transparent';this.style.background='transparent';atualizarCampo(${_s3.treinoAtivo},${rowIdx},'reps',this.value)"></td>
-      <td style="font-size:11px;color:var(--text2)">${ex.intensidade}</td>
-      <td style="font-size:11px;color:var(--text2)">${ex.intervalo}</td>
-      <td>
-        ${podeDescer ? `<button class="tbtn" style="font-size:9px;padding:2px 7px;white-space:nowrap;${vinculadoProximo?'background:var(--accent-dim);color:var(--accent);border-color:var(--accent)':''}"
-            title="${vinculadoProximo?'Desagrupar do exercício de baixo':'Agrupar com o exercício de baixo (bi-set/tri-set)'}"
-            onclick="toggleVinculoProximo(${_s3.treinoAtivo},${rowIdx})">${vinculadoProximo?'✂ Desagrupar':'🔗 Agrupar ↓'}</button>` : ''}
-      </td>`;
-    tbody.appendChild(tr);
+      </div>
+      <!-- observação (toggle) -->
+      <div id="${noteId}" class="${obsOpen}">
+        <div class="excv2-notearea">
+          <textarea class="excv2-noteinput" rows="2" placeholder="Observação clínica / instrução para o aluno…"
+            onblur="atualizarCampo(${ti},${rowIdx},'nota_clinica',this.value)">${ex.nota_clinica||''}</textarea>
+        </div>
+      </div>
+      <!-- parâmetros -->
+      <div class="excv2-params">
+        <div class="excv2-pg">
+          <div class="excv2-plbl">Séries</div>
+          <div class="excv2-pctrl">
+            <button class="excv2-pm mi" onclick="_pmExercicio(${ti},${rowIdx},'series',-1)">−</button>
+            <input type="number" value="${ex.series}" min="1" max="10"
+              onchange="atualizarCampo(${ti},${rowIdx},'series',+this.value)"
+              onblur="atualizarCampo(${ti},${rowIdx},'series',+this.value)">
+            <button class="excv2-pm pl" onclick="_pmExercicio(${ti},${rowIdx},'series',1)">+</button>
+          </div>
+        </div>
+        <div class="excv2-pg">
+          <div class="excv2-plbl">Reps</div>
+          <div class="excv2-pctrl">
+            <button class="excv2-pm mi" onclick="_pmExercicio(${ti},${rowIdx},'reps',-1)">−</button>
+            <input type="text" value="${ex.reps}"
+              onblur="atualizarCampo(${ti},${rowIdx},'reps',this.value)">
+            <button class="excv2-pm pl" onclick="_pmExercicio(${ti},${rowIdx},'reps',1)">+</button>
+          </div>
+        </div>
+        <div class="excv2-pg">
+          <div class="excv2-plbl">Intervalo</div>
+          <div class="excv2-pctrl">
+            <button class="excv2-pm mi" onclick="_pmExercicio(${ti},${rowIdx},'intervalo',-1)">−</button>
+            <input type="text" value="${ex.intervalo}"
+              onblur="atualizarCampo(${ti},${rowIdx},'intervalo',this.value)">
+            <button class="excv2-pm pl" onclick="_pmExercicio(${ti},${rowIdx},'intervalo',1)">+</button>
+          </div>
+        </div>
+      </div>`;
+
+    cardsEl.appendChild(card);
+
+    // Bi-set connector bar após card vinculado
+    if(vinculadoProximo){
+      const barDiv = document.createElement('div');
+      barDiv.className = 'excv2-bisetctrl';
+      barDiv.innerHTML = `
+        <span class="excv2-bisetlbl">Bi-set</span>
+        <div class="excv2-bisetreorder">
+          <span>Ordem no grupo:</span>
+          <button title="Mover este par para cima" ${podeSubirNoGrupo?`onclick="moverExercicio(${ti},${rowIdx},-1)"`:'disabled'}>▲</button>
+          <button title="Mover este par para baixo" ${podeDescerNoGrupo?`onclick="moverExercicio(${ti},${rowIdx+1},1)"`:'disabled'}>▼</button>
+        </div>`;
+      cardsEl.appendChild(barDiv);
+    }
   });
 }
 
@@ -3694,6 +4054,282 @@ function _computarGruposExercicios(exercicios){
 
 const _CORES_GRUPO = ['#f5a623','#4a90d9','#9b59b6','#2ecc71','#e74c3c','#1abc9c'];
 function _corGrupo(idx){ return _CORES_GRUPO[idx % _CORES_GRUPO.length]; }
+
+// ── Helpers novos cards exercício (excv2) ─────────────────────────────────────
+
+// Chip de músculo — cor distinta por grupo principal
+function _corChipMusculo(musculo){
+  const m = (musculo||'').toLowerCase();
+  if(/peit/.test(m))                       return {bg:'#1a3a7022',fg:'#5b9fff'};
+  if(/cost|lat|dorsal/.test(m))            return {bg:'#00695c22',fg:'#26c6b5'};
+  if(/ombr|delt/.test(m))                  return {bg:'#6a1b9a22',fg:'#ce93d8'};
+  if(/bíc|bic|trí|tri|anteb/.test(m))     return {bg:'#bf360c22',fg:'#ff8a65'};
+  if(/ísq|isq/.test(m))                    return {bg:'#1b5e2022',fg:'#81c784'};
+  if(/glút|glut|abdut|adut/.test(m))       return {bg:'#2e7d3222',fg:'#a5d6a7'};
+  if(/quad/.test(m))                       return {bg:'#b71c1c22',fg:'#ef9a9a'};
+  if(/abd|core|reto/.test(m))              return {bg:'#e65100',fg:'#ffcc80'};
+  if(/pant|gast|sol/.test(m))             return {bg:'#37474f22',fg:'#90a4ae'};
+  return {bg:'var(--bg3)',fg:'var(--text2)'};
+}
+
+// Incrementa/decrementa série, reps ou intervalo sem re-render completo
+function _pmExercicio(ti, rowIdx, campo, delta){
+  const treino = _s3.fichaObj?.treinos[ti]; if(!treino) return;
+  const ex = treino.exercicios[rowIdx]; if(!ex) return;
+  if(campo === 'series'){
+    ex.series = Math.max(1, Math.min(10, (parseInt(ex.series)||1) + delta));
+  } else if(campo === 'reps'){
+    const m = String(ex.reps).match(/^(\d+)/);
+    if(!m) return;
+    ex.reps = String(Math.max(1, parseInt(m[1]) + delta));
+  } else if(campo === 'intervalo'){
+    const m = String(ex.intervalo).match(/^(\d+)/);
+    if(!m) return;
+    const suf = String(ex.intervalo).replace(/^\d+/, '');
+    ex.intervalo = String(Math.max(15, parseInt(m[1]) + delta * 15)) + suf;
+  }
+  // Atualizar input direto (sem full re-render)
+  const btn = document.getElementById(`excv2-nb-${ti}-${rowIdx}`);
+  const row = btn?.closest('.excv2-row');
+  const card = row?.parentElement;
+  if(card){
+    const inputs = card.querySelectorAll('.excv2-params input');
+    if(campo==='series'   && inputs[0]) inputs[0].value = ex.series;
+    if(campo==='reps'     && inputs[1]) inputs[1].value = ex.reps;
+    if(campo==='intervalo'&& inputs[2]) inputs[2].value = ex.intervalo;
+  }
+}
+
+// Fecha todos os dropdowns e menus de exercício abertos
+function _fecharTodosExcv2(){
+  document.querySelectorAll('[id^="excv2-drop-"]').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('[id^="excv2-menu-"]').forEach(el => el.classList.add('hidden'));
+  if(window._excv2OutsideHandler){
+    document.removeEventListener('click', window._excv2OutsideHandler, true);
+    window._excv2OutsideHandler = null;
+  }
+}
+
+// Toggle busca de exercício — dropdown flutuante com pesquisa + filtros
+function _toggleBuscaExercicio(ti, rowIdx, musculo, porcaoStr){
+  const dropEl = document.getElementById(`excv2-drop-${ti}-${rowIdx}`);
+  if(!dropEl) return;
+  const isOpen = !dropEl.classList.contains('hidden');
+  _fecharTodosExcv2();
+  if(isOpen) return; // já estava aberto → basta fechar
+
+  const porcao = (porcaoStr === 'null' || !porcaoStr) ? null : porcaoStr;
+  const s    = getActive();
+  const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
+  const local  = s?.anamnese?.local || 'academia';
+  const lesoes = (s?.perfil?.lesoes||'') + ' ' + (s?.anamnese?.preferencias||'');
+  const resist = getResistPermitida(local);
+
+  let poolBase = filtrarExerciciosFicha(musculo, porcao, resist, nivel, lesoes);
+  if(!poolBase.length) poolBase = filtrarExerciciosFicha(musculo, null, resist, nivel, lesoes);
+  if(!poolBase.length) poolBase = DB_EXERCICIOS.filter(e=>e.g.some(x=>buscaFuzzy(musculo, x.nome)));
+
+  const { bloqueios, prioridades } = extrairFlagsClinicas();
+  const pool = poolBase.map(e => {
+    for(const f of bloqueios){ const r=FLAGS_FILTRO[f]; if(r?.bloqueio(e)) return {...e,_status:'bloqueado',_motivo:r.motivo}; }
+    for(const p of prioridades){ const fn=FLAGS_PRIORIDADE[p]; if(fn&&fn(e)) return {...e,_status:'prioritario',_motivo:p}; }
+    if(bloqueios.includes('Baixo Impacto')&&_exercicioAltoImpacto(e)) return {...e,_status:'nao_recomendado',_motivo:'Alto impacto'};
+    return {...e,_status:'ok',_motivo:''};
+  }).sort((a,b)=>{
+    const o={prioritario:0,ok:1,nao_recomendado:2,bloqueado:3};
+    return (o[a._status]||1)-(o[b._status]||1);
+  });
+
+  // Montar estrutura do dropdown
+  dropEl.className = 'excv2-sdrop';
+  dropEl.style.minWidth = '260px';
+  dropEl.innerHTML = `
+    <div class="excv2-sbar">
+      <input id="excv2-srch-${ti}-${rowIdx}" type="text" placeholder="Buscar…"
+        style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;padding:4px 8px;outline:none"
+        oninput="_filtrarDropExercicio(${ti},${rowIdx},this.value)">
+      <button style="background:var(--bg4);border:1px solid var(--border);border-radius:4px;color:var(--text2);font-size:10px;padding:4px 8px;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .12s"
+        onclick="event.stopPropagation();_abrirFiltroExercicioModal('excv2-drop-${ti}-${rowIdx}',${ti},${rowIdx})">⚙ Filtros</button>
+    </div>
+    <div id="excv2-res-${ti}-${rowIdx}" style="max-height:260px;overflow-y:auto;padding:4px 0"></div>`;
+
+  dropEl._pool = pool;
+  _renderDropResults(ti, rowIdx, pool);
+
+  setTimeout(() => { document.getElementById(`excv2-srch-${ti}-${rowIdx}`)?.focus(); }, 40);
+
+  window._excv2OutsideHandler = function(e){
+    const nw = document.getElementById(`excv2-nw-${ti}-${rowIdx}`);
+    const modal = document.getElementById('excv2-fmodal-overlay');
+    if(modal && modal.contains(e.target)) return; // dentro do modal de filtros → não fechar
+    if(nw && !nw.contains(e.target)) _fecharTodosExcv2();
+  };
+  document.addEventListener('click', window._excv2OutsideHandler, true);
+}
+
+// Renderiza resultados no dropdown (aceita pool filtrado)
+function _renderDropResults(ti, rowIdx, pool){
+  const res = document.getElementById(`excv2-res-${ti}-${rowIdx}`);
+  if(!res) return;
+  res.innerHTML = '';
+  if(!pool.length){
+    res.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:8px 12px">Nenhum exercício encontrado</div>';
+    return;
+  }
+  pool.forEach(e => {
+    const isBloq   = e._status === 'bloqueado';
+    const isPrio   = e._status === 'prioritario';
+    const isNaoRec = e._status === 'nao_recomendado';
+    const div = document.createElement('div');
+    div.style.cssText = `padding:5px 12px;font-size:11px;cursor:${isBloq?'not-allowed':'pointer'};opacity:${isBloq?.5:1};` +
+      `color:${isBloq?'var(--text3)':'var(--text2)'};border-left:2px solid ${isPrio?'var(--accent)':isBloq?'rgba(255,80,80,.4)':isNaoRec?'rgba(255,180,50,.5)':'transparent'};` +
+      `padding-left:${isPrio||isBloq||isNaoRec?14:12}px;transition:background .1s`;
+    const icone = isPrio?'🟢 ':isBloq?'🔴 ':isNaoRec?'🟡 ':'';
+    const tag_url = e.url
+      ? `<span data-url="${e.url}" data-nome="${(e.n||'').replace(/"/g,'&quot;')}"
+          onclick="event.stopPropagation();abrirVideoModal(this.dataset.url,this.dataset.nome)"
+          style="font-size:9px;color:var(--accent);margin-left:4px;cursor:pointer">▶</span>` : '';
+    const tag_motivo = (isBloq||isPrio||isNaoRec)&&e._motivo
+      ? `<div style="font-size:9px;color:${isBloq?'#ff5050':isNaoRec?'#e0a030':'var(--accent)'};opacity:.8">${e._motivo.split('—')[0].trim()}</div>` : '';
+    div.innerHTML = `${icone}${e.n}${tag_url}${tag_motivo}`;
+    if(!isBloq){
+      div.addEventListener('mouseover', function(){ this.style.background='var(--bg3)'; });
+      div.addEventListener('mouseout',  function(){ this.style.background=''; });
+      div.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        _fecharTodosExcv2();
+        selecionarExercicio(ti, rowIdx, e.n, null);
+      });
+    }
+    res.appendChild(div);
+  });
+}
+
+// Filtra resultados por texto (accent-insensitive, partial match, multi-word)
+function _filtrarDropExercicio(ti, rowIdx, query){
+  const dropEl = document.getElementById(`excv2-drop-${ti}-${rowIdx}`);
+  if(!dropEl?._pool) return;
+  const words = normalizarTexto(query).split(/\s+/).filter(Boolean);
+  const filtrado = !words.length ? dropEl._pool : dropEl._pool.filter(e => {
+    const nm = normalizarTexto(e.n);
+    return words.every(w => nm.includes(w));
+  });
+  _renderDropResults(ti, rowIdx, filtrado);
+}
+
+// Modal de filtros avançados (overlay centrado fixo)
+function _abrirFiltroExercicioModal(dropId, ti, rowIdx){
+  if(document.getElementById('excv2-fmodal-overlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'excv2-fmodal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.48);display:flex;align-items:center;justify-content:center';
+
+  const dropEl = document.getElementById(dropId);
+  const pool   = dropEl?._pool || [];
+  const uq = arr => [...new Set(arr.filter(Boolean))].sort();
+  const grupos  = uq(pool.flatMap(e=>(e.g||[]).map(g=>g.nome)));
+  const equips  = uq(pool.flatMap(e=>(e.eq||[]).map(q=>q.nome)));
+  const niveis  = uq(pool.map(e=>e.nv?.nome));
+  const laterais= uq(pool.map(e=>e.lateralidade?.nome));
+  const padroes = uq(pool.map(e=>e.pad?.nome));
+
+  const opts = arr => arr.map(v=>`<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('');
+  const sel  = (id, arr) => `<select id="${id}" class="excv2-fsel"><option value="">Todos</option>${opts(arr)}</select>`;
+
+  overlay.innerHTML = `
+    <div class="excv2-fmodal" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px 20px;width:min(400px,92vw);max-height:80vh;overflow-y:auto;box-shadow:0 16px 48px rgba(0,0,0,.45)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <span style="font-size:13px;font-weight:700;color:var(--text)">⚙ Filtros avançados</span>
+        <button onclick="document.getElementById('excv2-fmodal-overlay').remove()"
+          style="background:none;border:none;color:var(--text3);font-size:17px;cursor:pointer;line-height:1;padding:0">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div><div class="excv2-flbl">Nível</div>${sel('excv2-fn-nivel',niveis)}</div>
+        <div><div class="excv2-flbl">Lateralidade</div>${sel('excv2-fn-lat',laterais)}</div>
+        <div><div class="excv2-flbl">Equipamento</div>${sel('excv2-fn-eq',equips)}</div>
+        <div><div class="excv2-flbl">Padrão mov.</div>${sel('excv2-fn-pad',padroes)}</div>
+        <div style="grid-column:1/-1"><div class="excv2-flbl">Grupo muscular</div>${sel('excv2-fn-grp',grupos)}</div>
+      </div>
+      <div class="excv2-ffoot">
+        <button class="excv2-fbtn-clear" onclick="_limparFiltroExercicioModal()">Limpar</button>
+        <button class="excv2-fbtn-apply" onclick="_aplicarFiltroExercicioModal('${dropId}',${ti},${rowIdx})">Aplicar</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+}
+
+function _limparFiltroExercicioModal(){
+  ['excv2-fn-nivel','excv2-fn-lat','excv2-fn-eq','excv2-fn-pad','excv2-fn-grp']
+    .forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+}
+
+function _aplicarFiltroExercicioModal(dropId, ti, rowIdx){
+  const get = id => (document.getElementById(id)?.value||'');
+  const nivel=get('excv2-fn-nivel'), lat=get('excv2-fn-lat'),
+        eq=get('excv2-fn-eq'), pad=get('excv2-fn-pad'), grp=get('excv2-fn-grp');
+  const dropEl = document.getElementById(dropId);
+  let pool = dropEl?._pool || [];
+  if(nivel) pool = pool.filter(e=>e.nv?.nome===nivel);
+  if(lat)   pool = pool.filter(e=>e.lateralidade?.nome===lat);
+  if(eq)    pool = pool.filter(e=>(e.eq||[]).some(q=>q.nome===eq));
+  if(pad)   pool = pool.filter(e=>e.pad?.nome===pad);
+  if(grp)   pool = pool.filter(e=>(e.g||[]).some(g=>g.nome===grp));
+  document.getElementById('excv2-fmodal-overlay')?.remove();
+  _renderDropResults(ti, rowIdx, pool);
+  // re-abrir dropdown após fechar modal
+  const dropEl2 = document.getElementById(dropId);
+  if(dropEl2) dropEl2.classList.remove('hidden');
+}
+
+// Toggle menu de opções (⋮)
+function _toggleMenuExercicio(ti, rowIdx){
+  const menuEl = document.getElementById(`excv2-menu-${ti}-${rowIdx}`); if(!menuEl) return;
+  const isOpen = !menuEl.classList.contains('hidden');
+  document.querySelectorAll('[id^="excv2-menu-"]').forEach(el=>el.classList.add('hidden'));
+  if(!isOpen) menuEl.classList.remove('hidden');
+}
+
+// Toggle textarea de observação
+function _toggleObsExercicio(ti, rowIdx){
+  const treino = _s3.fichaObj?.treinos[ti]; if(!treino) return;
+  const ex = treino.exercicios[rowIdx]; if(!ex) return;
+  ex._obsAberta = !ex._obsAberta;
+  document.getElementById(`excv2-note-${ti}-${rowIdx}`)?.classList.toggle('hidden', !ex._obsAberta);
+  document.getElementById(`excv2-menu-${ti}-${rowIdx}`)?.classList.add('hidden');
+}
+
+// Remove exercício da sessão
+function _removerExercicio(ti, rowIdx){
+  const treino = _s3.fichaObj?.treinos[ti]; if(!treino) return;
+  treino.exercicios.splice(rowIdx, 1);
+  // Garante que item anterior não aponte para o vazio se era o último
+  if(rowIdx > 0 && treino.exercicios[rowIdx-1]?._vinculadoProximo && rowIdx >= treino.exercicios.length){
+    treino.exercicios[rowIdx-1]._vinculadoProximo = false;
+  }
+  renderTreinoAtivo();
+}
+
+// Move item de aquecimento ▲▼
+function moverAquecimento(ti, ai, dir){
+  const treino = _s3.fichaObj?.treinos[ti]; if(!treino?.aquecimento) return;
+  const alvo = ai + dir;
+  if(alvo < 0 || alvo >= treino.aquecimento.length) return;
+  [treino.aquecimento[ai], treino.aquecimento[alvo]] = [treino.aquecimento[alvo], treino.aquecimento[ai]];
+  renderTreinoAtivo();
+}
+
+// Incrementa/decrementa duração do aquecimento em passos de 15s
+function _pmAquecimento(ti, ai, delta){
+  const treino = _s3.fichaObj?.treinos[ti]; if(!treino?.aquecimento) return;
+  const item = treino.aquecimento[ai]; if(!item) return;
+  const m = String(item.duracao).match(/^(\d+)/); if(!m) return;
+  const suf = String(item.duracao).replace(/^\d+/,'');
+  item.duracao = String(Math.max(15, parseInt(m[1]) + delta * 15)) + suf;
+  const inp = document.getElementById(`aqv2-dur-${ti}-${ai}`);
+  if(inp) inp.value = item.duracao;
+}
 
 // ── Tempo estimado de treino (Fase F) ───────────────────────────────────────
 // Calcula com os exercícios JÁ escolhidos (usa `_tempoRep`/`_uni` guardados na
@@ -3885,8 +4521,9 @@ function selecionarExercicio(ti, rowIdx, nome, listId){
     // em relação ao que a sessão de fato vai treinar.
     const dbEx = DB_EXERCICIOS.find(e => e.n === nome);
     treino.exercicios[rowIdx]._artic = (dbEx?.artic||[]).map(a=>a.nome);
-    regerarAquecimentoTreino(ti);
-    renderTreinoAtivo(); // re-render completo: precisa refletir o aquecimento recalculado, não só o nome trocado
+    // Marca aquecimento como desatualizado se já existia (não auto-regera — preserva seleção manual)
+    if(treino.aquecimento && treino.aquecimento.length) treino._aquecDesatualizado = true;
+    renderTreinoAtivo(); // re-render completo
     return;
   }
   const el = $(`ex-nome-${ti}-${rowIdx}`); if(el) el.textContent = nome;
@@ -3913,20 +4550,9 @@ function regerarAquecimentoTreino(ti){
   const articsTreino = new Set();
   treino.exercicios.forEach(ex => { (ex._artic||[]).forEach(a => { if(a) articsTreino.add(a); }); });
   treino.aquecimento = gerarAquecimentoArticular(articsTreino, resistPermitida, nivel, contraindicacoes, _s3.aquecTipos);
+  treino._aquecDesatualizado = false;
 }
 
-function toggleAquecTipo(tipo){
-  _s3.aquecTipos = _s3.aquecTipos || ['Mobilidade'];
-  const idx = _s3.aquecTipos.indexOf(tipo);
-  if(idx >= 0){
-    // Não deixa desmarcar o último tipo (mínimo 1 selecionado)
-    if(_s3.aquecTipos.length === 1) return;
-    _s3.aquecTipos = _s3.aquecTipos.filter(t => t !== tipo);
-  } else {
-    _s3.aquecTipos = [..._s3.aquecTipos, tipo];
-  }
-  regerarAquecimentoTreinoAtivo();
-}
 
 function regerarAquecimentoTreinoAtivo(){
   regerarAquecimentoTreino(_s3.treinoAtivo);
@@ -4399,7 +5025,9 @@ function lerSessionDataDOM(cardIdx, ti, sessaoGrupos){
 // nenhum. Não força mobilização se não existir nenhuma pra aquela articulação
 // dentro dos filtros — melhor um aquecimento mais curto do que forçar um
 // exercício fora de nível/recurso/contraindicação.
-const ORDEM_ARTIC_AQUECIMENTO = ['Lombar','Quadril','Joelho','Tornozelo','Arco Plantar','Tórax','Escápula','Ombro','Cotovelo','Punho'];
+const ORDEM_ARTIC_AQUECIMENTO = ['Quadril','Tornozelo','Arco Plantar','Tórax','Escápula','Ombro','Punho'];
+// Articulações com exercícios de Mobilidade no banco — única lista válida para chips de aquecimento
+const ARTIC_MOBILIDADE_VALIDAS = new Set(['Arco Plantar','Escápula','Ombro','Punho','Quadril','Tórax','Tornozelo']);
 const _TETO_ITENS_AQUECIMENTO = 5; // teto propositalmente baixo — aquecimento não pode virar treino paralelo
 
 // Tipos de aquecimento disponíveis no banco (campo `tp` dos exercícios).
@@ -4417,7 +5045,9 @@ function gerarAquecimentoArticular(articsTreino, resistPermitida, nivel, contrai
   const tipos = (tiposPermitidos && tiposPermitidos.length) ? tiposPermitidos : ['Mobilidade'];
   const usados = new Set();
   const itens  = [];
-  const ordenadas = [...articsTreino].sort((a,b) => ORDEM_ARTIC_AQUECIMENTO.indexOf(a) - ORDEM_ARTIC_AQUECIMENTO.indexOf(b));
+  // Filtrar apenas articulações que têm exercícios de Mobilidade no banco
+  const articsValidas = [...articsTreino].filter(a => ARTIC_MOBILIDADE_VALIDAS.has(a));
+  const ordenadas = articsValidas.sort((a,b) => ORDEM_ARTIC_AQUECIMENTO.indexOf(a) - ORDEM_ARTIC_AQUECIMENTO.indexOf(b));
 
   ordenadas.forEach(artic => {
     let pool = DB_EXERCICIOS.filter(e =>
@@ -4438,14 +5068,462 @@ function gerarAquecimentoArticular(articsTreino, resistPermitida, nivel, contrai
     if(!pool.length) return; // sem mobilização disponível pra essa articulação nesses filtros — pula
     const ex = pool[motorRand(0, pool.length-1)];
     usados.add(ex.n);
+    const tipoMatch = (ex.tp||[]).map(t=>t.nome).find(t=>tipos.includes(t)) || tipos[0] || 'Mobilidade';
+    // se tempo de execução é 0/null → exercício é por tempo → 45s
+    // se tem valor → exercício é por rep → 10 rep
+    const duracaoAquec = ex.tempo ? '10 rep' : '45s';
     itens.push({
       artic, nome: ex.n,
-      duracao: ex.tempo || '30–45s',
+      duracao: duracaoAquec,
       url: ex.url || '',
+      tipo: tipoMatch,
     });
   });
 
   return itens.slice(0, _TETO_ITENS_AQUECIMENTO);
+}
+
+// ── Alternativos para item de aquecimento ───────────────────────────────────
+function abrirListaAquecimento(ti, aquecIdx){
+  const listId = `lista-aquec-${ti}-${aquecIdx}`;
+  const listEl = $(listId); if(!listEl) return;
+  const isOpen = !listEl.classList.contains('hidden');
+  document.querySelectorAll('[id^="lista-aquec-"]').forEach(el => el.classList.add('hidden'));
+  if(isOpen) return;
+
+  const treino = _s3.fichaObj.treinos[ti];
+  const item = treino.aquecimento[aquecIdx];
+  const s = getActive();
+  const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
+  const local = s?.anamnese?.local || 'academia';
+  const resist = getResistPermitida(local);
+  const tipoFiltro = item.tipo || 'Mobilidade';
+  const isMobilidade = tipoFiltro === 'Mobilidade';
+
+  // Pool: Mobilidade filtra por articulação; Liberação/Flexibilidade filtra por grupo muscular
+  let pool = DB_EXERCICIOS.filter(e =>
+    (e.tp||[]).some(t => t.nome === tipoFiltro) &&
+    (isMobilidade
+      ? (e.artic||[]).some(x => x.nome === item.artic)
+      : (e.g||[]).some(g => g.nome === item.musculo)) &&
+    e.r && resist.includes(e.r.id) &&
+    e.nv && nivelOk(e.nv.nome, nivelLabel(nivel))
+  );
+  // fallback sem filtro de nível/resistência
+  if(!pool.length){
+    pool = DB_EXERCICIOS.filter(e =>
+      (e.tp||[]).some(t => t.nome === tipoFiltro) &&
+      (isMobilidade
+        ? (e.artic||[]).some(x => x.nome === item.artic)
+        : (e.g||[]).some(g => g.nome === item.musculo))
+    );
+  }
+
+  // Guardar pool no elemento para busca em tempo real
+  listEl._pool = pool;
+
+  function _renderAquecItems(filteredPool){
+    resultsEl.innerHTML = '';
+    if(!filteredPool.length){
+      const empty = document.createElement('div');
+      empty.style.cssText = 'font-size:11px;color:var(--text3);padding:6px 10px;font-style:italic';
+      empty.textContent = 'Nenhum exercício encontrado';
+      resultsEl.appendChild(empty);
+      return;
+    }
+    filteredPool.forEach(e => {
+      const div = document.createElement('div');
+      const isCurrent = e.n === item.nome;
+      div.style.cssText = `padding:5px 10px;border-radius:3px;cursor:${isCurrent?'default':'pointer'};font-size:11px;` +
+        `color:${isCurrent?'var(--accent)':'var(--text2)'};background:${isCurrent?'rgba(var(--accent-rgb),.1)':'transparent'};` +
+        `transition:background .1s;border-left:2px solid ${isCurrent?'var(--accent)':'transparent'}`;
+      div.textContent = e.n + (e.tempo ? ` (${e.tempo} rep)` : ' (45s)');
+      if(!isCurrent){
+        div.onmouseenter = () => div.style.background='var(--bg4)';
+        div.onmouseleave = () => div.style.background='transparent';
+        div.onclick = () => {
+          item.nome = e.n;
+          item.url  = e.url || '';
+          item.duracao = e.tempo ? '10 rep' : '45s';
+          document.querySelectorAll('[id^="lista-aquec-"]').forEach(el => el.classList.add('hidden'));
+          renderTreinoAtivo();
+        };
+      }
+      resultsEl.appendChild(div);
+    });
+  }
+
+  listEl.innerHTML = '';
+
+  // Campo de busca
+  const searchWrap = document.createElement('div');
+  searchWrap.style.cssText = 'padding:6px 8px;border-bottom:1px solid var(--border)';
+  const srch = document.createElement('input');
+  srch.type = 'text';
+  srch.placeholder = 'Buscar exercício…';
+  srch.style.cssText = 'width:100%;box-sizing:border-box;font-size:11px;padding:4px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none';
+  srch.oninput = () => {
+    const q = normalizarTexto(srch.value);
+    const filtered = q ? pool.filter(e => normalizarTexto(e.n).includes(q)) : pool;
+    _renderAquecItems(filtered);
+  };
+  searchWrap.appendChild(srch);
+  listEl.appendChild(searchWrap);
+
+  // Área de resultados com scroll
+  const resultsEl = document.createElement('div');
+  resultsEl.style.cssText = 'max-height:180px;overflow-y:auto;padding:4px 0';
+  listEl.appendChild(resultsEl);
+
+  _renderAquecItems(pool);
+  setTimeout(() => srch.focus(), 40);
+  listEl.classList.remove('hidden');
+
+  // Posicionar como fixed para não ser clipado pelo overflow do container
+  const nwEl = document.getElementById(`aqv2-nw-${ti}-${aquecIdx}`);
+  if(nwEl){
+    const r = nwEl.getBoundingClientRect();
+    listEl.style.cssText = `position:fixed;top:${r.bottom+4}px;left:${r.left}px;width:${Math.max(r.width,260)}px;min-width:260px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);box-shadow:0 6px 28px rgba(0,0,0,.55);z-index:9000;overflow:hidden`;
+  }
+
+  // Click-outside: fechar sem trocar seleção
+  if(window._aquecOutsideHandler){
+    document.removeEventListener('click', window._aquecOutsideHandler, true);
+  }
+  window._aquecOutsideHandler = function(e){
+    const allNws   = document.querySelectorAll('[id^="aqv2-nw-"]');
+    const allLists = document.querySelectorAll('[id^="lista-aquec-"]');
+    let inside = false;
+    allNws.forEach(n => { if(n.contains(e.target)) inside = true; });
+    allLists.forEach(l => { if(l.contains(e.target)) inside = true; });
+    if(!inside){
+      allLists.forEach(l => l.classList.add('hidden'));
+      document.removeEventListener('click', window._aquecOutsideHandler, true);
+      window._aquecOutsideHandler = null;
+    }
+  };
+  document.addEventListener('click', window._aquecOutsideHandler, true);
+}
+
+// ── Toggle chip de articulação no aquecimento ───────────────────────────────
+// Adiciona Mobilidade item se não existe; remove se já existe.
+function toggleAquecArtic(ti, artic){
+  const treino = _s3.fichaObj.treinos[ti];
+  if(!treino.aquecimento) treino.aquecimento = [];
+  const idx = treino.aquecimento.findIndex(x => x.tipo==='Mobilidade' && x.artic===artic);
+  if(idx >= 0){
+    treino.aquecimento.splice(idx, 1);
+  } else {
+    const s = getActive();
+    const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
+    const local = s?.anamnese?.local || 'academia';
+    const resist = getResistPermitida(local);
+    let pool = DB_EXERCICIOS.filter(e =>
+      (e.tp||[]).some(t=>t.nome==='Mobilidade') &&
+      (e.artic||[]).some(a=>a.nome===artic) &&
+      e.r && resist.includes(e.r.id) &&
+      e.nv && nivelOk(e.nv.nome, nivelLabel(nivel))
+    );
+    if(!pool.length) pool = DB_EXERCICIOS.filter(e =>
+      (e.tp||[]).some(t=>t.nome==='Mobilidade') && (e.artic||[]).some(a=>a.nome===artic));
+    if(!pool.length) return;
+    const ex = pool[motorRand(0, pool.length-1)];
+    treino.aquecimento.push({ tipo:'Mobilidade', artic, musculo:null, nome:ex.n, duracao:ex.tempo?'10 rep':'45s', url:ex.url||'' });
+  }
+  renderTreinoAtivo();
+}
+
+// ── Toggle chip de músculo para tipo específico (Flexibilidade ou Liberação) ──
+function toggleAquecMusculo(ti, musculo, tipo){
+  const treino = _s3.fichaObj.treinos[ti];
+  if(!treino.aquecimento) treino.aquecimento = [];
+  const idx = treino.aquecimento.findIndex(x => x.tipo===tipo && x.musculo===musculo);
+  if(idx >= 0){
+    treino.aquecimento.splice(idx, 1);
+  } else {
+    const s = getActive();
+    const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
+    const local = s?.anamnese?.local || 'academia';
+    const resist = getResistPermitida(local);
+    let pool = DB_EXERCICIOS.filter(e =>
+      (e.tp||[]).some(t=>t.nome===tipo) &&
+      (e.g||[]).some(g=>g.nome===musculo) &&
+      e.r && resist.includes(e.r.id) &&
+      e.nv && nivelOk(e.nv.nome, nivelLabel(nivel))
+    );
+    if(!pool.length) pool = DB_EXERCICIOS.filter(e =>
+      (e.tp||[]).some(t=>t.nome===tipo) && (e.g||[]).some(g=>g.nome===musculo));
+    if(!pool.length) return;
+    const ex = pool[motorRand(0, pool.length-1)];
+    treino.aquecimento.push({ tipo, artic:null, musculo, nome:ex.n, duracao:ex.tempo?'10 rep':'45s', url:ex.url||'' });
+  }
+  renderTreinoAtivo();
+}
+
+// ── Picker unificado para adicionar exercício de aquecimento ─────────────────
+function abrirPickerAdicionarAquecNovo(pickerId, ti){
+  const el = document.getElementById(pickerId); if(!el) return;
+  const isOpen = !el.classList.contains('hidden');
+  document.querySelectorAll('[id^="picker-add-"]').forEach(e => e.classList.add('hidden'));
+  if(isOpen) return;
+
+  const tipos = ['Mobilidade','Flexibilidade','Liberação Miofascial','Cardio','Força'];
+  const artics = [...new Set(DB_EXERCICIOS.flatMap(e=>(e.artic||[]).map(a=>a.nome)))].sort();
+  const grupos = [...new Set(DB_EXERCICIOS.flatMap(e=>(e.g||[]).map(g=>g.nome)))].sort();
+  const selSt = 'font-size:11px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:3px 6px;outline:none';
+
+  el.innerHTML = `<div style="padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius)">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+      <select id="${pickerId}-tipo" onchange="_filtrarPickerAquecNovo('${pickerId}')" style="${selSt}">
+        <option value="">Tipo</option>
+        ${tipos.map(t=>`<option value="${t}">${t}</option>`).join('')}
+      </select>
+      <select id="${pickerId}-artic" onchange="_filtrarPickerAquecNovo('${pickerId}')" style="${selSt}">
+        <option value="">Articulação</option>
+        ${artics.map(a=>`<option value="${a}">${a}</option>`).join('')}
+      </select>
+      <select id="${pickerId}-grupo" onchange="_filtrarPickerAquecNovo('${pickerId}')" style="${selSt}">
+        <option value="">Músculo</option>
+        ${grupos.map(g=>`<option value="${g}">${g}</option>`).join('')}
+      </select>
+      <input type="text" id="${pickerId}-busca" placeholder="Buscar nome…" oninput="_filtrarPickerAquecNovo('${pickerId}')"
+        style="${selSt};min-width:120px">
+    </div>
+    <div id="${pickerId}-list" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:3px;background:var(--bg)"></div>
+    <div id="${pickerId}-count" style="font-size:10px;color:var(--text3);margin-top:4px"></div>
+  </div>`;
+
+  el.classList.remove('hidden');
+  _filtrarPickerAquecNovo(pickerId);
+}
+
+function _filtrarPickerAquecNovo(pickerId){
+  const container = document.getElementById(pickerId); if(!container) return;
+  const ti = parseInt(container.dataset.ti);
+  const tipoSel  = document.getElementById(`${pickerId}-tipo`)?.value   || '';
+  const articSel = document.getElementById(`${pickerId}-artic`)?.value  || '';
+  const grupoSel = document.getElementById(`${pickerId}-grupo`)?.value  || '';
+  const busca    = (document.getElementById(`${pickerId}-busca`)?.value || '').toLowerCase();
+  const listEl   = document.getElementById(`${pickerId}-list`);
+  const countEl  = document.getElementById(`${pickerId}-count`);
+  if(!listEl) return;
+
+  let pool = DB_EXERCICIOS.filter(e => {
+    if(tipoSel  && !(e.tp||[]).some(t=>t.nome===tipoSel))      return false;
+    if(articSel && !(e.artic||[]).some(a=>a.nome===articSel))  return false;
+    if(grupoSel && !(e.g||[]).some(g=>g.nome===grupoSel))      return false;
+    if(busca    && !e.n.toLowerCase().includes(busca))          return false;
+    return true;
+  });
+
+  if(countEl) countEl.textContent = `${pool.length} exercício${pool.length!==1?'s':''} encontrado${pool.length!==1?'s':''}`;
+  if(!pool.length){
+    listEl.innerHTML = `<span style="font-size:11px;color:var(--text3);padding:8px;display:block">Nenhum resultado</span>`;
+    return;
+  }
+  listEl.innerHTML = pool.slice(0,60).map(e => {
+    const tipo   = (e.tp||[]).map(t=>t.nome).join(', ');
+    const grupo  = (e.g||[]).map(g=>g.nome).join(', ');
+    const artic1 = (e.artic&&e.artic[0])?e.artic[0].nome:'';
+    const nSafe  = e.n.replace(/'/g,"\\'");
+    const uSafe  = (e.url||'').replace(/'/g,"\\'");
+    const dSafe  = (e.tempo||'30s').toString().replace(/'/g,"\\'");
+    const a1Safe = artic1.replace(/'/g,"\\'");
+    const gSafe  = grupo.replace(/'/g,"\\'");
+    const tSafe  = tipo.replace(/'/g,"\\'");
+    return `<div style="padding:5px 8px;cursor:pointer;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border);transition:background .1s"
+      onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background=''"
+      onclick="_adicionarAquecDoPicker(${ti},'${nSafe}','${a1Safe}','${gSafe}','${uSafe}','${dSafe}','${tSafe}','${pickerId}')">
+      ${e.n}${grupo?`<span style="color:var(--text3);font-size:9px"> — ${tipo}${grupo?' | '+grupo:''}</span>`:''}
+    </div>`;
+  }).join('') + (pool.length>60?`<div style="padding:6px;font-size:10px;color:var(--text3)">+${pool.length-60} resultados — refine os filtros</div>`:'');
+}
+
+function _adicionarAquecDoPicker(ti, nome, artic, musculo, url, dur, tipoExerc, pickerId){
+  const treino = _s3.fichaObj?.treinos[ti];
+  if(!treino){ return; }
+  if(!treino.aquecimento) treino.aquecimento = [];
+  const isMob = tipoExerc.includes('Mobilidade');
+  const aquecTipo = isMob ? 'Mobilidade'
+    : tipoExerc.includes('Flexibilidade') ? 'Flexibilidade'
+    : tipoExerc.includes('Liberação') ? 'Liberação Miofascial'
+    : tipoExerc.split(',')[0].trim() || 'Mobilidade';
+  treino.aquecimento.push({
+    tipo: aquecTipo,
+    artic: aquecTipo==='Mobilidade' ? (artic||null) : null,
+    musculo: aquecTipo!=='Mobilidade' ? (musculo||null) : null,
+    nome, duracao: dur||'30s', url: url||''
+  });
+  document.getElementById(pickerId)?.classList.add('hidden');
+  renderTreinoAtivo();
+}
+
+// ── Picker para adicionar exercício à Parte Principal ────────────────────────
+function abrirPickerPrincipal(ti, pickerId){
+  const el = document.getElementById(pickerId); if(!el) return;
+  const isOpen = !el.classList.contains('hidden');
+  document.querySelectorAll('[id^="picker-add-"]').forEach(e => e.classList.add('hidden'));
+  if(isOpen) return;
+
+  const grupos     = [...new Set(DB_EXERCICIOS.flatMap(e=>(e.g||[]).map(g=>g.nome)))].sort();
+  const equips     = [...new Set(DB_EXERCICIOS.flatMap(e=>(e.eq||[]).map(q=>q.nome)))].sort();
+  const artics     = [...new Set(DB_EXERCICIOS.flatMap(e=>(e.artic||[]).map(a=>a.nome)))].sort();
+  const nArtics    = [...new Set(DB_EXERCICIOS.map(e=>e.art?.nome).filter(Boolean))].sort();
+  const padroes    = [...new Set(DB_EXERCICIOS.map(e=>e.pad?.nome).filter(Boolean))].sort();
+  const tipos      = [...new Set(DB_EXERCICIOS.flatMap(e=>(e.tp||[]).map(t=>t.nome)))].sort();
+  const resists    = [...new Set(DB_EXERCICIOS.map(e=>e.r?.nome).filter(Boolean))].sort();
+  const lats       = [...new Set(DB_EXERCICIOS.map(e=>e.lateralidade?.nome).filter(Boolean))].sort();
+  const selSt = 'font-size:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:2px 5px;outline:none';
+
+  const makeOpts = (arr, placeholder) =>
+    `<option value="">${placeholder}</option>` + arr.map(v=>`<option value="${v}">${v}</option>`).join('');
+
+  el.innerHTML = `<div style="padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius)">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:5px;margin-bottom:6px">
+      <select id="${pickerId}-grupo"  onchange="_filtrarPickerPrincipal('${pickerId}')" style="${selSt}">${makeOpts(grupos,'Grupo muscular')}</select>
+      <select id="${pickerId}-eq"     onchange="_filtrarPickerPrincipal('${pickerId}')" style="${selSt}">${makeOpts(equips,'Equipamento')}</select>
+      <select id="${pickerId}-artic"  onchange="_filtrarPickerPrincipal('${pickerId}')" style="${selSt}">${makeOpts(artics,'Articulação')}</select>
+      <select id="${pickerId}-nart"   onchange="_filtrarPickerPrincipal('${pickerId}')" style="${selSt}">${makeOpts(nArtics,'N. articulação')}</select>
+      <select id="${pickerId}-pad"    onchange="_filtrarPickerPrincipal('${pickerId}')" style="${selSt}">${makeOpts(padroes,'Padrão de movimento')}</select>
+      <select id="${pickerId}-tp"     onchange="_filtrarPickerPrincipal('${pickerId}')" style="${selSt}">${makeOpts(tipos,'Tipo de exercício')}</select>
+      <select id="${pickerId}-resist" onchange="_filtrarPickerPrincipal('${pickerId}')" style="${selSt}">${makeOpts(resists,'Tipo resistência')}</select>
+      <select id="${pickerId}-lat"    onchange="_filtrarPickerPrincipal('${pickerId}')" style="${selSt}">${makeOpts(lats,'Lateralidade')}</select>
+    </div>
+    <input type="text" id="${pickerId}-busca" placeholder="Buscar nome…" oninput="_filtrarPickerPrincipal('${pickerId}')"
+      style="${selSt};width:100%;box-sizing:border-box;margin-bottom:6px">
+    <div id="${pickerId}-list" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:3px;background:var(--bg)"></div>
+    <div id="${pickerId}-count" style="font-size:10px;color:var(--text3);margin-top:4px"></div>
+  </div>`;
+
+  el.classList.remove('hidden');
+  _filtrarPickerPrincipal(pickerId);
+}
+
+function _filtrarPickerPrincipal(pickerId){
+  const container = document.getElementById(pickerId); if(!container) return;
+  const ti = parseInt(container.dataset.ti);
+  const grupoSel  = document.getElementById(`${pickerId}-grupo`)?.value  || '';
+  const eqSel     = document.getElementById(`${pickerId}-eq`)?.value     || '';
+  const articSel  = document.getElementById(`${pickerId}-artic`)?.value  || '';
+  const nartSel   = document.getElementById(`${pickerId}-nart`)?.value   || '';
+  const padSel    = document.getElementById(`${pickerId}-pad`)?.value    || '';
+  const tpSel     = document.getElementById(`${pickerId}-tp`)?.value     || '';
+  const resistSel = document.getElementById(`${pickerId}-resist`)?.value || '';
+  const latSel    = document.getElementById(`${pickerId}-lat`)?.value    || '';
+  const busca     = (document.getElementById(`${pickerId}-busca`)?.value || '').toLowerCase();
+  const listEl    = document.getElementById(`${pickerId}-list`);
+  const countEl   = document.getElementById(`${pickerId}-count`);
+  if(!listEl) return;
+
+  let pool = DB_EXERCICIOS.filter(e => {
+    if(grupoSel  && !(e.g||[]).some(g=>g.nome===grupoSel))       return false;
+    if(eqSel     && !(e.eq||[]).some(q=>q.nome===eqSel))         return false;
+    if(articSel  && !(e.artic||[]).some(a=>a.nome===articSel))   return false;
+    if(nartSel   && e.art?.nome!==nartSel)                       return false;
+    if(padSel    && e.pad?.nome!==padSel)                        return false;
+    if(tpSel     && !(e.tp||[]).some(t=>t.nome===tpSel))         return false;
+    if(resistSel && e.r?.nome!==resistSel)                       return false;
+    if(latSel    && e.lateralidade?.nome!==latSel)               return false;
+    if(busca     && !e.n.toLowerCase().includes(busca))           return false;
+    return true;
+  });
+
+  if(countEl) countEl.textContent = `${pool.length} exercício${pool.length!==1?'s':''} encontrado${pool.length!==1?'s':''}`;
+  if(!pool.length){
+    listEl.innerHTML = `<span style="font-size:11px;color:var(--text3);padding:8px;display:block">Nenhum exercício encontrado para os filtros selecionados</span>`;
+    return;
+  }
+  listEl.innerHTML = pool.slice(0,60).map(e => {
+    const grupo  = (e.g||[]).map(g=>g.nome).join(', ');
+    const tags   = [e.pad?.nome, e.art?.nome, e.r?.nome, e.lateralidade?.nome].filter(Boolean).join(' · ');
+    const nSafe  = e.n.replace(/'/g,"\\'");
+    const gSafe  = grupo.replace(/'/g,"\\'");
+    return `<div style="padding:5px 8px;cursor:pointer;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border);transition:background .1s"
+      onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background=''"
+      onclick="_adicionarExercicioPrincipal(${ti},'${nSafe}','${gSafe}','${pickerId}')">
+      <div style="font-weight:500">${e.n}</div>
+      ${grupo?`<div style="font-size:9px;color:var(--text3)">${grupo}${tags?' · '+tags:''}</div>`:''}
+    </div>`;
+  }).join('') + (pool.length>60?`<div style="padding:6px;font-size:10px;color:var(--text3)">+${pool.length-60} resultados — refine os filtros</div>`:'');
+}
+
+function _adicionarExercicioPrincipal(ti, nome, musculo, pickerId){
+  const treino = _s3.fichaObj?.treinos[ti]; if(!treino) return;
+  const dbEx   = DB_EXERCICIOS.find(e=>e.n===nome);
+  const grupoFinal = musculo || (dbEx?.g?.[0]?.nome) || 'Geral';
+  const s2 = getActive(); const obj2 = val('pr-objetivo')||s2?.anamnese?.objetivo||'Hip';
+  treino.exercicios.push({
+    musculo: grupoFinal, porcao:'Geral', nome,
+    series:3, reps: REPS_REF[obj2]||'10', intensidade: INT_REF[obj2]||'65% 1RM', intervalo: INT_DESCANSO[obj2]||'90s',
+    nota_clinica:'',
+    _artic: (dbEx?.artic||[]).map(a=>a.nome),
+    _pad:   dbEx?.pad?.id || '',
+    _tempoRep: dbEx?.tempo || '',
+    _contracaoIsometrica: dbEx?.contracao?.nome==='Isométrica',
+    _uni: (dbEx?.lateralidade?.id===3)?1:0,
+  });
+  if(treino.aquecimento && treino.aquecimento.length) treino._aquecDesatualizado = true;
+  document.getElementById(pickerId)?.classList.add('hidden');
+  renderTreinoAtivo();
+}
+
+// ── Selecionar chip de músculo: remove se já existe, ou abre picker de tipo ──
+function selecionarMusculoAquec(ti, musculo, btn){
+  const treino = _s3.fichaObj.treinos[ti];
+  if(!treino.aquecimento) treino.aquecimento = [];
+  const idx = treino.aquecimento.findIndex(x => x.musculo===musculo && x.tipo!=='Mobilidade');
+  if(idx >= 0){
+    treino.aquecimento.splice(idx, 1);
+    renderTreinoAtivo(); return;
+  }
+  // Mostra picker de tipo inline
+  const pickerId = `picker-tipo-aquec-${ti}`;
+  const pickerEl = document.getElementById(pickerId); if(!pickerEl) return;
+  const hasLib  = DB_EXERCICIOS.some(e => (e.tp||[]).some(t=>t.nome==='Liberação Miofascial') && (e.g||[]).some(g=>g.nome===musculo));
+  const hasFlex = DB_EXERCICIOS.some(e => (e.tp||[]).some(t=>t.nome==='Flexibilidade') && (e.g||[]).some(g=>g.nome===musculo));
+  const mSafe = musculo.replace(/'/g,"\\'");
+  pickerEl.innerHTML = `
+    <span style="font-size:10px;color:var(--text3);white-space:nowrap">Tipo para <strong style="color:var(--text2)">${musculo}</strong>:</span>
+    <button onclick="adicionarAquecMusculo(${ti},'${mSafe}','Liberação Miofascial')"
+      style="font-size:10px;padding:3px 12px;border-radius:12px;border:1px solid ${hasLib?'var(--amber)':'var(--border)'};color:${hasLib?'var(--amber)':'var(--text3)'};background:transparent;cursor:${hasLib?'pointer':'default'};${!hasLib?'opacity:.4;':''}transition:all .15s"
+      ${!hasLib?'disabled':''}>Liberação</button>
+    <button onclick="adicionarAquecMusculo(${ti},'${mSafe}','Flexibilidade')"
+      style="font-size:10px;padding:3px 12px;border-radius:12px;border:1px solid ${hasFlex?'var(--accent)':'var(--border)'};color:${hasFlex?'var(--accent)':'var(--text3)'};background:transparent;cursor:${hasFlex?'pointer':'default'};${!hasFlex?'opacity:.4;':''}transition:all .15s"
+      ${!hasFlex?'disabled':''}>Flexibilidade</button>
+    <button onclick="document.getElementById('${pickerId}').classList.add('hidden')"
+      style="font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;margin-left:4px">✕</button>`;
+  pickerEl.classList.remove('hidden');
+}
+
+// ── Adicionar item de aquecimento muscular após tipo escolhido ───────────────
+function adicionarAquecMusculo(ti, musculo, tipo){
+  const treino = _s3.fichaObj.treinos[ti];
+  if(!treino.aquecimento) treino.aquecimento = [];
+  const s = getActive();
+  const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
+  const local = s?.anamnese?.local || 'academia';
+  const resist = getResistPermitida(local);
+  let pool = DB_EXERCICIOS.filter(e =>
+    (e.tp||[]).some(t=>t.nome===tipo) &&
+    (e.g||[]).some(g=>g.nome===musculo) &&
+    e.r && resist.includes(e.r.id) &&
+    e.nv && nivelOk(e.nv.nome, nivelLabel(nivel))
+  );
+  if(!pool.length) pool = DB_EXERCICIOS.filter(e =>
+    (e.tp||[]).some(t=>t.nome===tipo) && (e.g||[]).some(g=>g.nome===musculo));
+  if(!pool.length) return;
+  // Remove existing item for this musculo (replace with new tipo)
+  treino.aquecimento = treino.aquecimento.filter(x => !(x.musculo===musculo && x.tipo!=='Mobilidade'));
+  const ex = pool[motorRand(0, pool.length-1)];
+  treino.aquecimento.push({ tipo, artic:null, musculo, nome:ex.n, duracao:ex.tempo||'30–45s', url:ex.url||'' });
+  renderTreinoAtivo();
+}
+
+// ── Remover item do aquecimento ─────────────────────────────────────────────
+function removerItemAquecimento(ti, aquecIdx){
+  const treino = _s3.fichaObj.treinos[ti];
+  if(treino.aquecimento) treino.aquecimento.splice(aquecIdx, 1);
+  renderTreinoAtivo();
 }
 
 function gerarFichaMotorV2(params){
