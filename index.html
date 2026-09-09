@@ -330,7 +330,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       <span id="tema-icon">🌙
       <span id="tema-label">Escuro
     </button>
-    <span class="topbar-badge">v1.6.2 — Módulo EF</span>
+    <span class="topbar-badge">v1.6.3 — Módulo EF</span>
   </div>
 
   <!-- SIDEBAR -->
@@ -351,6 +351,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 
     <!-- Nav principal -->
     <div style="padding:0 10px 4px">
+      <div class="sidebar-item" id="nav-dashboard" onclick="navGo('dashboard')" style="font-weight:600">
+        <span>📋<span>Painel<span id="nav-count-pend" style="margin-left:auto;font-size:11px;color:var(--text3);font-family:var(--mono)">
+      </div>
       <div class="sidebar-item" id="nav-alunos" onclick="navGo('alunos')" style="font-weight:600">
         <span>👤<span>Alunos<span id="nav-count-alunos" style="margin-left:auto;font-size:11px;color:var(--text3);font-family:var(--mono)">0
       </div>
@@ -364,6 +367,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <div class="sidebar-item" id="nav-distribuicao" onclick="navGo('distribuicao')" style="font-size:12px;padding:6px 8px"><span>📋<span>Distribuição</div>
         <div class="sidebar-item" id="nav-periodizacao" onclick="navGo('periodizacao')" style="font-size:12px;padding:6px 8px"><span>📈<span>Periodização</div>
         <div class="sidebar-item" id="nav-exercicios" onclick="navGo('exercicios')" style="font-size:12px;padding:6px 8px"><span>💪<span>Exercícios<span style="margin-left:auto;font-size:10px;color:var(--text3);font-family:var(--mono)">693</div>
+        <div class="sidebar-item" id="nav-arquivadas" onclick="navGo('arquivadas')" style="font-size:12px;padding:6px 8px"><span>🗄<span>Arquivadas<span id="nav-arquivadas-count" style="margin-left:auto;font-size:10px;color:var(--text3);font-family:var(--mono);display:none"></span></div>
       </div>
     </div>
 
@@ -388,6 +392,16 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
     </div>
 
     <!-- ══ TELA: ALUNOS ══ -->
+    <!-- ═══ PAINEL (tela de abertura) ═══ -->
+    <div id="screen-dashboard" class="hidden" style="padding:22px 26px;max-width:960px">
+      <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:4px">
+        <h2 style="margin:0;font-size:19px;font-weight:700;color:var(--text)">Painel</h2>
+        <span id="dash-data" style="font-size:12px;color:var(--text3)"></span>
+      </div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:18px">Quem precisa de atenção hoje.</div>
+      <div id="dash-conteudo"></div>
+    </div>
+
     <div id="screen-alunos" class="hidden" style="display:flex;flex-direction:column;height:100%;overflow:hidden">
       <div class="page-header">
         <div>
@@ -517,6 +531,47 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <div class="content">
           <div class="alert alert-blue">💡 Ao prescrever, selecione o local do aluno — o motor filtra apenas exercícios com os equipamentos disponíveis aqui.</div>
           <div id="locais-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TELA: ARQUIVADAS ══ -->
+    <div id="screen-arquivadas" class="hidden" style="display:flex;flex-direction:column;height:100%;overflow:hidden">
+      <div class="page-header">
+        <div>
+          <div class="page-title">🗄 Arquivadas</div>
+          <div class="page-subtitle"><span class="badge badge-blue">Nada é apagado de verdade</div>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-ghost btn-sm" id="arq-btn-historico" onclick="arqToggleHistorico()">🕐 Ver histórico completo</button>
+        </div>
+      </div>
+      <div class="main-scroll">
+        <div class="content">
+          <div class="alert alert-blue">💡 Tudo que você exclui no sistema — aluno, avaliação, treino, local, template, divisão, periodização — vem parar aqui inteiro. Restaurar devolve o registro às telas de trabalho com um identificador novo.</div>
+
+          <div id="arq-aviso-legado" class="alert alert-amber" style="display:none">
+            ⚠ Este navegador tem alunos salvos antes da separação por conta. Eles não são carregados automaticamente para não misturar as contas.
+            <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="arqImportarLegado()">Importar para esta conta</button>
+          </div>
+
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+            <input type="text" id="arq-busca" placeholder="Buscar por item ou aluno..." oninput="arqSetBusca(this.value)"
+              style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg4);color:var(--text);font-family:var(--sans);font-size:13px;outline:none;width:240px">
+            <select id="arq-tipo" onchange="arqSetTipo(this.value)"
+              style="font-size:12px;padding:5px 8px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text)">
+              <option value="">Todos os tipos</option>
+              <option value="aluno">Aluno</option>
+              <option value="avaliacao">Avaliação</option>
+              <option value="treino">Treino</option>
+              <option value="local">Local de treino</option>
+              <option value="template">Template de treino</option>
+              <option value="divisao">Divisão de treino</option>
+              <option value="periodizacao">Periodização</option>
+            </select>
+          </div>
+
+          <div id="arquivadas-lista"></div>
         </div>
       </div>
     </div>
@@ -1298,10 +1353,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
           </div>
           <div class="field"><label>Local de treino</label>
             <select id="bsv-local">
-              <option value="academia">Academia completa</option>
-              <option value="casa">Home gym</option>
-              <option value="ar livre">Ao ar livre</option>
-              <option value="hibrido">Híbrido</option>
+              <option value="">Selecionar</option>
+              <!-- Buckets genericos (academia/casa/ar livre/hibrido) removidos em 2026-09-02:
+                         classificacao desnecessaria. As opcoes reais vem dos locais do personal
+                         (LIBS.locais), preenchidas por JS. -->
             </select>
           </div>
         </div>
@@ -1808,10 +1863,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   <label>Local de treino</label>
                   <select id="a-local" onchange="onAnamneseChange()">
                     <option value="">Selecionar</option>
-                    <option value="academia">Academia completa</option>
-                    <option value="casa">Em casa (equipamentos limitados)</option>
-                    <option value="ar livre">Ao ar livre (sem equipamentos)</option>
-                    <option value="híbrido">Híbrido (academia + casa)</option>
+                    <!-- Buckets genericos (academia/casa/ar livre/hibrido) removidos em 2026-09-02:
+                         classificacao desnecessaria. As opcoes reais vem dos locais do personal
+                         (LIBS.locais), preenchidas por JS. -->
                   </select>
                 </div>
                 <div class="field" style="grid-column:1/-1">
@@ -2301,10 +2355,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
                   <label>Local de treino</label>
                   <select id="pr-local">
                     <option value="">Selecionar</option>
-                    <option value="academia">Academia completa</option>
-                    <option value="casa">Em casa (equipamentos limitados)</option>
-                    <option value="ar livre">Ao ar livre (sem equipamentos)</option>
-                    <option value="híbrido">Híbrido (academia + casa)</option>
+                    <!-- Buckets genericos (academia/casa/ar livre/hibrido) removidos em 2026-09-02:
+                         classificacao desnecessaria. As opcoes reais vem dos locais do personal
+                         (LIBS.locais), preenchidas por JS. -->
                   </select>
                 </div>
               </div>
@@ -2433,13 +2486,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <div id="s3-volume" style="border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);margin-bottom:14px;overflow:hidden">
                 <div id="step2-perfil-ctx-anchor"></div>
                 <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer" onclick="toggleVolumeCaixa()">
-                  <span id="vol-collapse-icone" style="font-size:12px;color:var(--text3);transition:transform .15s">▾
-                  <div style="flex:1">
+                  <span id="vol-collapse-icone" style="font-size:12px;color:var(--text3);transition:transform .15s;flex-shrink:0">▾</span>
+                  <div style="flex:1;min-width:0">
                     <div class="section-label" style="margin-bottom:2px">Volume por Grupo Muscular</div>
                     <div style="font-size:13px;color:var(--text3)">Já calculado pelo sistema a partir do objetivo, nível e sexo — ajuste se necessário.</div>
                   </div>
-                  <div style="display:flex;align-items:center;gap:8px" onclick="event.stopPropagation()">
-                    <span style="font-size:13px;color:var(--text3)">Sér/exercício (padrão):
+                  <div style="display:flex;align-items:center;gap:8px;flex-shrink:0" onclick="event.stopPropagation()">
+                    <span style="font-size:13px;color:var(--text3);white-space:nowrap">Sér/exercício (padrão):</span>
                     <div style="display:flex;align-items:center">
                       <button id="btn-series-menos" style="width:22px;height:28px;background:var(--bg2);border:1px solid var(--border);border-radius:3px 0 0 3px;color:var(--text2);font-size:13px;cursor:pointer;line-height:1;padding:0">−</button>
                       <input type="number" id="vol-series" min="1" max="8" style="width:3.2em;background:var(--bg3);border-top:1px solid var(--border);border-bottom:1px solid var(--border);border-left:none;border-right:none;padding:4px 6px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;text-align:center" oninput="resetSeriesGlobal()">
@@ -2483,18 +2536,18 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <!-- ── CAIXA 2: MODELOS DE DIVISÃO (filtrados pelo objetivo, ajustados ao volume acima) ─────────── -->
               <div id="s3-divisao" style="border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);margin-bottom:16px;overflow:hidden">
                 <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer" onclick="toggleDivisaoCaixa()">
-                  <span id="div-collapse-icone" style="font-size:12px;color:var(--text3);transition:transform .15s">▾
-                  <div class="section-label" style="margin-bottom:0;flex:1">Modelo de Divisão</div>
+                  <span id="div-collapse-icone" style="font-size:12px;color:var(--text3);transition:transform .15s;flex-shrink:0">▾</span>
+                  <div class="section-label" style="margin-bottom:0;flex:1;min-width:0">Modelo de Divisão</div>
                   <!-- Limite de séries por sessão -->
                   <div style="display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;flex-shrink:0" onclick="event.stopPropagation()">
-                    <span style="font-size:13px;color:var(--text3)">Limite séries/sessão:
+                    <span style="font-size:13px;color:var(--text3);white-space:nowrap">Limite séries/sessão:</span>
                     <button id="btn-lim-menos" style="width:20px;height:22px;background:var(--bg2);border:1px solid var(--border);border-radius:3px 0 0 3px;color:var(--text2);font-size:13px;cursor:pointer;padding:0;line-height:1">−</button>
                     <input type="number" id="lim-sessao" min="4" max="60"
                       style="width:3.2em;background:var(--bg4);border-top:1px solid var(--border);border-bottom:1px solid var(--border);border-left:none;border-right:none;padding:3px 4px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;text-align:center"
                       oninput="onLimSessaoChange()">
                     <button id="btn-lim-mais" style="width:20px;height:22px;background:var(--bg2);border:1px solid var(--border);border-radius:0 3px 3px 0;color:var(--text2);font-size:13px;cursor:pointer;padding:0;line-height:1">+</button>
-                    <span style="font-size:13px;color:var(--text3);margin-left:2px">séries
-                    <span id="lim-badge" style="font-size:13px;font-family:var(--mono);padding:1px 5px;border-radius:3px;margin-left:4px;display:inline-block;min-width:8.5em;text-align:center;white-space:nowrap;flex-shrink:0">
+                    <span style="font-size:13px;color:var(--text3);margin-left:2px">séries</span>
+                    <span id="lim-badge" style="font-size:13px;font-family:var(--mono);padding:1px 5px;border-radius:3px;margin-left:4px;display:inline-block;min-width:8.5em;text-align:center;white-space:nowrap;flex-shrink:0"></span>
                   </div>
                 </div>
 
@@ -2623,13 +2676,17 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 </div>
 
 
+<script src="js/ids.js"></script>
+<script src="js/arquivo-store.js"></script>
 <script src="js/avaliacao.js"></script>
 <script src="js/exercicios-db.js"></script>
 <script src="js/treinos-store.js"></script>
 <script src="js/prescricao-motor.js"></script>
+  <script src="js/dashboard.js"></script>
 <script src="js/integracao-google.js"></script>
 <script src="js/biblioteca-exercicios.js"></script>
 <script src="js/init-seed.js"></script>
+<script src="js/arquivo-ui.js"></script>
 
 <script src="js/supabase-auth.js"></script>
 

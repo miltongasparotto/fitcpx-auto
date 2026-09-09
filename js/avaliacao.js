@@ -153,7 +153,7 @@ function confirmNewStudent(){ abrirNovoAluno(); } // legado
 
 function abrirNovoAluno(){
   hide('modal-overlay');
-  const s = { id:Date.now(), perfil:{nome:''}, anamnese:{}, prescricao:{}, reavaliacao:null };
+  const s = { id:novoId(), perfil:{nome:''}, anamnese:{}, prescricao:{}, reavaliacao:null };
   students.push(s);
   renderStudentList();
   _formDirty = false;
@@ -372,7 +372,10 @@ function limparFiltrosAlunos(){
 
 function confirmarDeletarAluno(id){
   const s=students.find(x=>x.id===id); if(!s) return;
-  if(!confirm(`Remover o aluno "${s.perfil?.nome||'—'}"? Esta ação não pode ser desfeita.`)) return;
+  if(!confirmarExclusao('aluno', s.perfil?.nome||'—')) return;
+  // O aluno vai inteiro para o Arquivo — avaliações e treinos moram dentro do
+  // próprio objeto, então voltam junto se ele for restaurado.
+  arquivarItem('aluno', s, { ownerId: s.id, ownerNome: s.perfil?.nome });
   students = students.filter(x=>x.id!==id);
   if(activeId===id){
     activeId=null;
@@ -382,7 +385,7 @@ function confirmarDeletarAluno(id){
   }
   // Não usa saveStudent() aqui: se o aluno excluído era o ativo, activeId fica null e
   // getActive() retornaria undefined, abortando o save sem persistir a exclusão.
-  try{ localStorage.setItem('acm-students', JSON.stringify(students)); }catch(e){}
+  try{ localStorage.setItem(lsKey('acm-students'), JSON.stringify(students)); }catch(e){}
   supaAutoSave();
   renderScreenAlunos();
 }
@@ -405,12 +408,12 @@ let _pendingNavFn = null;
 
 let _loadingData = false;
 function _markDirty(){ if(_loadingData) return; _formDirty = true; }
-function _clearDirty(){ _formDirty = false; try{ const k='acm-draft-'+(activeId||'_'); localStorage.removeItem(k); localStorage.removeItem(k.replace('acm-draft-','acm-draft-nav-')); }catch(e){} }
+function _clearDirty(){ _formDirty = false; try{ const k=lsKey('acm-draft-'+(activeId||'_')); localStorage.removeItem(k); localStorage.removeItem(k.replace('acm-draft-','acm-draft-nav-')); }catch(e){} }
 
 function _saveDraft(){
   const s=getActive(); if(!s) return;
   try{
-    localStorage.setItem('acm-draft-'+(activeId||'_'), JSON.stringify(s));
+    localStorage.setItem(lsKey('acm-draft-'+(activeId||'_')), JSON.stringify(s));
     // Also save current tab/subtab so recovery can restore navigation
     let tab='perfil';
     for(const t of ['perfil','anamnese','prescricao','evolucao']){
@@ -421,13 +424,13 @@ function _saveDraft(){
     for(const t of _SUBTABS){
       if(document.getElementById('subtab-'+t)?.classList.contains('active')){ subtab=t; break; }
     }
-    localStorage.setItem('acm-draft-nav-'+(activeId||'_'), JSON.stringify({tab,subtab,antroEditId:(typeof _antroEditId!=='undefined'?_antroEditId:null)}));
+    localStorage.setItem(lsKey('acm-draft-nav-'+(activeId||'_')), JSON.stringify({tab,subtab,antroEditId:(typeof _antroEditId!=='undefined'?_antroEditId:null)}));
   }catch(e){}
 }
 
 function _revertStudent(){
   try{
-    const saved=JSON.parse(localStorage.getItem('acm-students')||'[]');
+    const saved=JSON.parse(localStorage.getItem(lsKey('acm-students'))||'[]');
     const snap=saved.find(s=>s.id===activeId);
     if(snap){ const idx=students.findIndex(s=>s.id===activeId); if(idx>=0) students[idx]=snap; }
   }catch(e){}
@@ -496,12 +499,12 @@ function _draftRecoveryIgnorar(){
   // Force dirty=false FIRST so no guard or beforeunload fires
   _formDirty = false;
   try{
-    const saved = JSON.parse(localStorage.getItem('acm-students')||'[]');
+    const saved = JSON.parse(localStorage.getItem(lsKey('acm-students'))||'[]');
     const snap  = saved.find(s=>s.id===window._draftRecoveryId);
     if(snap){ const i2=students.findIndex(s=>s.id===window._draftRecoveryId); if(i2>=0) students[i2]=snap; }
     // Remove draft by both possible keys
     localStorage.removeItem(window._draftRecoveryKey);
-    localStorage.removeItem('acm-draft-' + activeId);
+    localStorage.removeItem(lsKey('acm-draft-' + activeId));
   }catch(e){}
   _formDirty = false; // ensure stays false
   loadStudentData(getActive());
@@ -547,7 +550,11 @@ function detectarDraftsNaoSalvos(){
     for(let i=0; i<localStorage.length; i++){
       const key = localStorage.key(i);
       if(!key || !key.startsWith('acm-draft-') || key.includes('-nav-')) continue;
-      const rawId = key.replace('acm-draft-','');
+      // As chaves agora terminam em '::<user_id>'. Sem este filtro, o personal
+      // logado veria os rascunhos pendentes da OUTRA conta do mesmo navegador.
+      const sufixo = '::' + (getLsUser() || 'anon');
+      if(!key.endsWith(sufixo)) continue;
+      const rawId = key.replace('acm-draft-','').slice(0, -sufixo.length);
       const numId = isNaN(rawId) ? rawId : Number(rawId);
       const savedStudent = students.find(s=>s.id===numId || s.id===rawId);
       let student = savedStudent;
@@ -617,11 +624,11 @@ function _bannerVerAlteracoes(){
   if(typeof selectStudent==='function') selectStudent(first.student.id);
   // Restore the tab they were editing before the refresh
   try{
-    let navRaw = localStorage.getItem('acm-draft-nav-'+first.student.id);
+    let navRaw = localStorage.getItem(lsKey('acm-draft-nav-'+first.student.id));
     if(!navRaw){
       // Try numeric id (id may be stored as number)
       const numId = Number(first.student.id);
-      navRaw = localStorage.getItem('acm-draft-nav-'+numId);
+      navRaw = localStorage.getItem(lsKey('acm-draft-nav-'+numId));
     }
     if(navRaw){
       const nav=JSON.parse(navRaw);
@@ -661,7 +668,7 @@ function selectStudent(id){
   _formDirty = false; // reset flag only — do NOT delete draft for the incoming student
   activeId = id;
   // Check for unrestored draft from previous session
-  const draftKey = 'acm-draft-' + id;
+  const draftKey = lsKey('acm-draft-' + id);
   try{
     const draftRaw = localStorage.getItem(draftKey);
     if(draftRaw){
@@ -1236,56 +1243,60 @@ function toggleTriagemDetalhe(){
 
 // Utilitário: exercício tem essa indicação/contraindicação na lista (`ind`/`ci`
 // agora são arrays de {id,nome} — reimportação de 2026-08-28).
-const _temCi = (e, nome) => (e.ci||[]).some(c => c.nome === nome);
+const _temCi = (e, chave) => (e.ci||[]).some(c => c.chave === chave);
 
 // Mapa: flag clínica → exercícios bloqueados por critério
 // 'ci' = usa campo ci (lista, direto da planilha) | 'pad' = padrão de movimento (id/nome oficial da planilha)
+// CHAVES DE FLAG CLINICA — identificadores internos (ASCII, sem acento, sem
+// espaco). Nunca sao exibidos: quem aparece na tela e `motivo`. Produzidos por
+// extrairFlagsClinicas() e consumidos por FLAGS_FILTRO / FLAGS_PRIORIDADE /
+// FLAGS_TIPO_CADEIA — os tres precisam usar exatamente a mesma grafia.
 const FLAGS_FILTRO = {
   // Lesões ativas
-  'Dores nos Joelhos': {
-    bloqueio: e => _temCi(e, 'Dores nos Joelhos'),
+  'DoresNosJoelhos': {
+    bloqueio: e => _temCi(e, 'DoresNosJoelhos'),
     motivo: 'Contraindicado: dor no joelho',
   },
-  'Dores Lombares': {
-    bloqueio: e => _temCi(e, 'Dores Lombares'),
+  'DoresLombares': {
+    bloqueio: e => _temCi(e, 'DoresLombares'),
     motivo: 'Contraindicado: dor lombar',
   },
-  'Dores nos Ombros': {
-    bloqueio: e => _temCi(e, 'Dores nos Ombros'),
+  'DoresNosOmbros': {
+    bloqueio: e => _temCi(e, 'DoresNosOmbros'),
     motivo: 'Contraindicado: dor no ombro',
   },
-  'Dores nos Cotovelos': {
-    bloqueio: e => _temCi(e, 'Dores nos Cotovelos'),
+  'DoresNosCotovelos': {
+    bloqueio: e => _temCi(e, 'DoresNosCotovelos'),
     motivo: 'Contraindicado: dor no cotovelo',
   },
 
   // Flags funcionais — FMS foi removido do sistema (confirmado 2026-08-28); o
   // campo `tr` (tags_restricao) também saiu do banco (nunca foi implementado
   // de fato). As regras abaixo continuam só pela parte baseada em nome.
-  'Encurtamento Isquiotibiais': {
+  'EncurtamentoIsquiotibiais': {
     bloqueio: e => e.n.toLowerCase().includes('levantamento terra') && !e.n.toLowerCase().includes('romeno') && !e.n.toLowerCase().includes('stiff'),
     motivo: 'Encurtamento de isquiotibiais — terra convencional contraindicado',
   },
-  'Valgo Joelho': {
-    bloqueio: e => (e.pad?.nome === 'Joelho bilateral simétrico' && e.r?.nome !== 'Máquina' && !e.n.toLowerCase().includes('leg press') &&
-                    !e.n.toLowerCase().includes('hack') && e.nv?.nome !== 'Iniciante' &&
+  'ValgoJoelho': {
+    bloqueio: e => (e.pad?.chave === 'JoelhoBilateralSimetrico' && e.r?.chave !== 'Maquina' && !e.n.toLowerCase().includes('leg press') &&
+                    !e.n.toLowerCase().includes('hack') && e.nv?.chave !== 'Iniciante' &&
                     e.n.toLowerCase().includes('barra') && e.n.toLowerCase().includes('agachamento')),
     motivo: 'Valgo de joelho — agachamento profundo com barra contraindicado',
   },
-  'Ombro Limitado D': {
+  'OmbroLimitadoD': {
     // `e.ovh` foi removido — overhead agora é detectado pelo Padrão de
     // Movimento oficial "Empurrar vertical" (decisão 2026-08-28, ponto 20).
-    bloqueio: e => e.pad?.nome === 'Empurrar vertical' && e.g.some(x=>textoIgual(x.nome, 'Deltoide')) &&
+    bloqueio: e => e.pad?.chave === 'EmpurrarVertical' && e.g.some(x=>x.chave === 'Deltoide') &&
                    (e.n.toLowerCase().includes('desenvolvimento') || e.n.toLowerCase().includes('arnold')),
     motivo: 'Ombro D limitado — press vertical contraindicado no lado afetado',
   },
-  'Ombro Limitado E': {
-    bloqueio: e => e.pad?.nome === 'Empurrar vertical' && e.g.some(x=>textoIgual(x.nome, 'Deltoide')) &&
+  'OmbroLimitadoE': {
+    bloqueio: e => e.pad?.chave === 'EmpurrarVertical' && e.g.some(x=>x.chave === 'Deltoide') &&
                    (e.n.toLowerCase().includes('desenvolvimento') || e.n.toLowerCase().includes('arnold')),
     motivo: 'Ombro E limitado — press vertical contraindicado no lado afetado',
   },
-  'Ombro Limitado bilateral': {
-    bloqueio: e => e.pad?.nome === 'Empurrar vertical' && e.g.some(x=>textoIgual(x.nome, 'Deltoide')),
+  'OmbroLimitadoBilateral': {
+    bloqueio: e => e.pad?.chave === 'EmpurrarVertical' && e.g.some(x=>x.chave === 'Deltoide'),
     motivo: 'Ombro limitado bilateral — overhead contraindicado',
   },
 
@@ -1293,14 +1304,14 @@ const FLAGS_FILTRO = {
   // impacto articular por sobrepeso vira cálculo futuro combinando tipo de
   // exercício + avaliação do aluno, ainda não desenhado). Regra desativada
   // até esse cálculo existir — não bloqueia nada por enquanto.
-  'Baixo Impacto': {
+  'BaixoImpacto': {
     bloqueio: e => false,
     motivo: 'Alto impacto — não recomendado com IMC ≥ 30',
   },
 
   // FMS Score baixo — campo `tr` removido; mantém só o corte por nível.
-  'FMS Score Baixo': {
-    bloqueio: e => e.nv?.nome === 'Avançado',
+  'FmsScoreBaixo': {
+    bloqueio: e => e.nv?.chave === 'Avancado',
     motivo: 'FMS ≤ 13 — exercícios avançados bloqueados na fase corretiva',
   },
 };
@@ -1327,16 +1338,16 @@ const FLAGS_FILTRO = {
 // Bilateral com Carga Unilateral — os dois permitem trabalhar um lado sem
 // depender do outro (carga independente por lado), o que ajuda a corrigir
 // assimetria. "Bilateral" puro não entra porque a carga é compartilhada.
-const _isUniOuCU = e => ['Unilateral','Bilateral com Carga Unilateral'].includes(e.lateralidade?.nome);
-const PADS_JOELHO_QUADRIL_ASSIMETRIA = ['Joelho bilateral simétrico','Joelho unilateral','Joelho bilateral assimétrico','Quadril bilateral','Quadril unilateral'];
-const PADS_EMPURRAR_PUXAR_ASSIMETRIA = ['Empurrar horizontal','Empurrar vertical','Puxar horizontal','Puxar vertical'];
+const _isUniOuCU = e => ['Unilateral','BilateralCargaUnilateral'].includes(e.lateralidade?.chave);
+const PADS_JOELHO_QUADRIL_ASSIMETRIA = ['JoelhoBilateralSimetrico','JoelhoUnilateral','JoelhoBilateralAssimetrico','QuadrilBilateral','QuadrilUnilateral'];
+const PADS_EMPURRAR_PUXAR_ASSIMETRIA = ['EmpurrarHorizontal','EmpurrarVertical','PuxarHorizontal','PuxarVertical'];
 const FLAGS_PRIORIDADE = {
   // MMII (membros inferiores) e MMSS (membros superiores) — segmentado como pedido.
-  'Assimetria MMII':   e => _isUniOuCU(e) && e.pad && PADS_JOELHO_QUADRIL_ASSIMETRIA.includes(e.pad.nome),
-  'Assimetria MMSS':   e => _isUniOuCU(e) && ((e.pad && PADS_EMPURRAR_PUXAR_ASSIMETRIA.includes(e.pad.nome)) || e.g.some(x=>textoIgual(x.nome, 'Biceps'))),
-  'Core Assimétrico':  e => e.pad?.nome === 'Flexão Lateral de Tronco',
-  'Isquio Encurtado':  e => e.g.some(x=>textoIgual(x.nome, 'Isquiossurais')) && (e.r?.nome === 'Máquina' || e.n.toLowerCase().includes('cadeira flexora') || e.n.toLowerCase().includes('flexão de joelho')),
-  'Valgo Corretivo':   e => e.g.some(x=>textoIgual(x.nome, 'Gluteos')) && e.n.toLowerCase().includes('abdução'),
+  'AssimetriaMMII':   e => _isUniOuCU(e) && e.pad && PADS_JOELHO_QUADRIL_ASSIMETRIA.includes(e.pad.chave),
+  'AssimetriaMMSS':   e => _isUniOuCU(e) && ((e.pad && PADS_EMPURRAR_PUXAR_ASSIMETRIA.includes(e.pad.chave)) || e.g.some(x=>x.chave === 'Biceps')),
+  'CoreAssimetrico':  e => e.pad?.chave === 'FlexaoLateralDeTronco',
+  'IsquioEncurtado':  e => e.g.some(x=>x.chave === 'Isquiossurais') && (e.r?.chave === 'Maquina' || e.n.toLowerCase().includes('cadeira flexora') || e.n.toLowerCase().includes('flexão de joelho')),
+  'ValgoCorretivo':   e => e.g.some(x=>x.chave === 'Gluteos') && e.n.toLowerCase().includes('abdução'),
 };
 
 // Regra 2 (esboço 2026-08-26) — condição clínica do aluno → preferência de tipo
@@ -1347,13 +1358,15 @@ const FLAGS_PRIORIDADE = {
 // Cadeia cinética trocou de CCA/CCF/Complementar/Misto (código antigo, com
 // mapeamento inconsistente) pro binário oficial da planilha: 'Aberta'/'Fechada'
 // — CCF = Fechada, CCA = Aberta, por definição (2026-08-28).
+// Valores são CHAVES do banco (ASCII, sem acento) — comparados contra
+// e.tp[].chave / e.cad.chave em combinaComCondicao (prescricao-motor.js).
 const FLAGS_TIPO_CADEIA = {
-  'Dores nos Joelhos':   { cad: ['Fechada'], tp: ['Estabilidade','Mobilidade'] },
-  'Dores Lombares':      { cad: ['Fechada'], tp: ['Estabilidade'] },
-  'Dores nos Ombros':    { cad: ['Aberta'],  tp: ['Estabilidade','Mobilidade'] },
-  'Dores nos Cotovelos': { cad: ['Fechada'], tp: [] },
-  'Baixo Impacto':       { cad: [],          tp: ['Estabilidade','Aeróbio'] },
-  'FMS Score Baixo':     { cad: ['Fechada'], tp: ['Estabilidade','Mobilidade'] },
+  'DoresNosJoelhos':   { cad: ['Fechada'], tp: ['Estabilidade','Mobilidade'] },
+  'DoresLombares':      { cad: ['Fechada'], tp: ['Estabilidade'] },
+  'DoresNosOmbros':    { cad: ['Aberta'],  tp: ['Estabilidade','Mobilidade'] },
+  'DoresNosCotovelos': { cad: ['Fechada'], tp: [] },
+  'BaixoImpacto':       { cad: [],          tp: ['Estabilidade','Aerobio'] },
+  'FmsScoreBaixo':     { cad: ['Fechada'], tp: ['Estabilidade','Mobilidade'] },
 };
 
 // Agrega as preferências de tipo/cadeia de todas as flags clínicas ativas do
@@ -1377,44 +1390,44 @@ function extrairFlagsClinicas(){
   const flags = [];
 
   // Lesões diretas do perfil
-  if((p.lesoes||'').includes('Joelho'))    flags.push('Dores nos Joelhos');
-  if((p.lesoes||'').includes('Lombar'))    flags.push('Dores Lombares');
-  if((p.lesoes||'').includes('Ombro'))     flags.push('Dores nos Ombros');
-  if((p.lesoes||'').includes('Cotovelo'))  flags.push('Dores nos Cotovelos');
+  if((p.lesoes||'').includes('Joelho'))    flags.push('DoresNosJoelhos');
+  if((p.lesoes||'').includes('Lombar'))    flags.push('DoresLombares');
+  if((p.lesoes||'').includes('Ombro'))     flags.push('DoresNosOmbros');
+  if((p.lesoes||'').includes('Cotovelo'))  flags.push('DoresNosCotovelos');
 
   // Preferências de exercício (a-preferencias)
   const pref = a.preferencias || '';
-  if(pref.includes('Joelhos'))  flags.push('Dores nos Joelhos');
-  if(pref.includes('Lombares')) flags.push('Dores Lombares');
-  if(pref.includes('Ombros'))   flags.push('Dores nos Ombros');
-  if(pref.includes('Cotovelos'))flags.push('Dores nos Cotovelos');
+  if(pref.includes('Joelhos'))  flags.push('DoresNosJoelhos');
+  if(pref.includes('Lombares')) flags.push('DoresLombares');
+  if(pref.includes('Ombros'))   flags.push('DoresNosOmbros');
+  if(pref.includes('Cotovelos'))flags.push('DoresNosCotovelos');
 
   // FMS flags funcionais
   const isquio_d = a.isquio_d||'', isquio_e = a.isquio_e||'';
   if(['Moderado','Acentuado'].some(v => isquio_d.includes(v) || isquio_e.includes(v)))
-    flags.push('Encurtamento Isquiotibiais');
+    flags.push('EncurtamentoIsquiotibiais');
 
   const slsq_flag = a.fms_slsq_flag||'', ohsa_flag = a.fms_ohsa_flag||'';
   if(slsq_flag.includes('Valgo') || ohsa_flag.includes('Valgo'))
-    flags.push('Valgo Joelho');
+    flags.push('ValgoJoelho');
 
   const shFlag = a.fms_shoulder_flag||'';
-  if(shFlag.includes('Limitação D'))        flags.push('Ombro Limitado D');
-  if(shFlag.includes('Limitação E'))        flags.push('Ombro Limitado E');
-  if(shFlag.includes('Limitação bilateral'))flags.push('Ombro Limitado bilateral');
+  if(shFlag.includes('Limitação D'))        flags.push('OmbroLimitadoD');
+  if(shFlag.includes('Limitação E'))        flags.push('OmbroLimitadoE');
+  if(shFlag.includes('Limitação bilateral'))flags.push('OmbroLimitadoBilateral');
   if(shFlag.includes('Limitação D') || shFlag.includes('Limitação E') || shFlag.includes('bilateral'))
-    flags.push('Ombro Limitado');
+    flags.push('OmbroLimitado');
 
   // IMC
   const peso = parseFloat(a.peso), alt = parseFloat(a.altura);
-  if(peso && alt && peso/Math.pow(alt/100,2) >= 30) flags.push('Baixo Impacto');
+  if(peso && alt && peso/Math.pow(alt/100,2) >= 30) flags.push('BaixoImpacto');
 
   // FMS score
   const fmsIds = ['fms_ohsa','fms_slsq','fms_hurdle','fms_lunge','fms_shoulder','fms_aslr','fms_rotary'];
   const scores = fmsIds.map(k=>parseInt(a[k])||0);
   const validos = scores.filter(v=>v>0);
   if(validos.length >= 4 && scores.reduce((s,v)=>s+v,0) <= 13)
-    flags.push('FMS Score Baixo');
+    flags.push('FmsScoreBaixo');
 
   // Prioridades por assimetria
   const prioridades = [];
@@ -1424,22 +1437,35 @@ function extrairFlagsClinicas(){
   const pld    = parseFloat(a.prancha_lat_d), ple = parseFloat(a.prancha_lat_e);
   const grD    = parseFloat(a.grip_d), grE = parseFloat(a.grip_e);
 
-  if(coxaD&&coxaE&&Math.abs(coxaD-coxaE)>=1)   prioridades.push('Assimetria MMII');
-  if(bracoD&&bracoE&&Math.abs(bracoD-bracoE)>=1) prioridades.push('Assimetria MMSS');
-  if(eqD&&eqE&&Math.abs(eqD-eqE)>=3)            prioridades.push('Assimetria MMII');
-  if(pld&&ple&&(Math.abs(pld-ple)/Math.max(pld,ple))>0.10) prioridades.push('Core Assimétrico');
-  if(grD&&grE&&Math.abs(grD-grE)>=2)            prioridades.push('Assimetria MMSS');
+  if(coxaD&&coxaE&&Math.abs(coxaD-coxaE)>=1)   prioridades.push('AssimetriaMMII');
+  if(bracoD&&bracoE&&Math.abs(bracoD-bracoE)>=1) prioridades.push('AssimetriaMMSS');
+  if(eqD&&eqE&&Math.abs(eqD-eqE)>=3)            prioridades.push('AssimetriaMMII');
+  if(pld&&ple&&(Math.abs(pld-ple)/Math.max(pld,ple))>0.10) prioridades.push('CoreAssimetrico');
+  if(grD&&grE&&Math.abs(grD-grE)>=2)            prioridades.push('AssimetriaMMSS');
 
-  if(flags.includes('Encurtamento Isquiotibiais')) prioridades.push('Isquio Encurtado');
-  if(flags.includes('Valgo Joelho'))               prioridades.push('Valgo Corretivo');
+  if(flags.includes('EncurtamentoIsquiotibiais')) prioridades.push('IsquioEncurtado');
+  if(flags.includes('ValgoJoelho'))               prioridades.push('ValgoCorretivo');
 
   return { bloqueios: [...new Set(flags)], prioridades: [...new Set(prioridades)] };
 }
 
-function filtrarExercicios(grupo){
-  // Retorna exercícios do grupo com status: 'ok' | 'prioritario' | 'bloqueado' | 'motivo'
+// Retorna exercícios do grupo com status: 'ok' | 'prioritario' | 'bloqueado' | 'motivo'.
+//
+// `ctx` (2026-09-07) é o CORTE INICIAL — nível do aluno + resistências do local
+// de treino. Sem ele esta função devolvia o banco inteiro do grupo, e a coluna
+// "Filtro" do step 2 mostrava o mesmo número para todo nível e todo local,
+// divergindo do pool que o motor realmente sorteia. Agora delega o corte pra
+// poolBaseExercicios() (prescricao-motor.js), a mesma função que filtrarExerciciosFicha
+// usa. `ctx` opcional pra não quebrar chamada antiga: sem ele, cai no
+// comportamento anterior (só grupo).
+function filtrarExercicios(grupo, ctx){
   const { bloqueios, prioridades } = extrairFlagsClinicas();
-  const pool = DB_EXERCICIOS.filter(e => e.g.some(x => x.nome === grupo));
+  // `grupo` vem de GRUPOS_MAPA ('Biceps', 'RetoAbdominal'). O banco agora
+  // carrega o campo `chave` no mesmo formato ASCII — comparação direta, sem
+  // normalização em runtime (refatoração de identificadores 2026-09-02).
+  const pool = (ctx && typeof poolBaseExercicios === 'function')
+    ? poolBaseExercicios(grupo, null, ctx.resist, ctx.nivel, ctx.lesoes)
+    : DB_EXERCICIOS.filter(e => e.g.some(x => x.chave === grupo));
 
   return pool.map(e => {
     // Verificar bloqueios
@@ -1460,13 +1486,17 @@ function filtrarExercicios(grupo){
   });
 }
 
-function contarFiltros(grupo){
-  const lista = filtrarExercicios(grupo);
+function contarFiltros(grupo, ctx){
+  const lista = filtrarExercicios(grupo, ctx);
+  const ok        = lista.filter(e=>e.status==='ok').length;
+  const prio      = lista.filter(e=>e.status==='prioritario').length;
+  const bloqueado = lista.filter(e=>e.status==='bloqueado').length;
   return {
-    total:     lista.length,
-    ok:        lista.filter(e=>e.status==='ok').length,
-    prio:      lista.filter(e=>e.status==='prioritario').length,
-    bloqueado: lista.filter(e=>e.status==='bloqueado').length,
+    total: lista.length,
+    ok, prio, bloqueado,
+    // `disponivel` = o que o motor pode de fato sortear (ok + prioritário).
+    // Zero aqui significa grupo intreinável no nível/local escolhido.
+    disponivel: ok + prio,
   };
 }
 
@@ -2104,10 +2134,20 @@ function _populateLocalSelect(valorSalvo){
   const sel = document.getElementById('a-local');
   if(!sel) return;
   const locaisCustom = (typeof LIBS !== 'undefined' && LIBS?.locais) ? LIBS.locais : [];
+  // value = 'libs:ID', mesmo formato do #pr-local. Antes gravava o NOME do local
+  // ('Academia XYZ'), que getResistPermitida() nao sabe resolver — a anamnese e a
+  // prescricao falavam idiomas diferentes e o local escolhido na avaliacao nao
+  // restringia nada. (2026-09-02)
   sel.innerHTML = '<option value="">Selecionar</option>' +
-    '<option value="academia">Academia completa (todos os equipamentos)</option>' +
-    locaisCustom.map(l=>`<option value="${l.nome||l.id}">${l.nome||l.id}</option>`).join('');
-  if(valorSalvo) sel.value = valorSalvo;
+    locaisCustom.map(l=>`<option value="libs:${l.id}">${l.nome||l.id}</option>`).join('');
+  if(valorSalvo){
+    sel.value = valorSalvo;
+    // Dado antigo guardava o nome — reaponta para o libs:ID correspondente.
+    if(!sel.value && !String(valorSalvo).startsWith('libs:')){
+      const achado = locaisCustom.find(l => (l.nome||'') === valorSalvo);
+      if(achado) sel.value = 'libs:' + achado.id;
+    }
+  }
 }
 
 // ─── EXERCISE PICKER — preferidos e a evitar ─────────────────────────────────
@@ -2465,7 +2505,7 @@ function antroSalvarAvaliacao(){
     if(idx>=0) s.avaliacoesAntro[idx] = Object.assign({}, s.avaliacoesAntro[idx], snap);
     else { snap.id=_antroEditId; s.avaliacoesAntro.push(snap); }
   } else {
-    snap.id = Date.now();
+    snap.id = novoId();
     s.avaliacoesAntro.push(snap);
   }
   s.avaliacoesAntro.sort((a,b)=>(b.data_avaliacao||'').localeCompare(a.data_avaliacao||''));
@@ -2489,7 +2529,7 @@ function autosalvarAvaliacaoAtual(){
   if(!s.avaliacoesAntro) s.avaliacoesAntro = [];
   const snap = antroSnapshotAtual();
   snap.responsavel = (typeof _supaUser!=='undefined' && _supaUser?.email) || 'Modo teste (local)';
-  if(!_antroEditId) _antroEditId = Date.now();
+  if(!_antroEditId) _antroEditId = novoId();
   const idx = s.avaliacoesAntro.findIndex(r=>r.id===_antroEditId);
   if(idx>=0) s.avaliacoesAntro[idx] = Object.assign({}, s.avaliacoesAntro[idx], snap);
   else { snap.id=_antroEditId; s.avaliacoesAntro.push(snap); }
@@ -2499,7 +2539,9 @@ attachAutosave('antro-form-view', autosalvarAvaliacaoAtual, () => { _markDirty()
 
 function antroExcluirAvaliacao(id){
   const s=getActive(); if(!s) return;
-  if(!confirm('Excluir esta avaliação? Esta ação não pode ser desfeita.')) return;
+  const av = (s.avaliacoesAntro||[]).find(r=>r.id===id); if(!av) return;
+  if(!confirmarExclusao('avaliacao', rotuloDoItem('avaliacao', av))) return;
+  arquivarItem('avaliacao', av, { ownerId: s.id, ownerNome: s.perfil?.nome });
   s.avaliacoesAntro = (s.avaliacoesAntro||[]).filter(r=>r.id!==id);
   saveStudent();
   renderAntroLista();
@@ -2919,9 +2961,17 @@ function calcMetaFinal(d, pesoMeta, gorduraPctMeta){
   if(avisoEl) avisoEl.remove();
   if(avisoEstimativa){
     const div=document.createElement('div');
-    div.id='meta-aviso-estimativa';
     div.innerHTML=avisoEstimativa;
-    body.closest('table').insertAdjacentElement('beforebegin', div.firstChild);
+    const el=div.firstElementChild;
+    if(el){
+      // O id tem que ir no elemento QUE ENTRA no DOM. Antes era setado no `div`
+      // descartado e inseria-se `div.firstChild` — sem id. Consequencia: a
+      // limpeza acima nunca achava o aviso, entao ele ACUMULAVA a cada recalculo
+      // e continuava na tela mesmo depois do personal informar o Musculo medido,
+      // dizendo "Musculo nao informado" sobre um dado que era medido.
+      el.id='meta-aviso-estimativa';
+      body.closest('table').insertAdjacentElement('beforebegin', el);
+    }
   }
 
   const deltas = {
@@ -3375,10 +3425,10 @@ function analisarMetaAvaliacao(){
   }
 
   const { bloqueios } = extrairFlagsClinicas();
-  if(bloqueios.includes('Baixo Impacto') && ['Forca','Esport'].includes(selectedObj)){
+  if(bloqueios.includes('BaixoImpacto') && ['Forca','Esport'].includes(selectedObj)){
     avisos.push('IMC ≥30 identificado na avaliação — objetivos de alto impacto/potência pedem cautela adicional na seleção de exercícios.');
   }
-  if(bloqueios.includes('Dores Lombares') && selectedObj==='Forca'){
+  if(bloqueios.includes('DoresLombares') && selectedObj==='Forca'){
     avisos.push('Dor lombar registrada — reforce técnica e considere adiar cargas máximas em padrões de dobradiça de quadril.');
   }
 
@@ -3433,15 +3483,26 @@ function preencherStep1DaAnamnese(){
   // pode ter dito "Emagrecimento" na Anamnese e o personal decidir prescrever
   // "Hipertrofia" — o treino responde à escolha feita aqui, a Anamnese do
   // aluno continua com o que ele relatou.
-  ['pr-objetivo-sec','pr-duracao','pr-horario','pr-local','pr-gosta','pr-evitar'].forEach(id=>{
+
+  // Popula locais personalizados do LIBS ANTES do setVal — assim as opções
+  // libs:X já existem quando tentamos restaurar o valor salvo no treino.
+  // O pr-local é intencionalmente excluído do forEach abaixo; populateLocalSelect
+  // já cuida de selecionar o valor correto (do treino ativo ou da anamnese).
+  if(typeof populateLocalSelect === 'function'){
+    // Prioridade: valor salvo no treino em andamento (_treinoEditId) > anamnese
+    const tLocal = (typeof _treinoEditId !== 'undefined' && _treinoEditId != null)
+      ? (getTreinoPorId(s, _treinoEditId)?.local || '')
+      : '';
+    populateLocalSelect(tLocal || a.local || '');
+  }
+
+  ['pr-objetivo-sec','pr-duracao','pr-horario','pr-gosta','pr-evitar'].forEach(id=>{
     if(!val(id)){
       const key = {'pr-objetivo-sec':'objetivo_sec','pr-duracao':'duracao','pr-horario':'horario',
-        'pr-local':'local','pr-gosta':'gosta','pr-evitar':'preferencias'}[id];
+        'pr-gosta':'gosta','pr-evitar':'preferencias'}[id];
       setVal(id, a[key]||'');
     }
   });
-  // Popula locais personalizados do LIBS no select pr-local (se existir a função)
-  if(typeof populateLocalSelect === 'function') populateLocalSelect();
   renderObjGrid();
   checkStep1();
 }

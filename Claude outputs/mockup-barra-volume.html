@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modelo — Barra de Status de Volume</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f9fafb;--bg2:#ffffff;--bg4:#f3f4f6;
+  --border:#e5e7eb;--border2:#d1d5db;
+  --accent:#16a34a;--text:#111827;--text2:#6b7280;--text3:#9ca3af;
+  --red:#dc2626;--amber:#ea580c;
+  --radius:6px;--mono:'IBM Plex Mono',monospace;--sans:'Inter',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;padding:24px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-size:19px;font-weight:700;margin-bottom:4px}
+.sub{font-size:13px;color:var(--text3);margin-bottom:22px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:18px 20px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.card-title{font-size:14px;font-weight:600;margin-bottom:3px}
+.card-sub{font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.55}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:6px 8px;font-size:10px;font-weight:600;color:var(--text3);
+   text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border)}
+td{padding:8px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.g{font-size:13px;font-weight:500}
+.num{font-family:var(--mono);font-size:12px;text-align:center}
+.ref{font-family:var(--mono);font-size:10px;color:var(--text3);text-align:center;white-space:nowrap}
+.st{font-size:11px;font-weight:600;white-space:nowrap}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
+
+/* ── BARRA ── */
+.bar{position:relative;height:12px;border-radius:3px;overflow:hidden;background:var(--bg4);min-width:210px}
+.z{position:absolute;top:0;bottom:0}
+.z-lo{background:rgba(220,38,38,.10)}
+.z-ac{background:rgba(234,88,12,.10)}
+.z-id{background:rgba(22,163,74,.13)}
+.tick{position:absolute;top:0;bottom:0;width:1px;background:rgba(17,24,39,.16)}
+.fill{position:absolute;top:2px;bottom:2px;border-radius:2px}
+/* marcador de posição — "onde este grupo está" */
+.mk{position:absolute;top:-2px;bottom:-2px;width:3px;border-radius:2px;
+    box-shadow:0 0 0 1.5px #fff, 0 1px 2px rgba(0,0,0,.25)}
+.scale{position:relative;height:13px;margin-top:3px;min-width:210px}
+.scale span{position:absolute;font-family:var(--mono);font-size:8.5px;color:var(--text3);transform:translateX(-50%);white-space:nowrap}
+
+.legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:10px 12px;
+        background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);margin-top:14px}
+.legend .it{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+.legend .sw{width:9px;height:9px;border-radius:2px}
+.legend .lb{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.06em;margin-right:2px}
+.foot{margin-top:10px;font-size:11px;color:var(--text3);text-align:right}
+.foot b{color:var(--accent);font-family:var(--mono)}
+.note{font-size:11.5px;color:var(--text2);line-height:1.65;background:var(--bg4);
+      border-left:2px solid var(--border2);padding:9px 12px;border-radius:0 4px 4px 0;margin-top:14px}
+.tag{display:inline-block;font-family:var(--mono);font-size:9px;padding:1px 6px;border-radius:3px;
+     background:var(--bg4);border:1px solid var(--border);color:var(--text3);margin-left:6px;vertical-align:middle}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Barra de Status de Volume — modelo</h1>
+<div class="sub">Duas réguas distintas: limite fisiológico do grupo (telas 1 e 2) · alvo do personal (tela 3)</div>
+
+<!-- ══ 1 ══ -->
+<div class="card">
+  <div class="card-title">1 · Tela de Volume por Grupo Muscular <span class="tag">Step 2</span></div>
+  <div class="card-sub">
+    Régua: MEV / MAV / MRV do grupo. O valor é uma <b>faixa</b> (Sér/sem mín–máx), então a barra
+    desenha a faixa inteira. Exemplo: masculino, intermediário, Hipertrofia.
+  </div>
+  <table id="t1"></table>
+  <div class="legend" id="lg1"></div>
+</div>
+
+<!-- ══ 2 ══ -->
+<div class="card">
+  <div class="card-title">2 · Volume semanal — tela de Prescrição / Exercícios <span class="tag">Step 3</span></div>
+  <div class="card-sub">
+    Mesma régua de 5 faixas. Séries reais da ficha montada — um número, marcado com
+    <b>um traço</b> na posição em que o grupo caiu.
+  </div>
+  <table id="t2"></table>
+  <div class="legend" id="lg2"></div>
+  <div class="foot">Total na semana: <b>99 séries</b></div>
+</div>
+
+<!-- ══ 3 ══ -->
+<div class="card">
+  <div class="card-title">3 · Grupos dentro do modelo de divisão <span class="tag">Step 2 · acordeão</span></div>
+  <div class="card-sub">
+    Régua diferente: aqui a pergunta é <b>“a divisão entrega o que eu escolhi?”</b> — então as zonas
+    são o alvo do personal (Sér/sem mín–máx da tela 1), não MEV/MAV/MRV. Três estados:
+    <b>Baixo · Escolhido · Alto</b>. Traço na posição do volume semanal que a divisão entrega.
+  </div>
+  <table id="t3"></table>
+  <div class="legend" id="lg3"></div>
+  <div class="note">
+    O limite fisiológico já foi julgado na tela 1, quando o alvo foi definido. Repetir MEV/MRV aqui
+    responderia uma pergunta que você já resolveu. Por isso Baixo e Alto são <b>laranja</b>, não
+    vermelho: são desvio do plano, não erro clínico.
+  </div>
+</div>
+
+<script>
+// ══ Tabela base — GRUPOS_MAPA ═══════════════════════════════════════════════
+const BASE = {
+  Peitoral:     {lbl:'Peito',       mev:8, mn:12, mx:20, mrv:22},
+  Latissimo:    {lbl:'Costas',      mev:8, mn:14, mx:22, mrv:25},
+  Deltoide:     {lbl:'Ombro',       mev:8, mn:16, mx:22, mrv:26},
+  Triceps:      {lbl:'Tríceps',     mev:6, mn:12, mx:18, mrv:22},
+  Biceps:       {lbl:'Bíceps',      mev:6, mn:14, mx:20, mrv:26},
+  Quadriceps:   {lbl:'Quadríceps',  mev:8, mn:12, mx:18, mrv:20},
+  Isquiossurais:{lbl:'Posteriores', mev:6, mn:10, mx:16, mrv:20},
+  Gluteos:      {lbl:'Glúteos',     mev:4, mn:8,  mx:16, mrv:20},
+  Panturrilhas: {lbl:'Panturrilha', mev:8, mn:12, mx:16, mrv:20},
+  RetoAbdominal:{lbl:'Abdômen',     mev:4, mn:8,  mx:16, mrv:20},
+};
+
+// ══ RÉGUA A — limite fisiológico (5 faixas) ═════════════════════════════════
+const COR_A = {
+  baixo:        {c:'var(--red)',    t:'Baixo'},
+  'aceitavel-': {c:'var(--amber)',  t:'Aceitável ↓'},
+  ideal:        {c:'var(--accent)', t:'Ideal'},
+  'aceitavel+': {c:'var(--amber)',  t:'Aceitável ↑'},
+  alto:         {c:'var(--red)',    t:'Alto'},
+};
+function classificarA(v, b){
+  if(v <  b.mev) return 'baixo';
+  if(v <  b.mn)  return 'aceitavel-';
+  if(v <= b.mx)  return 'ideal';
+  if(v <= b.mrv) return 'aceitavel+';
+  return 'alto';
+}
+const WA = [15,15,40,15,15], XA = [0,15,30,70,85,100];
+function posA(v, b){
+  if(v <= 0)     return 0;
+  if(v <  b.mev) return XA[0] + (v / b.mev) * WA[0];
+  if(v <  b.mn)  return XA[1] + ((v - b.mev) / (b.mn  - b.mev)) * WA[1];
+  if(v <= b.mx)  return XA[2] + ((v - b.mn ) / Math.max(1, b.mx - b.mn)) * WA[2];
+  if(v <= b.mrv) return XA[3] + ((v - b.mx ) / (b.mrv - b.mx )) * WA[3];
+  return Math.min(100, XA[4] + ((v - b.mrv) / (b.mrv * 0.25)) * WA[4]);
+}
+function reguaA(b, extra){
+  return `<div class="bar">
+    <div class="z z-lo" style="left:0;width:${WA[0]}%"></div>
+    <div class="z z-ac" style="left:${XA[1]}%;width:${WA[1]}%"></div>
+    <div class="z z-id" style="left:${XA[2]}%;width:${WA[2]}%"></div>
+    <div class="z z-ac" style="left:${XA[3]}%;width:${WA[3]}%"></div>
+    <div class="z z-lo" style="left:${XA[4]}%;width:${WA[4]}%"></div>
+    <div class="tick" style="left:${XA[1]}%"></div><div class="tick" style="left:${XA[2]}%"></div>
+    <div class="tick" style="left:${XA[3]}%"></div><div class="tick" style="left:${XA[4]}%"></div>
+    ${extra}</div>
+  <div class="scale">
+    <span style="left:${XA[1]}%">${b.mev}</span><span style="left:${XA[2]}%">${b.mn}</span>
+    <span style="left:${XA[3]}%">${b.mx}</span><span style="left:${XA[4]}%">${b.mrv}</span>
+  </div>`;
+}
+
+// ══ RÉGUA B — alvo do personal (3 faixas) ═══════════════════════════════════
+const COR_B = {
+  baixo:     {c:'var(--amber)',  t:'Baixo'},
+  escolhido: {c:'var(--accent)', t:'Escolhido'},
+  alto:      {c:'var(--amber)',  t:'Alto'},
+};
+function classificarB(v, alvoMin, alvoMax){
+  if(v <  alvoMin) return 'baixo';
+  if(v <= alvoMax) return 'escolhido';
+  return 'alto';
+}
+const WB = [30,40,30], XB = [0,30,70,100];
+function posB(v, mn, mx){
+  if(v <= 0)  return 0;
+  if(v <  mn) return XB[0] + (v / mn) * WB[0];
+  if(v <= mx) return XB[1] + ((v - mn) / Math.max(1, mx - mn)) * WB[1];
+  return Math.min(100, XB[2] + ((v - mx) / Math.max(1, mx * 0.6)) * WB[2]);
+}
+function reguaB(mn, mx, extra){
+  return `<div class="bar">
+    <div class="z z-ac" style="left:0;width:${WB[0]}%"></div>
+    <div class="z z-id" style="left:${XB[1]}%;width:${WB[1]}%"></div>
+    <div class="z z-ac" style="left:${XB[2]}%;width:${WB[2]}%"></div>
+    <div class="tick" style="left:${XB[1]}%"></div><div class="tick" style="left:${XB[2]}%"></div>
+    ${extra}</div>
+  <div class="scale">
+    <span style="left:${XB[1]}%">${mn}</span><span style="left:${XB[2]}%">${mx}</span>
+  </div>`;
+}
+
+// ══ Helpers de desenho ══════════════════════════════════════════════════════
+function marcador(pct, cor){ return `<div class="mk" style="left:${pct}%;background:${cor}"></div>`; }
+function status(f, mapa){
+  return `<span class="st" style="color:${mapa[f].c}">
+    <span class="dot" style="background:${mapa[f].c}"></span>${mapa[f].t}</span>`;
+}
+function legenda(el, mapa, nota){
+  document.getElementById(el).innerHTML =
+    '<span class="lb">STATUS DO VOLUME:</span>' +
+    Object.keys(mapa).map(k =>
+      `<div class="it"><div class="sw" style="background:${mapa[k].c}"></div>${mapa[k].t}</div>`
+    ).join('') +
+    `<div class="it" style="margin-left:auto;color:var(--text3)">${nota}</div>`;
+}
+
+// ── 1. Tela de Volume — faixa sobre régua A ────────────────────────────────
+const ALVOS = [
+  ['Peitoral',16,18],['Latissimo',16,19],['Deltoide',16,19],['Triceps',8,11],
+  ['Biceps',8,11],['Quadriceps',12,15],['Isquiossurais',8,11],['Gluteos',4,5],
+  ['Panturrilhas',8,8],['RetoAbdominal',4,5],
+];
+document.getElementById('t1').innerHTML =
+  `<thead><tr><th>Grupo</th><th style="text-align:center">Sér/sem</th>
+   <th style="text-align:center">MEV · MAV · MRV</th><th style="width:44%">Volume</th>
+   <th>Status</th></tr></thead><tbody>` +
+  ALVOS.map(([id,mn,mx]) => {
+    const b = BASE[id], f = classificarA(Math.round((mn+mx)/2), b);
+    const a = posA(mn,b), z = posA(mx,b);
+    return `<tr><td class="g">${b.lbl}</td>
+      <td class="num" style="color:${COR_A[f].c};font-weight:700">${mn}–${mx}</td>
+      <td class="ref">${b.mev} · ${b.mn}–${b.mx} · ${b.mrv}</td>
+      <td>${reguaA(b, `<div class="fill" style="left:${a}%;width:${Math.max(1.5,z-a)}%;
+        background:${COR_A[f].c};opacity:.85"></div>`)}</td>
+      <td>${status(f, COR_A)}</td></tr>`;
+  }).join('') + '</tbody>';
+legenda('lg1', COR_A, 'zonas = MEV · MAV · MRV do grupo');
+
+// ── 2. Step 3 — marcador único sobre régua A ───────────────────────────────
+const FICHA = [
+  ['Peitoral',16],['Latissimo',24],['Deltoide',10],['Triceps',4],
+  ['Biceps',9],['Quadriceps',28],['Isquiossurais',9],['Gluteos',12],
+  ['Panturrilhas',6],['RetoAbdominal',9],
+];
+document.getElementById('t2').innerHTML =
+  `<thead><tr><th>Grupo</th><th style="text-align:center">Séries/sem</th>
+   <th style="text-align:center">MEV · MAV · MRV</th><th style="width:44%">Volume</th>
+   <th>Status</th></tr></thead><tbody>` +
+  FICHA.map(([id,v]) => {
+    const b = BASE[id], f = classificarA(v, b);
+    return `<tr><td class="g">${b.lbl}</td>
+      <td class="num" style="color:${COR_A[f].c};font-weight:700">${v}</td>
+      <td class="ref">${b.mev} · ${b.mn}–${b.mx} · ${b.mrv}</td>
+      <td>${reguaA(b, marcador(posA(v,b), COR_A[f].c))}</td>
+      <td>${status(f, COR_A)}</td></tr>`;
+  }).join('') + '</tbody>';
+legenda('lg2', COR_A, 'traço = onde este grupo caiu');
+
+// ── 3. Dentro do modelo — marcador sobre régua B (alvo do personal) ────────
+// [grupo, alvoMin, alvoMax, semanal entregue pela divisão, contribuição do Treino A]
+const MODELO = [
+  ['Peitoral',      16,18, 16,  8],
+  ['Latissimo',     16,19, 24,  6],
+  ['Deltoide',      16,19, 10,  4],
+  ['Triceps',        8,11,  4,  0],
+  ['Biceps',         8,11,  9,  0],
+  ['Quadriceps',    12,15, 28,  0],
+  ['Gluteos',        4, 5, 12,  0],
+];
+document.getElementById('t3').innerHTML =
+  `<thead><tr><th>Grupo</th><th style="text-align:center">Escolhido</th>
+   <th style="text-align:center">Semana</th><th style="text-align:center">Treino A</th>
+   <th style="width:40%">Chegamos ao alvo?</th><th>Status</th></tr></thead><tbody>` +
+  MODELO.map(([id,aMin,aMax,sem,ses]) => {
+    const b = BASE[id], f = classificarB(sem, aMin, aMax);
+    return `<tr><td class="g">${b.lbl}</td>
+      <td class="ref" style="color:var(--text2)">${aMin}–${aMax}</td>
+      <td class="num" style="color:${COR_B[f].c};font-weight:700">${sem}</td>
+      <td class="num" style="color:var(--text3)">${ses || '—'}</td>
+      <td>${reguaB(aMin, aMax, marcador(posB(sem,aMin,aMax), COR_B[f].c))}</td>
+      <td>${status(f, COR_B)}</td></tr>`;
+  }).join('') + '</tbody>';
+legenda('lg3', COR_B, 'zonas = alvo definido na tela de Volume');
+</script>
+</body>
+</html>

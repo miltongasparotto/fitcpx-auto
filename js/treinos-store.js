@@ -132,7 +132,7 @@ function getTreinoAnteriorA(s, id){
 // ── ESCRITA ──────────────────────────────────────────────────────────────
 function criarRascunho(s){
   obterTreinos(s); // garante array/migração
-  const id = Date.now();
+  const id = novoId();
   s.treinos.push({
     id, status: TREINOS_STATUS.RASCUNHO,
     objetivo:'', nivel:'', frequencia:'', modelo:'', obs:'', treino:'',
@@ -153,7 +153,7 @@ function aprovarRascunho(s, id, dadosAprovados){
   obterTreinos(s);
   let t = getTreinoPorId(s, id);
   if(!t){
-    t = { id: id || Date.now(), _fichaObj:null };
+    t = { id: id || novoId(), _fichaObj:null };
     s.treinos.push(t);
   }
   const dataAprovacao = _treinosHojeBR();

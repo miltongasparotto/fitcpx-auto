@@ -85,8 +85,8 @@ function importarJSON(event){
 // NAVEGAÇÃO LATERAL — telas de biblioteca
 // ══════════════════════════════════════════════════════════════════════════
 
-const NAV_SCREENS = ['welcome-screen','student-view','screen-alunos','screen-locais','screen-biblioteca','screen-distribuicao','screen-periodizacao','screen-exercicios'];
-const NAV_ITEMS   = ['nav-alunos','nav-locais','nav-biblioteca','nav-distribuicao','nav-periodizacao','nav-exercicios'];
+const NAV_SCREENS = ['welcome-screen','student-view','screen-dashboard','screen-alunos','screen-locais','screen-biblioteca','screen-distribuicao','screen-periodizacao','screen-exercicios','screen-arquivadas'];
+const NAV_ITEMS   = ['nav-dashboard','nav-alunos','nav-locais','nav-biblioteca','nav-distribuicao','nav-periodizacao','nav-exercicios','nav-arquivadas'];
 
 function noop(){}
 
@@ -94,7 +94,13 @@ function _navGoForcado(tela){
   NAV_SCREENS.forEach(id=>{ const el=$(id); if(el) el.classList.add('hidden'); });
   NAV_ITEMS.forEach(id=>{ const el=$(id); if(el) el.classList.remove('active'); });
 
-  if(tela==='alunos'){
+  if(tela==='dashboard'){
+    show('screen-dashboard');
+    const dt=$('dash-data');
+    if(dt) dt.textContent = new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+    if(typeof renderDashboard==='function') renderDashboard();
+    const nav=$('nav-dashboard'); if(nav) nav.classList.add('active');
+  } else if(tela==='alunos'){
     show('screen-alunos');
     renderScreenAlunos();
     const nav=$('nav-alunos'); if(nav) nav.classList.add('active');
@@ -111,6 +117,7 @@ function _navGoForcado(tela){
     if(tela==='distribuicao') renderDistrib();
     if(tela==='periodizacao') renderPeriod();
     if(tela==='exercicios')   renderExercicios();
+    if(tela==='arquivadas')   renderArquivadas();
   }
 }
 function navGo(tela){

@@ -1,0 +1,8 @@
+node_modules/
+_backup_*/
+_PARA_EXCLUIR/
+*.bak
+
+# Auxiliares de commit desta refatoração — apagar depois de commitar
+COMMIT_MSG_refatoracao.txt
+commitar-refatoracao.bat

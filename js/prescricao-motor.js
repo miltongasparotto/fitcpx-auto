@@ -175,65 +175,94 @@ const PORCOES = {
 // (Cabo=1, Elástico=2, Máquina=3, Peso Corporal=4, Peso Livre=5, Suspenso=6).
 // Trocado de sigla (TRPL/TRM/...) pra ID na reimportação de 2026-08-28.
 const RESIST_ID = { CABO:1, ELASTICO:2, MAQUINA:3, PESO_CORPORAL:4, PESO_LIVRE:5, SUSPENSO:6 };
-const LOCAL_RESIST = {
-  'academia': [RESIST_ID.PESO_LIVRE, RESIST_ID.MAQUINA, RESIST_ID.CABO, RESIST_ID.ELASTICO, RESIST_ID.PESO_CORPORAL, RESIST_ID.SUSPENSO],
-  'casa':     [RESIST_ID.PESO_CORPORAL, RESIST_ID.ELASTICO, RESIST_ID.PESO_LIVRE],
-  'ar livre': [RESIST_ID.PESO_CORPORAL],
-  'híbrido':  [RESIST_ID.PESO_LIVRE, RESIST_ID.MAQUINA, RESIST_ID.CABO, RESIST_ID.ELASTICO, RESIST_ID.PESO_CORPORAL],
-};
+const TODAS_RESIST = Object.values(RESIST_ID);
+
+// LOCAL_RESIST (buckets 'academia'/'casa'/'ar livre'/'híbrido') REMOVIDO em
+// 2026-09-02: classificacao generica desnecessaria. A fonte de verdade do que o
+// aluno tem disponivel e a lista de equipamentos do LOCAL REAL (LIBS.locais),
+// nao um rotulo aproximado. Sem local definido, nada e restringido.
 
 // ── Perfil de equipamento personalizado por local ────────────────────────────
-// Mapeamento nome de equipamento → IDs de tipo de resistência (RESIST_ID).
-// Equipamentos que não determinam tipo de resistência (cardio, banco) = null.
-const EQUIP_PARA_RESIST = {
-  'Halteres':              RESIST_ID.PESO_LIVRE,
-  'Barra olimpica':        RESIST_ID.PESO_LIVRE,
-  'Barra olímpica':        RESIST_ID.PESO_LIVRE,
-  'Anilhas':               RESIST_ID.PESO_LIVRE,
-  'Kettlebells':           RESIST_ID.PESO_LIVRE,
-  'Máquinas de cabo':      RESIST_ID.CABO,
-  'Pulley':                RESIST_ID.CABO,
-  'Leg press':             RESIST_ID.MAQUINA,
-  'Smith machine':         RESIST_ID.MAQUINA,
-  'Elásticos/Faixas':      RESIST_ID.ELASTICO,
-  'TRX/Suspensão':         RESIST_ID.SUSPENSO,
-  'Peso corporal':         RESIST_ID.PESO_CORPORAL,
-  'Pull-up bar':           RESIST_ID.PESO_CORPORAL,
-  'Paralelas':             RESIST_ID.PESO_CORPORAL,
-  'Step/Plataforma':       RESIST_ID.PESO_CORPORAL,
-  'Colchonete':            RESIST_ID.PESO_CORPORAL,
-};
+// O mapa manual equipamento -> tipo de resistencia foi REMOVIDO (2026-09-02).
+// Ele era mantido a mao com nomes que nao batiam com os do banco ('Halteres' vs
+// 'Halter', 'Barra olímpica' vs 'Barra Reta', 'Elásticos/Faixas' vs 'Elastico'):
+// dos 68 equipamentos que um local do LIBS lista, apenas 2 casavam. Na pratica
+// uma academia COMPLETA devolvia so [PESO_CORPORAL] — 217 dos 692 exercicios,
+// todos de peso corporal — e ninguem percebia porque a falha era silenciosa.
+//
+// Agora o mapa e DERIVADO do proprio banco: cada exercicio ja traz `eq`
+// (equipamentos) e `r` (tipo de resistencia), entao a relacao entre os dois e
+// um fato do banco, nao uma tabela paralela que pode divergir. Chaveado por
+// `chave` dos dois lados. Construcao preguicosa + memoizada: DB_EXERCICIOS ja
+// carregou quando a primeira prescricao roda.
+let _equipResistIdx = null;
+function _getEquipResistIdx(){
+  if(_equipResistIdx) return _equipResistIdx;
+  const idx = {};
+  (typeof DB_EXERCICIOS !== 'undefined' ? DB_EXERCICIOS : []).forEach(e => {
+    if(!e.r) return;
+    (e.eq || []).forEach(q => {
+      if(!q.chave) return;
+      (idx[q.chave] = idx[q.chave] || new Set()).add(e.r.id);
+    });
+  });
+  _equipResistIdx = idx;
+  return idx;
+}
 
-// Deriva quais tipos de resistência estão disponíveis a partir da lista de
-// equipamentos de um local (LIBS.locais[i].equipamentos). Inclui sempre
-// PESO_CORPORAL como fallback (o corpo do aluno sempre está disponível).
+// Deriva os tipos de resistencia disponiveis a partir dos equipamentos de um
+// local. PESO_CORPORAL entra sempre (o corpo do aluno esta sempre disponivel).
+// `equipamentos` guarda CHAVES (migracao _migrarLibsChaves em
+// biblioteca-exercicios.js); nomes antigos com acento/espaco ainda sao aceitos
+// por normalizacao, pra nao quebrar dado que ainda nao passou pela migracao.
 function _resistFromEquipamentos(equipamentos){
+  const idx = _getEquipResistIdx();
   const ids = new Set([RESIST_ID.PESO_CORPORAL]);
   (equipamentos || []).forEach(eq => {
-    const id = EQUIP_PARA_RESIST[eq];
-    if(id) ids.add(id);
+    let rs = idx[eq];
+    if(!rs){
+      const alvo = normalizarIdentificador(eq).replace(/[^a-z0-9]/g, '');
+      const k = Object.keys(idx).find(c => normalizarIdentificador(c).replace(/[^a-z0-9]/g,'') === alvo);
+      rs = k ? idx[k] : null;
+    }
+    if(rs) rs.forEach(id => ids.add(id));
   });
   return [...ids];
 }
 
-// Lookup central de tipos de resistência permitidos para um valor de local.
-// Aceita os valores genéricos ("academia", "casa", etc.) E valores de LIBS
-// no formato "libs:ID" (local personalizado do personal).
+// Lookup central de tipos de resistencia permitidos. Aceita "libs:ID" (local
+// real do personal). Qualquer outro valor — inclusive vazio — nao restringe.
 function getResistPermitida(local){
-  if(local && local.startsWith('libs:')){
-    const libsId = parseInt(local.split(':')[1]);
-    const libsLocal = (typeof LIBS !== 'undefined') ? (LIBS?.locais||[]).find(l => l.id === libsId) : null;
+  const locais = (typeof LIBS !== 'undefined') ? (LIBS?.locais||[]) : [];
+  if(local && String(local).startsWith('libs:')){
+    const libsId = parseInt(String(local).split(':')[1]);
+    const libsLocal = locais.find(l => l.id === libsId);
     if(libsLocal) return _resistFromEquipamentos(libsLocal.equipamentos);
   }
-  return LOCAL_RESIST[local] || LOCAL_RESIST['academia'] || [];
+  // Compatibilidade: anamnese antiga guardava o NOME do local em vez de libs:ID.
+  if(local){
+    const porNome = locais.find(l => (l.nome||'') === local);
+    if(porNome) return _resistFromEquipamentos(porNome.equipamentos);
+  }
+  return [...TODAS_RESIST];   // sem local definido: nao restringe
 }
 
 // Popula o select #pr-local com opções genéricas + locais personalizados do
-// LIBS. Chamado ao abrir o Step 1 da prescrição (preencherStep1DaAnamnese).
-function populateLocalSelect(){
+// LIBS. Chamado ao abrir o Step 1 da prescrição (preencherStep1DaAnamnese),
+// ANTES do setVal dos outros campos — assim as opções libs:X já existem quando
+// o código tenta restaurar o valor salvo.
+// valorDesejado (opcional): valor libs:X a selecionar após popular. Se omitido,
+// preserva o valor atual do select (comportamento antigo).
+function populateLocalSelect(valorDesejado){
   const sel = document.getElementById('pr-local');
   if(!sel) return;
-  const currentVal = sel.value;
+  // Lê valor atual ANTES de limpar — só usado como fallback se valorDesejado
+  // não for passado. Quando chamado de preencherStep1DaAnamnese(), valorDesejado
+  // vem do treino salvo e é confiável; o sel.value antes de popular pode ser
+  // um valor hardcoded do HTML que não existe nas novas opções.
+  const valRestaurar = (valorDesejado !== undefined && valorDesejado !== null)
+    ? valorDesejado
+    : sel.value;
   // Limpa todas as opções (inclusive as hardcoded do HTML)
   sel.innerHTML = '';
   const libsLocais = (typeof LIBS !== 'undefined') ? (LIBS?.locais||[]) : [];
@@ -259,9 +288,9 @@ function populateLocalSelect(){
       sel.appendChild(opt);
     });
   }
-  // Restaura valor anterior se ainda válido
-  if(currentVal && [...sel.options].some(o => o.value === currentVal)){
-    sel.value = currentVal;
+  // Restaura valor desejado se existir nas opções; senão mantém a primeira opção
+  if(valRestaurar && [...sel.options].some(o => o.value === valRestaurar)){
+    sel.value = valRestaurar;
   }
 }
 
@@ -314,7 +343,7 @@ const TEMPO_TROCA_SEG = 30;
 // Não considera lateralidade/dobra aqui (isso entra no momento 2, quando o
 // exercício real já foi escolhido — ver _blocosExecucao/calcularTempoEstimadoTreino).
 function tempoRepPorGrupo(grupoNome){
-  const exs = DB_EXERCICIOS.filter(e => e.g.some(x => textoIgual(x.nome, grupoNome)));
+  const exs = DB_EXERCICIOS.filter(e => e.g.some(x => x.chave === grupoNome));
   const tempos = exs.map(e => e.tempo).filter(t => t > 0);
   if(!tempos.length) return null;
   return {
@@ -397,10 +426,10 @@ function textoIgual(a, b){
 // fato exige trocar de lado (dobra o tempo de execução) — "Bilateral com Carga
 // Unilateral" (ex.: agachamento com halteres) é um movimento só, sem troca.
 function _exercicioUnilateral(e){
-  return e.lateralidade?.nome === 'Unilateral';
+  return e.lateralidade?.chave === 'Unilateral';
 }
 function _exercicioBilateralCU(e){
-  return e.lateralidade?.nome === 'Bilateral com Carga Unilateral';
+  return e.lateralidade?.chave === 'BilateralCargaUnilateral';
 }
 
 // Alto impacto (2026-08-28) — não existe campo no banco (nem `tp` nem `pad`
@@ -441,13 +470,23 @@ function filtrarExerciciosPorBusca(lista, termoBusca){
   return lista.filter(e => buscaFuzzy(termoBusca, e.n) || buscaFuzzy(termoBusca, e.eq||''));
 }
 
-function nivelOk(exNivel, alunoNivel){
-  const ordem={Iniciante:1,Intermediário:2,Avançado:3};
-  return (ordem[exNivel]||1)<=(ordem[alunoNivel]||1);
+// Compara NIVEIS por chave ASCII ('Iniciante'/'Intermediario'/'Avancado').
+// Antes a tabela era indexada por rotulo acentuado e qualquer descasamento caia
+// no `||1` — um exercicio Avancado virava Iniciante em silencio e passava no
+// bloqueio duro de um aluno iniciante. Com chave nao ha acento na comparacao.
+function nivelOk(exNivelChave, alunoNivelChave){
+  const ordem={Iniciante:1,Intermediario:2,Avancado:3};
+  return (ordem[exNivelChave]||1)<=(ordem[alunoNivelChave]||1);
 }
 
+// Rotulo para EXIBICAO — mantem acento, nunca usar em comparacao.
 function nivelLabel(n){
   return n==='Inic'?'Iniciante':n==='Inte'?'Intermediário':'Avançado';
+}
+
+// Chave para COMPARACAO — espelha nivelLabel sem acento.
+function nivelChave(n){
+  return n==='Inic'?'Iniciante':n==='Inte'?'Intermediario':'Avancado';
 }
 
 // Prefixos/padrões de exercícios não-prescritos (mobilidade, aeróbio, etc.)
@@ -456,24 +495,61 @@ const _NOM_EXCLUI_PRESCRICAO = [
   'Escada Indor','Corrida no Lugar','Polichinelo','Burpee','Isométrico',
 ];
 
-function filtrarExerciciosFicha(musculo, porcao, resistPermitida, nivelAluno, contraindicacoes){
-  // Filtro base (nível, recurso, ci, grupo+porção)
-  // Porção deixou de ser campo à parte (`e.p`) — agora é lida como uma variação
-  // do próprio grupo muscular (ex.: "Peitoral" casa com "Peitoral" e também com
-  // "Peitoral Superior" dentro de `e.g`), conforme decisão da revisão de 2026-08-28.
-  const termoGrupo = porcao ? `${musculo} ${porcao}` : musculo;
-  let pool = DB_EXERCICIOS.filter(e=>{
-    if(!e.g.some(x=>buscaFuzzy(termoGrupo, x.nome))) return false;
-    if(!e.r || !resistPermitida.includes(e.r.id)) return false;
-    if(!e.nv || !nivelOk(e.nv.nome, nivelLabel(nivelAluno))) return false;
+// ── Pool base (FONTE ÚNICA DE VERDADE do corte inicial) ──────────────────────
+// Extraído de filtrarExerciciosFicha em 2026-09-08. Antes existiam DUAS funções
+// de pool independentes: esta (motor, com nível+resistência) e filtrarExercicios
+// em avaliacao.js (contador da coluna "Filtro", só com grupo muscular). O contador
+// mostrava o MESMO número para Iniciante e Avançado, e para "Todos os Equipamentos"
+// e um studio limitado — divergindo do pool que o motor de fato sorteia.
+// Agora as duas passam por aqui: é impossível divergir de novo.
+//
+// Corte inicial = grupo + resistência (local) + nível + exclusão de nomes + CI.
+// Tudo que vem depois (camada clínica, classificação, sorteio) opera sobre este
+// pool, nunca sobre o banco inteiro.
+function poolBaseExercicios(musculo, porcao, resistPermitida, nivelAluno, contraindicacoes){
+  const chaveGrupo = porcao ? musculo + normalizarIdentificador(porcao) : musculo;
+  const resist = Array.isArray(resistPermitida) && resistPermitida.length
+    ? resistPermitida : TODAS_RESIST;
+  return DB_EXERCICIOS.filter(e=>{
+    if(!e.g.some(x=>x.chave === chaveGrupo)) return false;
+    if(!e.r || !resist.includes(e.r.id)) return false;
+    if(!e.nv || !nivelOk(e.nv.chave, nivelChave(nivelAluno))) return false;
     // Excluir exercícios de mobilidade, liberação e aeróbio da prescrição
     if(_NOM_EXCLUI_PRESCRICAO.some(pref => e.n.startsWith(pref))) return false;
     if(e.ci?.length && contraindicacoes){
-      const ciAluno = contraindicacoes.toLowerCase();
-      if(e.ci.some(c => ciAluno.includes(c.nome.toLowerCase()))) return false;
+      const ciAluno = String(contraindicacoes).toLowerCase();
+      if(e.ci.some(c => ciAluno.includes(c.nome.toLowerCase()))) return false; // `nome` de proposito: compara contra texto livre da anamnese
     }
     return true;
   });
+}
+
+// Contexto de prescrição da tela (nível + local → resistência + contraindicações).
+// Ponto único de leitura: quem precisa contar/filtrar exercício usa isto, em vez
+// de reler os selects por conta própria e divergir.
+function getContextoPool(){
+  const s      = (typeof getActive === 'function') ? getActive() : null;
+  const nivel  = val('pr-nivel')  || s?.anamnese?.nivel || 'Inic';
+  const local  = val('pr-local')  || s?.anamnese?.local || '';
+  const lesoes = (s?.perfil?.lesoes||'') + ' ' + (s?.anamnese?.preferencias||'');
+  return { nivel, local, resist: getResistPermitida(local), lesoes };
+}
+
+function filtrarExerciciosFicha(musculo, porcao, resistPermitida, nivelAluno, contraindicacoes){
+  // Filtro base (nível, recurso, ci, grupo+porção) — delegado a poolBaseExercicios
+  // Porção deixou de ser campo à parte (`e.p`) — agora é lida como uma variação
+  // do próprio grupo muscular (ex.: "Peitoral" casa com "Peitoral" e também com
+  // "Peitoral Superior" dentro de `e.g`), conforme decisão da revisão de 2026-08-28.
+  // Grupo casa por `chave` (ASCII, sem espaco) — mesmo formato dos ids de
+  // GRUPOS_MAPA, de onde `musculo` vem. Antes usava buscaFuzzy sobre `nome`,
+  // que quebrava para ids de mais de uma palavra: buscaFuzzy('RetoAbdominal',
+  // 'Reto abdominal') dava false porque o termo normalizado perde o espaco mas
+  // o alvo nao — resultado: abdomen NUNCA entrava na prescricao.
+  // `porcao` refina montando a chave composta (ex.: 'PeitoralSuperior'). Hoje o
+  // banco nao traz porcoes em `g`, entao esse filtro nao acha nada e o chamador
+  // cai no fallback com porcao=null — comportamento identico ao anterior, mas
+  // passa a funcionar sozinho se as porcoes forem adicionadas ao banco.
+  let pool = poolBaseExercicios(musculo, porcao, resistPermitida, nivelAluno, contraindicacoes);
 
   // ── Camada 3: aplicar filtro clínico ──────────────────────────────────────
   const { bloqueios } = extrairFlagsClinicas();
@@ -575,23 +651,23 @@ function sortearExercicioC4(pool, jaUsados, musculo, exerciciosTreino, aperto){
   const isPrio = (e) => prioridades.some(p => { const fn=FLAGS_PRIORIDADE[p]; return fn && fn(e); });
 
   // Combina com a condição clínica do aluno (tipo ou cadeia preferida — item 16).
-  // `tp` e `cad` agora são lista/objeto {id,nome} — compara pelo nome.
+  // `tp` e `cad` são lista/objeto {id,nome,chave} — compara pela chave ASCII.
   const combinaComCondicao = (e) =>
-    (e.tp||[]).some(t => prefTipoCadeia.tp.has(t.nome)) ||
-    (e.cad && prefTipoCadeia.cad.has(e.cad.nome));
+    (e.tp||[]).some(t => prefTipoCadeia.tp.has(t.chave)) ||
+    (e.cad && prefTipoCadeia.cad.has(e.cad.chave));
 
   // Eficiência (Fase F): multiarticular + atinge grupo muscular secundário
   // (campo `gs`) rende mais estímulo por série — vale mais quando a sessão
   // está apertada em relação ao tempo disponível. Antes era bônus contínuo
   // (escalava com `aperto`); virou fixo +1 pra seguir a regra "cada fator
   // vale sempre 1" (2026-08-28).
-  const eficiente = (e) => e.art?.nome === 'Multiarticular' && !!(e.gs && e.gs.length);
+  const eficiente = (e) => e.art?.chave === 'Multiarticular' && !!(e.gs && e.gs.length);
 
   // "Não recomendado" (2026-08-28) — hoje só cobre Baixo Impacto (alto impacto
   // + IMC≥30). Não bloqueia, só tira 1 ponto da classificação e mostra aviso
   // visual (ver tag_naoRecomendado em abrirListaExercicios).
   const { bloqueios: flagsAtivas } = extrairFlagsClinicas();
-  const naoRecomendado = (e) => flagsAtivas.includes('Baixo Impacto') && _exercicioAltoImpacto(e);
+  const naoRecomendado = (e) => flagsAtivas.includes('BaixoImpacto') && _exercicioAltoImpacto(e);
 
   // 1. Filtrar já usados nesta sessão
   const todos = pool.filter(e => !jaUsados.has(e.n));
@@ -1186,22 +1262,83 @@ function calcExercicios(semMin, semMax, serEx){
   return exMin + '–' + exMax;
 }
 
+// ── Disponibilidade por grupo (corte inicial: nível + local) ─────────────────
+// Roda antes de desenhar a tabela de volume. Conta o pool REAL de cada grupo (o
+// mesmo que o motor vai sortear) e, quando dá ZERO, DESATIVA o grupo e o TRAVA:
+// não adianta prescrever grupo que não tem um único exercício compatível com o
+// nível e o local escolhidos.
+//
+// Só reativa sozinho o que ele mesmo desligou (`_offAuto`) — grupo que o personal
+// desligou na mão continua desligado quando o pool volta a existir.
+function aplicarDisponibilidadeGrupos(){
+  const ctx = getContextoPool();
+  const travados = [];
+  _s3._dispGrupos = {};
+  GRUPOS_MAPA.forEach(({id, label}) => {
+    let fc;
+    try { fc = contarFiltros(id, ctx); } catch(e){ fc = null; }  // contador indisponível: não trava nada
+    if(!fc) return;
+    _s3._dispGrupos[id] = fc;
+    const vg = _s3.volPorGrupo[id]; if(!vg) return;
+    if(fc.disponivel === 0){
+      if(vg.ativo !== false){ vg._offAuto = true; vg.ativo = false; }
+      vg._semEx = true;
+      travados.push({ id, label, bloqueado: fc.bloqueado });
+    } else {
+      if(vg._semEx && vg._offAuto) vg.ativo = true;   // destrava o que ele mesmo desligou
+      delete vg._semEx; delete vg._offAuto;
+    }
+  });
+  return { travados, ctx };
+}
+
+// Aviso acima da tabela listando os grupos travados por falta de exercício.
+function renderAvisoGruposSemExercicio(travados, ctx){
+  let box = $('vol-aviso-semex');
+  if(!box){
+    const tabela = $('vol-tabela'); if(!tabela) return;
+    box = document.createElement('div');
+    box.id = 'vol-aviso-semex';
+    tabela.parentNode.insertBefore(box, tabela);
+  }
+  if(!travados || !travados.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  const plural = travados.length > 1 ? 's' : '';
+  const nomes  = travados.map(t => t.label).join(', ');
+  const porCli = travados.filter(t => t.bloqueado > 0).map(t => t.label);
+  box.style.cssText =
+    'display:block;margin-bottom:12px;padding:10px 12px;border-radius:var(--radius);' +
+    'border:1px solid var(--amber);background:rgba(255,180,0,.08);font-size:13px;color:var(--text2)';
+  box.innerHTML =
+    '<div style="font-weight:700;color:var(--amber);margin-bottom:4px">⚠ ' + travados.length +
+      ' grupo' + plural + ' sem exercício disponível</div>' +
+    '<div><strong>' + nomes + '</strong> — nenhum exercício compatível com o nível <strong>' +
+      nivelLabel(ctx.nivel) + '</strong> e o local de treino selecionados. Desativado' + plural +
+      ' automaticamente e bloqueado' + plural + ' até que o nível ou o local mudem.</div>' +
+    (porCli.length
+      ? '<div style="margin-top:4px;font-size:12px;color:var(--text3)">Filtros clínicos da avaliação também contribuíram em: ' + porCli.join(', ') + '.</div>'
+      : '');
+}
+
 function renderTabelaVolumeGlobal(){
   const tbody = $('vol-tbody'); if(!tbody) return;
+  const { travados, ctx: ctxPool } = aplicarDisponibilidadeGrupos();
+  renderAvisoGruposSemExercicio(travados, ctxPool);
   tbody.innerHTML = '';
   GRUPOS_MAPA.forEach(({id, label, mev, mav_min, mav_max, mrv}) => {
     const vg     = _s3.volPorGrupo[id] || {sem:0,semMin:mav_min||mev,semMax:mav_max||mrv,serEx:_s3.seriesPorEx,freq:1,ativo:true};
     if(vg.ativo === undefined) vg.ativo = true;
     if(!vg.serEx) vg.serEx = _s3.seriesPorEx;
     const ativo  = vg.ativo !== false;
+    const semEx  = vg._semEx === true;   // travado: zero exercício no nível/local atual
     const semMin = vg.semMin !== undefined ? vg.semMin : (mav_min||mev);
     const semMax = vg.semMax !== undefined ? vg.semMax : (mav_max||mrv);
     const semMid = Math.round((semMin + semMax) / 2);
     const serEx  = vg.serEx || _s3.seriesPorEx;
-    const cor    = ativo ? getVolColor(semMid, mev, mrv) : '#333';
-    const status = getVolStatus(semMid, mev, mrv, ativo);
+    // Classifica o ponto médio da faixa-alvo na régua do grupo (RÉGUA A)
+    const faixa   = classificarVolumeGrupo(semMid, {mev, mav_min, mav_max, mrv}, ativo);
+    const cor     = VOL_FAIXAS[faixa].cor;
+    const status  = VOL_FAIXAS[faixa].label;
     const exRange = ativo ? calcExercicios(semMin, semMax, serEx) : '—';
-    const pct    = ativo && mrv > 0 ? Math.min(100, Math.round((semMid / mrv) * 100)) : 0;
 
     const tr = document.createElement('tr');
     tr.id = 'row-' + id;
@@ -1211,8 +1348,11 @@ function renderTabelaVolumeGlobal(){
     const td0 = document.createElement('td');
     td0.style.textAlign = 'center';
     const switchWrap = document.createElement('div');
-    switchWrap.style.cssText = 'display:inline-flex;align-items:center;cursor:pointer;user-select:none';
-    switchWrap.title = (ativo ? 'Desativar' : 'Ativar') + ' ' + label;
+    switchWrap.style.cssText = 'display:inline-flex;align-items:center;user-select:none;cursor:' +
+      (semEx ? 'not-allowed' : 'pointer') + (semEx ? ';opacity:.5' : '');
+    switchWrap.title = semEx
+      ? label + ' não tem exercício disponível para o nível e o local selecionados — não pode ser ativado'
+      : (ativo ? 'Desativar' : 'Ativar') + ' ' + label;
     switchWrap.dataset.grupo = id;
 
     const track = document.createElement('div');
@@ -1223,14 +1363,15 @@ function renderTabelaVolumeGlobal(){
       'left:' + (ativo ? '15px' : '1px') + ';transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)';
     track.appendChild(thumb);
     switchWrap.appendChild(track);
-    switchWrap.addEventListener('click', function(){ toggleGrupo(this.dataset.grupo); });
+    if(!semEx) switchWrap.addEventListener('click', function(){ toggleGrupo(this.dataset.grupo); });
     td0.appendChild(switchWrap);
 
     // td1: label
     const td1 = document.createElement('td');
     td1.style.cssText = 'font-size:11px;font-weight:' + (ativo ? '500' : '400') +
-      ';color:' + (ativo ? 'var(--text)' : 'var(--text3)');
-    td1.textContent = label;
+      ';color:' + (semEx ? 'var(--amber)' : ativo ? 'var(--text)' : 'var(--text3)');
+    td1.textContent = label + (semEx ? ' 🔒' : '');
+    if(semEx) td1.title = 'Sem exercício disponível para o nível e o local selecionados';
 
     // helper: cria célula input + −/+
     function makeInpCell(campo, val, minV, maxV, w){
@@ -1283,36 +1424,49 @@ function renderTabelaVolumeGlobal(){
     td6.style.cssText = 'font-family:var(--mono);font-size:10px;color:var(--text3);text-align:center';
     td6.textContent = (mav_min||mev) + '–' + (mav_max||mrv);
 
-    // td7: barra de status MEV/MRV
+    // td7: barra de status na régua do grupo (MEV / MAV / MRV) — RÉGUA A.
+    // O valor aqui é uma FAIXA (Sér/sem mín–máx), não um número: a barra
+    // desenha a faixa inteira, então a largura do alvo fica visível. O status
+    // classifica o ponto médio dela.
     const td7 = document.createElement('td');
-    td7.style.cssText = 'min-width:100px';
+    td7.style.cssText = 'min-width:170px';
+    const gRef  = {mev, mav_min, mav_max, mrv};
+    const mk    = _volMarcos(gRef);
     const barWrap = document.createElement('div');
-    barWrap.style.cssText = 'display:flex;align-items:center;gap:6px';
-    const barBg = document.createElement('div');
-    barBg.style.cssText = 'flex:1;height:5px;background:var(--bg2);border-radius:3px;overflow:hidden';
-    const barFill = document.createElement('div');
-    barFill.id = 'bar-fill-' + id;
-    barFill.style.cssText = 'height:100%;width:' + pct + '%;background:' + cor + ';border-radius:3px;transition:width .3s';
-    barBg.appendChild(barFill);
+    barWrap.style.cssText = 'display:flex;align-items:center;gap:8px';
+
+    const barCol = document.createElement('div');
+    barCol.style.cssText = 'flex:1;min-width:110px';
+    barCol.innerHTML =
+      barraVolumeGrupoHTML(gRef,
+        ativo ? volFaixaHTML(posVolReguaA(semMin, gRef), posVolReguaA(semMax, gRef), cor, 'bar-fill-' + id)
+              : '') +
+      escalaVolumeHTML([mk.mev, mk.mn, mk.mx, mk.mrv], VOL_RA_X);
+
     const statusSpan = document.createElement('span');
     statusSpan.id = 'bar-status-' + id;
-    statusSpan.style.cssText = 'font-size:9px;font-family:var(--mono);color:' + cor +
-      ';white-space:nowrap;min-width:64px;text-align:right';
+    statusSpan.style.cssText = 'font-size:10px;font-weight:600;color:' + cor +
+      ';white-space:nowrap;min-width:74px;text-align:right';
     statusSpan.textContent = status;
-    barWrap.appendChild(barBg); barWrap.appendChild(statusSpan);
+    barWrap.appendChild(barCol); barWrap.appendChild(statusSpan);
     td7.appendChild(barWrap);
 
     // td_filtro: resumo de filtros clínicos Camada 3
     const tdFiltro = document.createElement('td');
     tdFiltro.style.cssText = 'text-align:center;font-size:10px;font-family:var(--mono)';
     try {
-      const fc = contarFiltros(id);
-      if(fc.bloqueado > 0){
-        tdFiltro.innerHTML = `<span style="color:#ff5050" title="${fc.bloqueado} exercício(s) bloqueado(s) por flags clínicos">🔴 ${fc.bloqueado} bloq.</span>`;
+      // Contagem já feita em aplicarDisponibilidadeGrupos() — uma passada pelo
+      // banco por render, em vez de 12 chamadas independentes aqui dentro.
+      const fc = (_s3._dispGrupos||{})[id] || contarFiltros(id, ctxPool);
+      const dica = `${fc.disponivel} disponível(is) · nível ${nivelLabel(ctxPool.nivel)} + local selecionado`;
+      if(fc.disponivel === 0){
+        tdFiltro.innerHTML = `<span style="color:var(--amber)" title="Sem exercício compatível com o nível e o local selecionados">🔒 0</span>`;
+      } else if(fc.bloqueado > 0){
+        tdFiltro.innerHTML = `<span style="color:#ff5050" title="${fc.bloqueado} bloqueado(s) por flags clínicos — ${dica}">🔴 ${fc.disponivel} <span style="color:var(--text3)">(−${fc.bloqueado})</span></span>`;
       } else if(fc.prio > 0){
-        tdFiltro.innerHTML = `<span style="color:var(--accent)" title="${fc.prio} exercício(s) prioritário(s) para correção">🟢 ${fc.prio} prior.</span>`;
+        tdFiltro.innerHTML = `<span style="color:var(--accent)" title="${fc.prio} prioritário(s) para correção — ${dica}">🟢 ${fc.disponivel}</span>`;
       } else {
-        tdFiltro.innerHTML = `<span style="color:var(--text3)">✓ ${fc.ok}</span>`;
+        tdFiltro.innerHTML = `<span style="color:var(--text3)" title="${dica}">✓ ${fc.disponivel}</span>`;
       }
     } catch(e){ tdFiltro.textContent = '—'; }
 
@@ -1344,7 +1498,11 @@ function stepVol(id, campo, delta){
 
 function toggleGrupo(id){
   const vg = _s3.volPorGrupo[id]; if(!vg) return;
+  // Trava: grupo sem nenhum exercício compatível com o nível/local atual não pode
+  // ser religado. Só destrava quando o corte inicial mudar (nível ou local).
+  if(vg._semEx) return;
   vg.ativo = !(vg.ativo !== false);
+  delete vg._offAuto;   // ligar/desligar na mão passa a ser decisão do personal
   if(!vg.ativo){
     // Guarda backup dos valores
     vg._semMinBak = vg.semMin;
@@ -1421,15 +1579,15 @@ function atualizarVolGrupo(id, campo, valor){
 
 function atualizarLinhaTabela(id){
   const grupo = GRUPOS_MAPA.find(g => g.id === id); if(!grupo) return;
-  const {mev, mrv} = grupo;
   const vg = _s3.volPorGrupo[id]; if(!vg) return;
   const ativo  = vg.ativo !== false;
-  const semMid = Math.round(((vg.semMin||0) + (vg.semMax||0)) / 2);
+  const semMin = vg.semMin || 0, semMax = vg.semMax || 0;
+  const semMid = Math.round((semMin + semMax) / 2);
   const serEx  = vg.serEx || _s3.seriesPorEx;
-  const cor    = ativo ? getVolColor(semMid, mev, mrv) : '#333';
-  const status = getVolStatus(semMid, mev, mrv, ativo);
-  const pct    = ativo && mrv > 0 ? Math.min(100, Math.round((semMid/mrv)*100)) : 0;
-  const exRange = ativo ? calcExercicios(vg.semMin||0, vg.semMax||0, serEx) : '—';
+  const faixa  = classificarVolumeGrupo(semMid, grupo, ativo);
+  const cor    = VOL_FAIXAS[faixa].cor;
+  const status = VOL_FAIXAS[faixa].label;
+  const exRange = ativo ? calcExercicios(semMin, semMax, serEx) : '—';
 
   const row = $('row-' + id); if(!row) return;
 
@@ -1445,9 +1603,16 @@ function atualizarLinhaTabela(id){
   if(row.cells[1]) row.cells[1].style.color = ativo ? 'var(--text)' : 'var(--text3)';
   // Atualiza exercícios
   if(row.cells[5]) row.cells[5].textContent = exRange;
-  // Atualiza status (barra + label) — via ID direto
+  // Atualiza status (faixa na barra + label) — via ID direto.
+  // Só a faixa se move; as zonas e a escala numérica são fixas por grupo.
   const fill = $('bar-fill-' + id);
-  if(fill){ fill.style.width = pct + '%'; fill.style.background = cor; }
+  if(fill){
+    const a = Math.max(0, Math.min(100, posVolReguaA(semMin, grupo)));
+    const b = Math.max(0, Math.min(100, posVolReguaA(semMax, grupo)));
+    fill.style.left  = a + '%';
+    fill.style.width = Math.max(2, Math.min(100 - a, b - a)) + '%';
+    fill.style.background = cor;
+  }
   const span = $('bar-status-' + id);
   if(span){ span.textContent = status; span.style.color = cor; }
   // Opacidade da linha
@@ -1455,23 +1620,179 @@ function atualizarLinhaTabela(id){
 }
 
 
-function getVolColor(series, mev, mrv){
-  if(series === 0)         return '#333333';
-  if(series < mev - 1)    return '#ef4444';
-  if(series <= mev + 1)   return '#f97316';
-  if(series <= mrv - 1)   return '#22c55e';
-  if(series <= mrv + 1)   return '#f97316';
-  return '#ef4444';
+// getVolColor() e getVolStatus() foram REMOVIDAS (2026-09-08), substituídas por
+// classificarVolumeGrupo() + VOL_FAIXAS logo abaixo. Usavam só MEV e MRV com
+// fronteiras ±1 hardcoded e ignoravam o MAV: a faixa "Ideal" resultante cobria
+// 77–86% do intervalo MEV–MRV em todos os 12 grupos (no bíceps, qualquer valor
+// de 8 a 25 séries/semana era "Ideal"), então o rótulo não discriminava nada.
+// Verificado: nenhuma chamada restante em prescricao-motor.js, avaliacao.js,
+// biblioteca-exercicios.js, init-seed.js ou index.html.
+
+// ══════════════════════════════════════════════════════════════════════════
+// RÉGUAS DE VOLUME — classificação em faixas + barra segmentada
+// ══════════════════════════════════════════════════════════════════════════
+// Duas réguas, porque as duas perguntas são diferentes:
+//
+// RÉGUA A — limite fisiológico do grupo (GRUPOS_MAPA: MEV / MAV / MRV).
+//   Responde "este volume faz sentido para este músculo?". 4 marcos = 5 faixas,
+//   sem nenhuma constante arbitrária:
+//     v < MEV            → Baixo        (não gera estímulo)
+//     MEV ≤ v < MAV_min  → Aceitável ↓  (estimula, abaixo da faixa adaptativa)
+//     MAV_min ≤ v ≤ MAV_max → Ideal     (dentro da faixa adaptativa)
+//     MAV_max < v ≤ MRV  → Aceitável ↑  (acima da adaptativa, ainda recuperável)
+//     v > MRV            → Alto         (acima do máximo recuperável)
+//   Usada na tela de Volume por Grupo (Step 2) e no preview semanal (Step 3).
+//   A régua NÃO varia com sexo/nível/objetivo — esses entram só no valor
+//   preenchido (getVolumePorGrupo), nunca na referência.
+//
+// RÉGUA B — alvo do personal (volPorGrupo.semMin/semMax).
+//   Responde "a divisão entrega o que eu escolhi?". 2 marcos = 3 faixas:
+//     v < semMin → Baixo | semMin ≤ v ≤ semMax → Escolhido | v > semMax → Alto
+//   Usada nas linhas de grupo dentro do modelo de divisão (acordeão do Step 2).
+//   Baixo/Alto em âmbar e não vermelho de propósito: o limite fisiológico já
+//   foi julgado pela régua A quando o alvo foi definido — aqui o desvio é do
+//   plano, não clínico.
+//
+// Substitui getVolColor/getVolStatus, que usavam só MEV e MRV com fronteiras
+// ±1 hardcoded e ignoravam o MAV — a faixa "Ideal" resultante cobria 77–86%
+// do intervalo MEV–MRV em todos os 12 grupos, ou seja, não discriminava nada.
+
+const VOL_FAIXAS = {
+  baixo:        {cor:'var(--red)',    label:'Baixo'},
+  'aceitavel-': {cor:'var(--amber)',  label:'Aceitável ↓'},
+  ideal:        {cor:'var(--accent)', label:'Ideal'},
+  'aceitavel+': {cor:'var(--amber)',  label:'Aceitável ↑'},
+  alto:         {cor:'var(--red)',    label:'Alto'},
+  off:          {cor:'var(--text3)',  label:'OFF'},
+  zerado:       {cor:'var(--text3)',  label:'Zerado'},
+};
+
+const VOL_ALVO_FAIXAS = {
+  baixo:     {cor:'var(--amber)',  label:'Baixo'},
+  escolhido: {cor:'var(--accent)', label:'Escolhido'},
+  alto:      {cor:'var(--amber)',  label:'Alto'},
+  off:       {cor:'var(--text3)',  label:'OFF'},
+  zerado:    {cor:'var(--text3)',  label:'Zerado'},
+};
+
+// Zonas de fundo em rgba fixo: são overlay translúcido, funcionam nos dois temas.
+const VOL_Z_LO   = 'rgba(220,38,38,.10)';
+const VOL_Z_AC   = 'rgba(234,88,12,.10)';
+const VOL_Z_ID   = 'rgba(22,163,74,.13)';
+const VOL_Z_TICK = 'rgba(128,128,128,.38)';
+
+// Larguras FIXAS por faixa (não proporcionais ao número). Isso é deliberado:
+// com zonas em posição fixa, o verde começa e termina no mesmo x em todas as
+// linhas da tabela, e dá pra varrer a coluna de relance mesmo com o bíceps
+// indo até 26 e o quadríceps até 20. O custo é perder a proporção numérica —
+// por isso os marcos aparecem escritos embaixo da barra.
+const VOL_RA_X = [0,15,30,70,85,100], VOL_RA_W = [15,15,40,15,15];
+const VOL_RB_X = [0,30,70,100],       VOL_RB_W = [30,40,30];
+
+// Marcos da régua A a partir de uma entrada do GRUPOS_MAPA
+function _volMarcos(grupo){
+  const mev = grupo.mev || 0;
+  return {
+    mev,
+    mn:  grupo.mav_min || mev,
+    mx:  grupo.mav_max || grupo.mrv || mev,
+    mrv: grupo.mrv || 0,
+  };
 }
 
-function getVolStatus(series, mev, mrv, ativo){
-  if(!ativo)               return 'OFF';
-  if(series === 0)         return 'Zerado';
-  if(series < mev - 1)    return 'Crítico ↓';
-  if(series <= mev + 1)   return 'Aceitável';
-  if(series <= mrv - 1)   return 'Ideal';
-  if(series <= mrv + 1)   return 'Aceitável';
-  return 'Crítico ↑';
+function classificarVolumeGrupo(v, grupo, ativo){
+  if(ativo === false) return 'off';
+  if(!v || v <= 0)    return 'zerado';
+  const {mev, mn, mx, mrv} = _volMarcos(grupo);
+  if(v <  mev) return 'baixo';
+  if(v <  mn)  return 'aceitavel-';
+  if(v <= mx)  return 'ideal';
+  if(v <= mrv) return 'aceitavel+';
+  return 'alto';
+}
+
+function classificarVolumeAlvo(v, alvoMin, alvoMax, ativo){
+  if(ativo === false) return 'off';
+  if(!v || v <= 0)    return 'zerado';
+  if(v <  alvoMin) return 'baixo';
+  if(v <= alvoMax) return 'escolhido';
+  return 'alto';
+}
+
+// Posição (0–100%) de um valor na régua A — interpolação linear dentro da faixa
+function posVolReguaA(v, grupo){
+  const {mev, mn, mx, mrv} = _volMarcos(grupo);
+  if(v <= 0)   return 0;
+  if(v <  mev) return VOL_RA_X[0] + (v/Math.max(1,mev))            * VOL_RA_W[0];
+  if(v <  mn)  return VOL_RA_X[1] + ((v-mev)/Math.max(1,mn-mev))   * VOL_RA_W[1];
+  if(v <= mx)  return VOL_RA_X[2] + ((v-mn) /Math.max(1,mx-mn))    * VOL_RA_W[2];
+  if(v <= mrv) return VOL_RA_X[3] + ((v-mx) /Math.max(1,mrv-mx))   * VOL_RA_W[3];
+  // Acima do MRV: os últimos 15% cobrem +25% do MRV, depois satura.
+  return Math.min(100, VOL_RA_X[4] + ((v-mrv)/Math.max(1,mrv*0.25)) * VOL_RA_W[4]);
+}
+
+// Posição (0–100%) de um valor na régua B
+function posVolReguaB(v, alvoMin, alvoMax){
+  if(v <= 0)       return 0;
+  if(v <  alvoMin) return VOL_RB_X[0] + (v/Math.max(1,alvoMin))              * VOL_RB_W[0];
+  if(v <= alvoMax) return VOL_RB_X[1] + ((v-alvoMin)/Math.max(1,alvoMax-alvoMin)) * VOL_RB_W[1];
+  return Math.min(100, VOL_RB_X[2] + ((v-alvoMax)/Math.max(1,alvoMax*0.6))   * VOL_RB_W[2]);
+}
+
+function _volZona(left, width, bg){
+  return '<div style="position:absolute;left:'+left+'%;width:'+width+'%;top:0;bottom:0;background:'+bg+'"></div>';
+}
+function _volTick(left){
+  return '<div style="position:absolute;left:'+left+'%;top:0;bottom:0;width:1px;background:'+VOL_Z_TICK+'"></div>';
+}
+
+// Traço marcando "onde este grupo está" — usado quando o valor é um número.
+function volMarcadorHTML(pct, cor, id){
+  const p = Math.max(1, Math.min(99, pct));
+  return '<div' + (id ? ' id="'+id+'"' : '') + ' style="position:absolute;left:calc(' + p +
+    '% - 1.5px);top:-1px;bottom:-1px;width:3px;border-radius:2px;background:' + cor +
+    ';box-shadow:0 0 0 1.5px var(--bg2);transition:left .25s"></div>';
+}
+// Bloco preenchido de A a B — usado quando o valor é uma faixa (mín–máx).
+function volFaixaHTML(pctA, pctB, cor, id){
+  const a = Math.max(0, Math.min(100, pctA));
+  const w = Math.max(2, Math.min(100-a, pctB-a));
+  return '<div' + (id ? ' id="'+id+'"' : '') + ' style="position:absolute;left:' + a +
+    '%;width:' + w + '%;top:2px;bottom:2px;border-radius:2px;background:' + cor +
+    ';opacity:.85;transition:left .25s,width .25s"></div>';
+}
+
+// Barra da régua A (5 zonas). `conteudo` = marcador ou faixa.
+function barraVolumeGrupoHTML(grupo, conteudo, altura){
+  const X = VOL_RA_X, W = VOL_RA_W;
+  return '<div style="position:relative;height:' + (altura||12) +
+    'px;border-radius:3px;overflow:hidden;background:var(--bg2)">'
+    + _volZona(X[0], W[0], VOL_Z_LO) + _volZona(X[1], W[1], VOL_Z_AC)
+    + _volZona(X[2], W[2], VOL_Z_ID) + _volZona(X[3], W[3], VOL_Z_AC)
+    + _volZona(X[4], W[4], VOL_Z_LO)
+    + _volTick(X[1]) + _volTick(X[2]) + _volTick(X[3]) + _volTick(X[4])
+    + (conteudo||'') + '</div>';
+}
+
+// Barra da régua B (3 zonas)
+function barraVolumeAlvoHTML(conteudo, altura){
+  const X = VOL_RB_X, W = VOL_RB_W;
+  return '<div style="position:relative;height:' + (altura||12) +
+    'px;border-radius:3px;overflow:hidden;background:var(--bg2)">'
+    + _volZona(X[0], W[0], VOL_Z_AC) + _volZona(X[1], W[1], VOL_Z_ID)
+    + _volZona(X[2], W[2], VOL_Z_AC)
+    + _volTick(X[1]) + _volTick(X[2])
+    + (conteudo||'') + '</div>';
+}
+
+// Números dos marcos sob a barra. Fixos por grupo — nunca precisam de update.
+function escalaVolumeHTML(marcos, xs){
+  let h = '<div style="position:relative;height:12px;margin-top:2px">';
+  marcos.forEach((m, i) => {
+    h += '<div style="position:absolute;left:' + xs[i+1] + '%;transform:translateX(-50%);' +
+         'font-family:var(--mono);font-size:8.5px;color:var(--text3);white-space:nowrap">' + m + '</div>';
+  });
+  return h + '</div>';
 }
 
 // ── MAPA (no-op — status integrado na tabela) ─────────────────────────────────
@@ -1580,19 +1901,26 @@ function getDivisoesDisponiveis(numDias, objetivo){
   return base.filter(op => !op.objetivos_compativeis || !op.objetivos_compativeis.length || op.objetivos_compativeis.includes(objetivo));
 }
 
-// Converte um item de LIBS.distribuicao (nomes de grupo com acento, ex: "Reto Abdominal")
-// para o formato DIVISOES_TEMPLATES (ids sem acento de GRUPOS_MAPA, ex: "RetoAbdominal").
-// Usa textoIgual/normalizarIdentificador — mesma técnica que corrigiu o mesmo tipo de
-// descasamento entre GRUPOS_MAPA e DB_EXERCICIOS. Grupos sem correspondência em
-// GRUPOS_MAPA (ex: "Adutores", "Transverso do Abdômen") são ignorados silenciosamente,
-// pois não fazem parte dos 12 grupos oficiais de volume do sistema.
+// Converte um item de LIBS.distribuicao para o formato DIVISOES_TEMPLATES.
+// Desde 2026-09-02 os dois lados usam CHAVE (ASCII, sem acento, sem espaco):
+// LIBS.distribuicao[].grupos guarda 'RetoAbdominal' e GRUPOS_MAPA.id tambem —
+// comparacao direta, sem normalizacao em runtime (dado antigo e convertido no
+// load por _migrarLibsChaves). Grupos fora dos 12 oficiais de volume
+// ('Adutores', 'TransversoDoAbdomen', 'QuadradoLombar', 'Romboides') sao
+// ignorados de proposito.
 function converterDivisaoLibParaTemplate(d){
   const def = [];
   const label = [];
   d.dias.forEach((dia, i) => {
     const grupos = (dia.grupos||[])
-      .map(nomeDisplay => {
-        const achado = GRUPOS_MAPA.find(gm => textoIgual(gm.id, nomeDisplay));
+      .map(chaveGrupo => {
+        // Compara por chave, mas tolera dado AINDA NAO MIGRADO ('Reto Abdominal'
+        // com espaco) — LIBS pode vir do Supabase de uma sessao antiga, de um
+        // backup, ou de um import. Trocar isto por === puro fez o grupo sumir
+        // da divisao em silencio quando a migracao nao tinha rodado. Migrar e a
+        // correcao; tolerar aqui e a rede de seguranca. (2026-09-03)
+        const achado = GRUPOS_MAPA.find(gm => gm.id === chaveGrupo)
+                    || GRUPOS_MAPA.find(gm => textoIgual(gm.id, chaveGrupo));
         return achado ? { g: achado.id } : null;
       })
       .filter(Boolean);
@@ -2141,8 +2469,47 @@ function dcReordenarGrupo(cardIdx, ti, g, direcao){
   const idx = sessao.findIndex(x => x.g === g); if(idx < 0) return;
   const novoIdx = idx + direcao;
   if(novoIdx < 0 || novoIdx >= sessao.length) return;
+  const gVizinho = sessao[novoIdx].g;
   [sessao[idx], sessao[novoIdx]] = [sessao[novoIdx], sessao[idx]];
+  // Espelha a troca no snapshot _defaultOrig — ver _dcOrigReordenar.
+  _dcOrigReordenar(divisao, ti, g, gVizinho, direcao);
   renderTelaDivisao();
+}
+
+// ── Sincronização do snapshot _defaultOrig ────────────────────────────────
+// sincronizarFreqGrupos() guarda uma cópia intacta das sessões em
+// divisao._defaultOrig e RESTAURA divisao.default a partir dela em toda
+// chamada (é assim que um grupo reativado na tela de Volume volta a aparecer).
+// renderTelaDivisao() chama sincronizarFreqGrupos() na primeira linha — então
+// qualquer mudança estrutural feita em divisao.default logo antes de
+// renderizar é desfeita se o snapshot não for atualizado junto.
+// dcAdicionarGrupo/dcRemoverGrupo resolvem isso invalidando o snapshot
+// (delete _defaultOrig). Reordenar/mover NÃO podem simplesmente invalidar:
+// o snapshot também carrega os grupos hoje inativos (removidos fisicamente
+// de default), e descartá-lo perderia esses grupos pra sempre. Por isso aqui
+// a mesma operação é aplicada ao snapshot, casando por grupo (g) — os índices
+// de default e _defaultOrig divergem por causa dos inativos.
+// Bug que isso corrige: na "⚡ Divisão rápida" o card em edição é também o
+// card selecionado (abrirNovaDivisaoRapida seta divisaoIdx e _dcEditando no
+// mesmo índice, e sincronizarFreqGrupos só age no selecionado), então ↑/↓ e
+// "→ mover p/..." não tinham efeito nenhum — a restauração revertia tudo no
+// mesmo render.
+function _dcOrigReordenar(divisao, ti, g, gVizinho, direcao){
+  const orig = divisao._defaultOrig && divisao._defaultOrig[ti];
+  if(!orig) return;
+  const iG = orig.findIndex(x => x.g === g); if(iG < 0) return;
+  const [item] = orig.splice(iG, 1);
+  const iViz = orig.findIndex(x => x.g === gVizinho);
+  if(iViz < 0){ orig.splice(iG, 0, item); return; } // vizinho não está no snapshot: desfaz
+  orig.splice(direcao < 0 ? iViz : iViz + 1, 0, item);
+}
+
+function _dcOrigMover(divisao, ti, tiDestino, g){
+  const orig = divisao._defaultOrig; if(!orig) return;
+  if(!orig[ti] || !orig[tiDestino]) return;
+  const iG = orig[ti].findIndex(x => x.g === g); if(iG < 0) return;
+  const [item] = orig[ti].splice(iG, 1);
+  if(!orig[tiDestino].some(x => x.g === g)) orig[tiDestino].push(item);
 }
 
 // Move um grupo da sessão ti para outra sessão (tiDestino), mesma divisão de
@@ -2175,6 +2542,16 @@ function dcMoverGrupo(cardIdx, ti, g, tiDestino){
   // Evita duplicar se o grupo já existe na sessão destino
   const novoNaDestino = !destinoArr.some(x => x.g === item.g);
   if(novoNaDestino) destinoArr.push(item);
+  // Espelha a movimentação no snapshot _defaultOrig — sem isso o próximo
+  // render (sincronizarFreqGrupos) devolve o grupo pra sessão de origem.
+  if(novoNaDestino) _dcOrigMover(divisao, ti, tiDestino, g);
+  else { // já existia no destino: o efeito real foi só remover da origem
+    const orig = divisao._defaultOrig;
+    if(orig && orig[ti]){
+      const iG = orig[ti].findIndex(x => x.g === g);
+      if(iG >= 0) orig[ti].splice(iG, 1);
+    }
+  }
 
   if(!_s3._sessionOverrides) _s3._sessionOverrides = {};
   delete _s3._sessionOverrides[chaveAntiga];
@@ -2196,9 +2573,15 @@ function dcAdicionarGrupo(cardIdx, ti, g){
   const divisao = DIVISOES_TEMPLATES[op.chave]; if(!divisao) return;
   const sessao = divisao.default[ti]; if(!sessao) return;
   if(sessao.some(x => x.g === g)) return; // já está nesta sessão, não duplica
+  // Mesma trava do switch de volume: grupo sem exercício no nível/local atual não
+  // entra em sessão nenhuma, nem por este caminho.
+  if(_s3.volPorGrupo[g]?._semEx) return;
   sessao.push({ g });
   if(!_s3._sessionOverrides) _s3._sessionOverrides = {};
   _s3._sessionOverrides[String(ti) + '-' + g] = { numEx: 0, serEx: 0, serSessao: 0 };
+  // Invalida o backup — o personal acabou de mudar a composição manual,
+  // esse novo estado é a nova verdade; a próxima chamada salva backup fresh.
+  delete divisao._defaultOrig;
   sincronizarFreqGrupos();
   renderTelaDivisao();
 }
@@ -2214,6 +2597,9 @@ function dcRemoverGrupo(cardIdx, ti, g){
   const idx = sessao.findIndex(x => x.g === g); if(idx < 0) return;
   sessao.splice(idx, 1);
   if(_s3._sessionOverrides) delete _s3._sessionOverrides[String(ti) + '-' + g];
+  // Invalida o backup — o personal acabou de mudar a composição manual,
+  // esse novo estado é a nova verdade; a próxima chamada salva backup fresh.
+  delete divisao._defaultOrig;
   sincronizarFreqGrupos();
   renderTelaDivisao();
 }
@@ -2678,12 +3064,18 @@ function renderTelaDivisao(){
       calcSess.grupos.forEach(({g, exAlvo, exMin, exMax, serEx: sEx,
           serSessao, serSemana, exSemana, serMinSem, serMaxSem, freq: fq}, gi) => {
         const vg    = _s3.volPorGrupo[g]; if(!vg||vg.ativo===false) return;
-        const grupo = GRUPOS_MAPA.find(x => x.id===g);
-        const {mev=0, mrv=0} = grupo||{};
-        const semMid = Math.round(((vg.semMin||0)+(vg.semMax||0))/2);
-        const cor    = getVolColor(semMid, mev, mrv);
-        const pctBar = mrv>0 ? Math.min(100,Math.round((semMid/mrv)*100)) : 0;
-        const rowBg  = gi%2===0 ? 'var(--bg3)' : 'var(--bg4)';
+        // RÉGUA B — aqui a pergunta é "esta divisão entrega o que eu escolhi?",
+        // então as zonas são o alvo do personal (semMin–semMax), não MEV/MAV/MRV:
+        // o limite fisiológico já foi julgado na tela de Volume, quando o alvo
+        // foi definido. O valor plotado é o total SEMANAL do grupo nesta divisão
+        // (soma de todas as sessões) — comparar o volume de UMA sessão contra
+        // uma referência semanal seria comparar coisas diferentes.
+        const alvoMin = vg.semMin || 0;
+        const alvoMax = vg.semMax || 0;
+        const semanaG = (volAtualPorGrupo[g] || {}).serSemana || 0;
+        const faixaG  = classificarVolumeAlvo(semanaG, alvoMin, alvoMax, true);
+        const cor     = VOL_ALVO_FAIXAS[faixaG].cor;
+        const rowBg   = gi%2===0 ? 'var(--bg3)' : 'var(--bg4)';
 
         const row = document.createElement('div');
         row.style.cssText =
@@ -2699,10 +3091,14 @@ function renderTelaDivisao(){
         nome.style.cssText = 'font-size:12px;font-weight:600;color:var(--text);min-width:88px;flex-shrink:0';
         nome.textContent = LABEL[g]||g;
 
-        // Barra MEV–MRV
+        // Barra "chegamos ao alvo?" — régua B, traço na posição do volume semanal
         const barWrap = document.createElement('div');
-        barWrap.style.cssText = 'flex:1;height:5px;background:var(--bg2);border-radius:3px;overflow:hidden;min-width:60px';
-        barWrap.innerHTML = '<div style="width:' + pctBar + '%;height:100%;background:' + cor + ';border-radius:3px;transition:width .2s"></div>';
+        barWrap.style.cssText = 'flex:1;min-width:88px';
+        barWrap.title = 'Semana: ' + semanaG + 's · escolhido: ' + alvoMin + '–' + alvoMax +
+                        's · esta sessão: ' + (serSessao||0) + 's — ' + VOL_ALVO_FAIXAS[faixaG].label;
+        barWrap.innerHTML =
+          barraVolumeAlvoHTML(volMarcadorHTML(posVolReguaB(semanaG, alvoMin, alvoMax), cor), 10) +
+          escalaVolumeHTML([alvoMin, alvoMax], VOL_RB_X);
 
         // Controles: ex − [n] + × ser − [s] + = total
         const ctrl = document.createElement('div');
@@ -2830,10 +3226,11 @@ function renderTelaDivisao(){
         selAdd.appendChild(optPh);
         GRUPOS_MAPA.forEach(({id,label:lbl}) => {
           const jaNaSessao = sessaoGrupos.some(x=>x.g===id);
+          const semExG     = _s3.volPorGrupo[id]?._semEx === true;
           const opt = document.createElement('option');
           opt.value = id;
-          opt.textContent = lbl + (jaNaSessao ? ' (já nesta sessão)' : '');
-          opt.disabled = jaNaSessao;
+          opt.textContent = lbl + (semExG ? ' (sem exercício no nível/local)' : jaNaSessao ? ' (já nesta sessão)' : '');
+          opt.disabled = jaNaSessao || semExG;
           selAdd.appendChild(opt);
         });
         selAdd.addEventListener('click', function(e){ e.stopPropagation(); });
@@ -3057,6 +3454,25 @@ function sincronizarFreqGrupos(){
   const freq    = val('pr-frequencia') || '3x';
   const numDias = parseInt(freq) || 3;
   const divisao = DIVISOES_TEMPLATES[op.chave] || DIVISOES[numDias];
+
+  // Salva cópia original das sessões na primeira chamada. Nas chamadas
+  // seguintes, restaura in-place ANTES de aplicar o filtro de grupos inativos.
+  // Isso garante que um grupo reativado (switch ligado de volta) volta a
+  // aparecer na divisão — sem isso o splice() anterior era permanente e o
+  // grupo ficava desaparecido para sempre até recarregar a página.
+  // A restauração é in-place (limpa e repopula cada array existente) para
+  // preservar as referências de objeto que calcSeriesSessaoComLimite usa
+  // internamente via indexOf() — substituir os arrays quebraria o índice.
+  if(!divisao._defaultOrig){
+    divisao._defaultOrig = divisao.default.map(sessao => sessao.map(g => ({...g})));
+  } else {
+    divisao._defaultOrig.forEach((sessaoOrig, i) => {
+      if(!divisao.default[i]) return;
+      divisao.default[i].length = 0;
+      sessaoOrig.forEach(g => divisao.default[i].push({...g}));
+    });
+  }
+
   // Remove fisicamente grupos INATIVOS (desligados na tela de Volume) das
   // sessões da divisão atual — sem isso, o grupo desativado continuava como
   // um item "fantasma" no array físico, nunca desenhado na tela mas ainda
@@ -3308,18 +3724,32 @@ Eles não serão incluídos na ficha. Continuar assim mesmo?`)) return false;
     // 1ª prioridade: DOM (accordion aberto)
     const fromDOM = lerSessionDataDOM(cardIdx, ti, sessaoGrupos);
     if(fromDOM.length > 0) return fromDOM;
-    // 2ª prioridade: overrides salvos pelo usuário ao editar inputs
+    // 2ª prioridade: overrides salvos pelo usuário ao editar inputs.
+    // Para cada grupo ativo da sessão: usa override se existir, senão calcula.
+    // Antes usava early-return quando fromOverrides.length > 0 — isso silenciava
+    // grupos sem override (ex.: Bíceps reativado após _defaultOrig ser restaurado)
+    // porque qualquer outro grupo com override na mesma sessão disparava o return
+    // antes de Bíceps ser incluído.
     const overrides = _s3._sessionOverrides || {};
-    const fromOverrides = sessaoGrupos
-      .filter(({g}) => _s3.volPorGrupo[g]?.ativo !== false)
-      .map(({g}) => {
+    const gruposAtivos = sessaoGrupos.filter(({g}) => _s3.volPorGrupo[g]?.ativo !== false);
+    const temAlgumOverride = gruposAtivos.some(({g}) => overrides[String(ti) + '-' + g]);
+    if(temAlgumOverride){
+      return gruposAtivos.map(({g}) => {
         const key = String(ti) + '-' + g;
-        return overrides[key] ? { g, ...overrides[key] } : null;
+        if(overrides[key]) return { g, ...overrides[key] };
+        // Grupo ativo mas sem override: calcula inline (mesmo algoritmo da 3ª prioridade)
+        const vg = _s3.volPorGrupo[g];
+        if(!vg) return null;
+        const sEx = vg.serEx || _s3.seriesPorEx;
+        const freq_g = Math.max(1, vg.freq || 1);
+        const serSem = Math.round(((vg.semMin||0)+(vg.semMax||0))/2);
+        const serSess = Math.max(sEx, Math.round(serSem/freq_g));
+        const numEx   = Math.max(1, Math.round(serSess/sEx));
+        return { g, numEx, serEx: sEx, serSessao: numEx*sEx };
       }).filter(Boolean);
-    if(fromOverrides.length > 0) return fromOverrides;
-    // 3ª prioridade: calcular a partir de volPorGrupo
-    return sessaoGrupos
-      .filter(({g}) => _s3.volPorGrupo[g]?.ativo !== false)
+    }
+    // 3ª prioridade: calcular a partir de volPorGrupo (nenhum override existe)
+    return gruposAtivos
       .map(({g}) => {
         const vg = _s3.volPorGrupo[g];
         if(!vg || vg.ativo === false) return null;
@@ -3334,7 +3764,7 @@ Eles não serão incluídos na ficha. Continuar assim mesmo?`)) return false;
 
   const params = {
     objetivo: selectedObj || 'Saude', nivel, frequencia: freq,
-    local:        val('pr-local') || s.anamnese?.local || 'academia',
+    local:        val('pr-local') || s.anamnese?.local || '',
     lesoes:       s.perfil?.lesoes || '',
     preferencias: val('pr-evitar') || s.anamnese?.preferencias || '',
     seriesPorEx: _s3.seriesPorEx,
@@ -3410,16 +3840,13 @@ function renderPreviewVolSemanal(targetId){
   const s  = getActive();
   const obj = selectedObj || getUltimoTreino(s).objetivo || 'Saude';
 
-  // MEV/MAV/MRV por objetivo (Israetel 2019 — Vault REF-Vol)
-  const LIMIARES = {
-    Hip:    {mev:10,mav:20,mrv:25}, Forca:  {mev:8,mav:16,mrv:20},
-    Emagr:  {mev:8,mav:18,mrv:22}, Comp:   {mev:10,mav:18,mrv:22},
-    Resist: {mev:8,mav:16,mrv:20}, CardioR:{mev:6,mav:12,mrv:16},
-    Func:   {mev:6,mav:14,mrv:18}, Saude:  {mev:8,mav:14,mrv:18},
-    Esport: {mev:10,mav:20,mrv:25},Reab:   {mev:6,mav:12,mrv:16},
-    Envelhec:{mev:6,mav:12,mrv:16},Gestacao:{mev:6,mav:10,mrv:14},
-  };
-  const lim = LIMIARES[obj] || {mev:8,mav:16,mrv:20};
+  // A tabela LIMIARES por OBJETIVO que ficava aqui foi REMOVIDA (2026-09-08):
+  // dava um único MEV/MAV/MRV para todos os grupos (Hip = 10/20/25 tanto para
+  // bíceps quanto para quadríceps), ignorando justamente a variável que mais
+  // muda esses números. Resultado: bíceps com 6 séries aparecia "Abaixo MEV"
+  // quando o MEV real do bíceps é 6 — o status mentia em metade das linhas.
+  // Agora usa a régua por GRUPO (GRUPOS_MAPA), a mesma da tela de Volume.
+  // Objetivo/sexo/nível continuam modulando o ALVO (getVolumePorGrupo), não a régua.
 
   // Somar volume semanal por grupo (todas as sessões)
   const volSem = {};
@@ -3427,41 +3854,37 @@ function renderPreviewVolSemanal(targetId){
     volSem[ex.musculo] = (volSem[ex.musculo]||0) + parseInt(ex.series||0);
   }));
 
+  const LBL_G = {};
+  GRUPOS_MAPA.forEach(({id, label}) => { LBL_G[id] = label; });
+
   const grupos = Object.keys(volSem).sort();
   const rows = grupos.map(g => {
     const v = volSem[g]||0;
-    let status, cor, icon;
-    if(v < lim.mev){
-      status='Abaixo MEV'; cor='var(--red)'; icon='🔴';
-    } else if(v <= lim.mav){
-      status='MEV→MAV ✓'; cor='var(--accent)'; icon='🟢';
-    } else if(v <= lim.mrv){
-      status='Próx. MRV'; cor='var(--amber)'; icon='🟡';
-    } else {
-      status='Acima MRV ⚠️'; cor='var(--red)'; icon='🔴';
+    const grupo = GRUPOS_MAPA.find(x => x.id === g);
+    // Grupo fora do GRUPOS_MAPA (não deveria acontecer): mostra o número sem régua.
+    if(!grupo){
+      return `<tr>
+        <td style="font-size:12px;color:var(--text2);padding:5px 8px">${g}</td>
+        <td style="padding:5px 8px;font-family:var(--mono);font-size:13px;font-weight:700;text-align:center">${v}</td>
+        <td colspan="3" style="padding:5px 8px;font-size:10px;color:var(--text3)">sem referência de volume para este grupo</td>
+      </tr>`;
     }
-    // Barra segmentada com zonas MEV / MAV / MRV
-    const pctMev  = Math.min(99, Math.round(lim.mev/lim.mrv*100));
-    const pctMav  = Math.min(99, Math.round(lim.mav/lim.mrv*100));
-    const pctFill = Math.min(100, Math.round(v/lim.mrv*100));
-    const fillColor = v>lim.mrv?'var(--red)':v>lim.mav?'var(--amber)':v>=lim.mev?'var(--accent)':'var(--text3)';
-    const barHtml = `<div style="position:relative;height:8px;min-width:100px;border-radius:4px;overflow:hidden;background:var(--bg4)">
-      <!-- zona MEV→MAV (verde suave) -->
-      <div style="position:absolute;left:${pctMev}%;right:${100-pctMav}%;top:0;bottom:0;background:rgba(100,220,130,.12)"></div>
-      <!-- zona MAV→MRV (âmbar suave) -->
-      <div style="position:absolute;left:${pctMav}%;right:0;top:0;bottom:0;background:rgba(255,180,0,.10)"></div>
-      <!-- preenchimento atual -->
-      <div style="position:absolute;left:0;top:0;height:100%;width:${pctFill}%;background:${fillColor};border-radius:4px;transition:width .3s;opacity:.9"></div>
-      <!-- marcadores de zona -->
-      <div style="position:absolute;left:${pctMev}%;top:0;width:1px;height:100%;background:rgba(255,255,255,.35)"></div>
-      <div style="position:absolute;left:${pctMav}%;top:0;width:1px;height:100%;background:rgba(255,255,255,.25)"></div>
-    </div>`;
+    const mk    = _volMarcos(grupo);
+    const faixa = classificarVolumeGrupo(v, grupo, true);
+    const cor   = VOL_FAIXAS[faixa].cor;
+    // Traço na posição do valor — a régua inteira fica legível, e a posição
+    // é lida direto em vez de comparar comprimentos de preenchimento.
+    const barHtml =
+      barraVolumeGrupoHTML(grupo, volMarcadorHTML(posVolReguaA(v, grupo), cor), 10) +
+      escalaVolumeHTML([mk.mev, mk.mn, mk.mx, mk.mrv], VOL_RA_X);
     return `<tr>
-      <td style="font-size:12px;color:var(--text2);padding:5px 8px">${g}</td>
+      <td style="font-size:12px;color:var(--text2);padding:5px 8px">${LBL_G[g]||g}</td>
       <td style="padding:5px 8px;font-family:var(--mono);font-size:13px;font-weight:700;color:${cor};text-align:center">${v}</td>
-      <td style="padding:5px 8px;font-size:10px;color:var(--text3);text-align:center">${lim.mev}→${lim.mav}→${lim.mrv}</td>
-      <td style="padding:5px 12px">${barHtml}</td>
-      <td style="font-size:10px;color:${cor};padding:5px 8px;white-space:nowrap">${icon} ${status}</td>
+      <td style="padding:5px 8px;font-size:10px;color:var(--text3);text-align:center;font-family:var(--mono);white-space:nowrap">${mk.mev} · ${mk.mn}–${mk.mx} · ${mk.mrv}</td>
+      <td style="padding:5px 12px;min-width:150px">${barHtml}</td>
+      <td style="font-size:11px;font-weight:600;color:${cor};padding:5px 8px;white-space:nowrap">
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${cor};margin-right:5px;vertical-align:middle"></span>${VOL_FAIXAS[faixa].label}
+      </td>
     </tr>`;
   }).join('');
 
@@ -3469,18 +3892,25 @@ function renderPreviewVolSemanal(targetId){
   el.innerHTML = `
     <div class="section-label">📊 Volume Semanal por Grupo — ${obj}</div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:8px">
-      Referência Israetel 2019: <strong>MEV</strong> (mínimo efetivo) → <strong>MAV</strong> (máximo adaptativo) → <strong>MRV</strong> (máximo recuperável)
+      Referência Israetel 2019, por grupo muscular: <strong>MEV</strong> (mínimo efetivo) → <strong>MAV</strong> (máximo adaptativo) → <strong>MRV</strong> (máximo recuperável)
     </div>
     <table style="width:100%;border-collapse:collapse">
       <thead><tr style="border-bottom:1px solid var(--border)">
         <th style="text-align:left;padding:4px 8px;font-size:10px;color:var(--text3)">Grupo</th>
         <th style="text-align:center;padding:4px 8px;font-size:10px;color:var(--text3)">Séries/sem</th>
-        <th style="text-align:center;padding:4px 8px;font-size:10px;color:var(--text3)">MEV/MAV/MRV</th>
+        <th style="text-align:center;padding:4px 8px;font-size:10px;color:var(--text3)">MEV · MAV · MRV</th>
         <th style="padding:4px 12px;font-size:10px;color:var(--text3)">Volume</th>
         <th style="text-align:left;padding:4px 8px;font-size:10px;color:var(--text3)">Status</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:10px;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius)">
+      <span style="font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.06em">STATUS DO VOLUME:</span>
+      ${['baixo','aceitavel-','ideal','aceitavel+','alto'].map(k =>
+        `<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)">
+           <span style="width:9px;height:9px;border-radius:2px;background:${VOL_FAIXAS[k].cor}"></span>${VOL_FAIXAS[k].label}
+         </span>`).join('')}
+    </div>
     <div style="margin-top:8px;font-size:11px;color:var(--text3);text-align:right">
       Total na semana: <strong style="color:var(--accent);font-family:var(--mono)">${totalSem} séries</strong>
     </div>`;
@@ -3560,23 +3990,14 @@ function _htmlSessaoInfo(treino, fichaObj, objetivoStr){
     volSem[ex.musculo] = (volSem[ex.musculo]||0) + parseInt(ex.series||0);
   }));
 
-  const LIMIARES = {
-    Hip:{mev:10,mav:20,mrv:25},Forca:{mev:8,mav:16,mrv:20},
-    Emagr:{mev:8,mav:18,mrv:22},Comp:{mev:10,mav:18,mrv:22},
-    Resist:{mev:8,mav:16,mrv:20},CardioR:{mev:6,mav:12,mrv:16},
-    Func:{mev:6,mav:14,mrv:18},Saude:{mev:8,mav:14,mrv:18},
-    Esport:{mev:10,mav:20,mrv:25},Reab:{mev:6,mav:12,mrv:16},
-    Envelhec:{mev:6,mav:12,mrv:16},Gestacao:{mev:6,mav:10,mrv:14},
-  };
-  const lim = LIMIARES[objetivoStr] || {mev:8,mav:16,mrv:20};
-
+  // Segunda cópia da tabela LIMIARES por objetivo REMOVIDA aqui também
+  // (2026-09-08) — mesma régua única para todos os grupos, mesmo defeito.
+  // A cor do chip agora sai da régua por grupo, igual ao resto do sistema.
   const muscChips = Object.entries(volSessao).map(([m,v]) => {
-    const vSem = volSem[m] || 0;
-    let cor;
-    if(vSem < lim.mev)      cor = 'var(--red)';
-    else if(vSem <= lim.mav) cor = 'var(--accent)';
-    else if(vSem <= lim.mrv) cor = 'var(--amber)';
-    else                     cor = 'var(--red)';
+    const vSem  = volSem[m] || 0;
+    const grupo = GRUPOS_MAPA.find(x => x.id === m);
+    const cor   = grupo ? VOL_FAIXAS[classificarVolumeGrupo(vSem, grupo, true)].cor
+                        : 'var(--text3)';
     const mLabel = m.replace('Isquiossurais','Isquio').replace('RetoAbdominal','Abd').replace('Panturrilhas','Pant');
     return `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;font-size:11px;color:var(--text2)">
       <span style="width:6px;height:6px;border-radius:50%;background:${cor};flex-shrink:0"></span>
@@ -3668,7 +4089,7 @@ function renderTreinoAtivo(){
   function _chipsArticMob(){
     if(!sortedArtics.length) return `<span style="font-size:10px;color:var(--text3);font-style:italic">Nenhuma articulação identificada</span>`;
     return sortedArtics.map(artic => {
-      const inDB = DB_EXERCICIOS.some(e => (e.tp||[]).some(t=>t.nome==='Mobilidade') && (e.artic||[]).some(a=>a.nome===artic));
+      const inDB = DB_EXERCICIOS.some(e => (e.tp||[]).some(t=>t.chave==='Mobilidade') && (e.artic||[]).some(a=>a.nome===artic));
       const sel  = aquecimento.some(x => x.tipo==='Mobilidade' && x.artic===artic);
       if(!inDB) return `<span style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);color:var(--text3);opacity:.4">${artic}</span>`;
       return `<button onclick="toggleAquecArtic(${ti},'${artic.replace(/'/g,"\\'")}')"
@@ -3836,11 +4257,12 @@ function renderTreinoAtivo(){
       .excv2-pm:hover{background:var(--bg5);color:var(--text)}
       /* floating search dropdown */
       .excv2-sdrop{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);box-shadow:0 6px 28px rgba(0,0,0,.55);z-index:900}
-      .excv2-sbar{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--border);background:var(--bg3);border-radius:var(--radius) var(--radius) 0 0}
+      .excv2-sbar{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--border);background:var(--bg3);border-radius:var(--radius) var(--radius) 0 0;flex-shrink:0}
       .excv2-sinput{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:12px;caret-color:var(--accent2)}
       .excv2-sinput::placeholder{color:var(--text3)}
       .excv2-ftrig{background:var(--bg4);border:1px solid var(--border2);border-radius:4px;color:var(--accent2);font-size:10px;font-weight:600;padding:3px 8px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px;transition:all .12s;font-family:inherit}
       .excv2-ftrig:hover{background:rgba(91,140,247,.15)}
+      .excv2-sdrop.fx-anchored,.excv2-omenu.fx-anchored{position:fixed!important}
       .excv2-slist{max-height:240px;overflow-y:auto}
       .excv2-slist::-webkit-scrollbar{width:4px}
       .excv2-slist::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
@@ -4100,10 +4522,83 @@ function _pmExercicio(ti, rowIdx, campo, delta){
   }
 }
 
+// ── Ancoragem de dropdown flutuante ────────────────────────────────────────
+// Motivo: os cards ficam dentro de um box com overflow:hidden, então qualquer
+// dropdown position:absolute é cortado na borda do box. Aqui o painel vira
+// position:fixed, ancorado ao botão pelo rect da viewport — escapa de todo
+// overflow, vira pra cima quando não há espaço abaixo, e é reposicionado em
+// scroll/resize enquanto está aberto. Sempre chamar _desancorarDrop() ao
+// fechar, senão o display:flex inline vence a classe .hidden.
+function _ancorarDropFixo(dropEl, anchorEl, opts){
+  if(!dropEl || !anchorEl) return;
+  const o        = opts || {};
+  const minW     = o.minWidth || 260;
+  const scrollEl = o.scrollEl || null;
+  const alinhaDir= !!o.alinharDireita;
+  const MARGEM = 10, MIN_ABAIXO = 180;
+
+  if(dropEl._cssOrig == null) dropEl._cssOrig = dropEl.style.cssText;
+  if(scrollEl){
+    scrollEl.style.maxHeight  = 'none';
+    scrollEl.style.flex       = '1 1 auto';
+    scrollEl.style.minHeight  = '0';
+    scrollEl.style.overflowY  = 'auto';
+  }
+
+  const aplicar = () => {
+    if(dropEl.classList.contains('hidden')) return;
+    const r = anchorEl.getBoundingClientRect();
+    const w = Math.min(Math.max(r.width, minW), window.innerWidth - MARGEM * 2);
+    let left = alinhaDir ? (r.right - w) : r.left;
+    if(left + w > window.innerWidth - MARGEM) left = window.innerWidth - MARGEM - w;
+    if(left < MARGEM) left = MARGEM;
+
+    const abaixo   = window.innerHeight - r.bottom - MARGEM;
+    const acima    = r.top - MARGEM;
+    const paraCima = abaixo < MIN_ABAIXO && acima > abaixo;
+
+    dropEl.classList.add('fx-anchored');
+    dropEl.style.position      = 'fixed';
+    dropEl.style.left          = left + 'px';
+    dropEl.style.right         = 'auto';
+    dropEl.style.width         = w + 'px';
+    dropEl.style.zIndex        = '9000';
+    dropEl.style.display       = 'flex';
+    dropEl.style.flexDirection = 'column';
+    dropEl.style.overflow      = 'hidden';
+    if(paraCima){
+      dropEl.style.top       = 'auto';
+      dropEl.style.bottom    = (window.innerHeight - r.top + 4) + 'px';
+      dropEl.style.maxHeight = Math.max(140, acima) + 'px';
+    }else{
+      dropEl.style.bottom    = 'auto';
+      dropEl.style.top       = (r.bottom + 4) + 'px';
+      dropEl.style.maxHeight = Math.max(140, abaixo) + 'px';
+    }
+  };
+
+  aplicar();
+  const onMove = () => aplicar();
+  window.addEventListener('scroll', onMove, true);
+  window.addEventListener('resize', onMove);
+  dropEl._desancorar = () => {
+    window.removeEventListener('scroll', onMove, true);
+    window.removeEventListener('resize', onMove);
+    dropEl.classList.remove('fx-anchored');
+    dropEl.style.cssText = dropEl._cssOrig || '';
+    dropEl._desancorar = null;
+  };
+}
+
+// Remove a ancoragem fixed (obrigatório antes de esconder o painel)
+function _desancorarDrop(el){
+  if(el && el._desancorar) el._desancorar();
+}
+
 // Fecha todos os dropdowns e menus de exercício abertos
 function _fecharTodosExcv2(){
-  document.querySelectorAll('[id^="excv2-drop-"]').forEach(el => el.classList.add('hidden'));
-  document.querySelectorAll('[id^="excv2-menu-"]').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('[id^="excv2-drop-"]').forEach(el => { _desancorarDrop(el); el.classList.add('hidden'); });
+  document.querySelectorAll('[id^="excv2-menu-"]').forEach(el => { _desancorarDrop(el); el.classList.add('hidden'); });
   if(window._excv2OutsideHandler){
     document.removeEventListener('click', window._excv2OutsideHandler, true);
     window._excv2OutsideHandler = null;
@@ -4121,19 +4616,23 @@ function _toggleBuscaExercicio(ti, rowIdx, musculo, porcaoStr){
   const porcao = (porcaoStr === 'null' || !porcaoStr) ? null : porcaoStr;
   const s    = getActive();
   const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
-  const local  = s?.anamnese?.local || 'academia';
+  const local  = s?.anamnese?.local || '';
   const lesoes = (s?.perfil?.lesoes||'') + ' ' + (s?.anamnese?.preferencias||'');
   const resist = getResistPermitida(local);
 
   let poolBase = filtrarExerciciosFicha(musculo, porcao, resist, nivel, lesoes);
   if(!poolBase.length) poolBase = filtrarExerciciosFicha(musculo, null, resist, nivel, lesoes);
-  if(!poolBase.length) poolBase = DB_EXERCICIOS.filter(e=>e.g.some(x=>buscaFuzzy(musculo, x.nome)));
+  // A escada de fallback PARA AQUI (2026-09-08). Havia um terceiro degrau —
+  // DB_EXERCICIOS.filter(grupo) — que derrubava nível E equipamento de uma vez:
+  // iniciante em local sem equipamento podia receber exercício avançado no cabo,
+  // sem nenhuma pista na tela. Nível e local são cortes DUROS. Quando não sobra
+  // nada, o grupo já foi travado em aplicarDisponibilidadeGrupos().
 
   const { bloqueios, prioridades } = extrairFlagsClinicas();
   const pool = poolBase.map(e => {
     for(const f of bloqueios){ const r=FLAGS_FILTRO[f]; if(r?.bloqueio(e)) return {...e,_status:'bloqueado',_motivo:r.motivo}; }
     for(const p of prioridades){ const fn=FLAGS_PRIORIDADE[p]; if(fn&&fn(e)) return {...e,_status:'prioritario',_motivo:p}; }
-    if(bloqueios.includes('Baixo Impacto')&&_exercicioAltoImpacto(e)) return {...e,_status:'nao_recomendado',_motivo:'Alto impacto'};
+    if(bloqueios.includes('BaixoImpacto')&&_exercicioAltoImpacto(e)) return {...e,_status:'nao_recomendado',_motivo:'Alto impacto'};
     return {...e,_status:'ok',_motivo:''};
   }).sort((a,b)=>{
     const o={prioritario:0,ok:1,nao_recomendado:2,bloqueado:3};
@@ -4142,7 +4641,7 @@ function _toggleBuscaExercicio(ti, rowIdx, musculo, porcaoStr){
 
   // Montar estrutura do dropdown
   dropEl.className = 'excv2-sdrop';
-  dropEl.style.minWidth = '260px';
+  dropEl.style.cssText = '';
   dropEl.innerHTML = `
     <div class="excv2-sbar">
       <input id="excv2-srch-${ti}-${rowIdx}" type="text" placeholder="Buscar…"
@@ -4151,10 +4650,16 @@ function _toggleBuscaExercicio(ti, rowIdx, musculo, porcaoStr){
       <button style="background:var(--bg4);border:1px solid var(--border);border-radius:4px;color:var(--text2);font-size:10px;padding:4px 8px;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .12s"
         onclick="event.stopPropagation();_abrirFiltroExercicioModal('excv2-drop-${ti}-${rowIdx}',${ti},${rowIdx})">⚙ Filtros</button>
     </div>
-    <div id="excv2-res-${ti}-${rowIdx}" style="max-height:260px;overflow-y:auto;padding:4px 0"></div>`;
+    <div id="excv2-res-${ti}-${rowIdx}" style="overflow-y:auto;padding:4px 0"></div>`;
 
   dropEl._pool = pool;
   _renderDropResults(ti, rowIdx, pool);
+
+  // Ancorar como fixed no botão do nome — escapa do overflow:hidden do box
+  _ancorarDropFixo(dropEl, document.getElementById(`excv2-nb-${ti}-${rowIdx}`) || dropEl.parentElement, {
+    minWidth: 300,
+    scrollEl: document.getElementById(`excv2-res-${ti}-${rowIdx}`)
+  });
 
   setTimeout(() => { document.getElementById(`excv2-srch-${ti}-${rowIdx}`)?.focus(); }, 40);
 
@@ -4287,8 +4792,12 @@ function _aplicarFiltroExercicioModal(dropId, ti, rowIdx){
 function _toggleMenuExercicio(ti, rowIdx){
   const menuEl = document.getElementById(`excv2-menu-${ti}-${rowIdx}`); if(!menuEl) return;
   const isOpen = !menuEl.classList.contains('hidden');
-  document.querySelectorAll('[id^="excv2-menu-"]').forEach(el=>el.classList.add('hidden'));
-  if(!isOpen) menuEl.classList.remove('hidden');
+  document.querySelectorAll('[id^="excv2-menu-"]').forEach(el=>{ _desancorarDrop(el); el.classList.add('hidden'); });
+  if(!isOpen){
+    menuEl.classList.remove('hidden');
+    _ancorarDropFixo(menuEl, document.getElementById(`excv2-morebtn-${ti}-${rowIdx}`) || menuEl.parentElement,
+      { minWidth: 160, alinharDireita: true });
+  }
 }
 
 // Toggle textarea de observação
@@ -4297,7 +4806,8 @@ function _toggleObsExercicio(ti, rowIdx){
   const ex = treino.exercicios[rowIdx]; if(!ex) return;
   ex._obsAberta = !ex._obsAberta;
   document.getElementById(`excv2-note-${ti}-${rowIdx}`)?.classList.toggle('hidden', !ex._obsAberta);
-  document.getElementById(`excv2-menu-${ti}-${rowIdx}`)?.classList.add('hidden');
+  const _mn = document.getElementById(`excv2-menu-${ti}-${rowIdx}`);
+  if(_mn){ _desancorarDrop(_mn); _mn.classList.add('hidden'); }
 }
 
 // Remove exercício da sessão
@@ -4420,7 +4930,7 @@ function abrirListaExercicios(ti, rowIdx, musculo, porcaoStr){
 
   const s     = getActive();
   const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
-  const local = s?.anamnese?.local || 'academia';
+  const local = s?.anamnese?.local || '';
   const lesoes = (s?.perfil?.lesoes||'') + ' ' + (s?.anamnese?.preferencias||'');
   const resist = getResistPermitida(local);
   const porcao = (porcaoStr==='null'||!porcaoStr) ? null : porcaoStr;
@@ -4428,7 +4938,11 @@ function abrirListaExercicios(ti, rowIdx, musculo, porcaoStr){
   // Pool base (nível/recurso/ci)
   let poolBase = filtrarExerciciosFicha(musculo, porcao, resist, nivel, lesoes);
   if(!poolBase.length) poolBase = filtrarExerciciosFicha(musculo, null, resist, nivel, lesoes);
-  if(!poolBase.length) poolBase = DB_EXERCICIOS.filter(e=>e.g.some(x=>buscaFuzzy(musculo, x.nome)));
+  // A escada de fallback PARA AQUI (2026-09-08). Havia um terceiro degrau —
+  // DB_EXERCICIOS.filter(grupo) — que derrubava nível E equipamento de uma vez:
+  // iniciante em local sem equipamento podia receber exercício avançado no cabo,
+  // sem nenhuma pista na tela. Nível e local são cortes DUROS. Quando não sobra
+  // nada, o grupo já foi travado em aplicarDisponibilidadeGrupos().
 
   // Aplicar status Camada 3 para exibição
   const { bloqueios, prioridades } = extrairFlagsClinicas();
@@ -4443,7 +4957,7 @@ function abrirListaExercicios(ti, rowIdx, musculo, porcaoStr){
     }
     // "Não recomendado" (2026-08-28) — não bloqueia, só avisa e tira 1 ponto
     // na classificação (ver sortearExercicioC4). Hoje só Baixo Impacto.
-    if(bloqueios.includes('Baixo Impacto') && _exercicioAltoImpacto(e)){
+    if(bloqueios.includes('BaixoImpacto') && _exercicioAltoImpacto(e)){
       return { ...e, _status:'nao_recomendado', _motivo: 'Alto impacto — não recomendado com IMC ≥ 30' };
     }
     return { ...e, _status:'ok', _motivo:'' };
@@ -4542,7 +5056,7 @@ function regerarAquecimentoTreino(ti){
   const treino = f.treinos[ti];
   const s = getActive();
   const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
-  const local = val('pr-local') || s?.anamnese?.local || 'academia';
+  const local = val('pr-local') || s?.anamnese?.local || '';
   const resistPermitida = getResistPermitida(local);
   const contraindicacoes = [
     s?.perfil?.lesoes || '', s?.perfil?.condicoes || '', val('pr-evitar') || s?.anamnese?.preferencias || '',
@@ -4726,7 +5240,9 @@ function treinosVoltarLista(){
 
 function treinosExcluir(id){
   const s=getActive(); if(!s) return;
-  if(!confirm('Excluir este treino? Esta ação não pode ser desfeita.')) return;
+  const t = getTreinoPorId(s, id); if(!t) return;
+  if(!confirmarExclusao('treino', rotuloDoItem('treino', t))) return;
+  arquivarItem('treino', t, { ownerId: s.id, ownerNome: s.perfil?.nome });
   removerTreino(s, id);
   saveStudent();
   renderTreinosLista();
@@ -4985,8 +5501,11 @@ function verificarCompatibilidadePeriodDiv(sigla, op, numDias){
 // Prioridade de grupos para corte quando sessão excede limite
 // Primários: grupos grandes/mais funcionais → proteger volume
 // Secundários: podem ter volume reduzido primeiro
-const GRUPOS_PRIMARIOS   = new Set(['Quadríceps','Glúteos','Isquiossurais','Peitoral','Latíssimo','Deltóide','Trapézio']);
-const GRUPOS_SECUNDARIOS = new Set(['Reto Abdominal','Oblíquo','Transverso do Abdômen','Panturrilhas','Bíceps','Tríceps','Antebraços','Flexores do Pé','Adutores']);
+// CHAVES ASCII (sem acento, sem espaco) — mesmo formato dos ids de GRUPOS_MAPA,
+// que e o que chega em a.g/b.g na ordenacao por prioridade. Antes guardavam
+// nomes de exibicao acentuados e a comparacao dependia de textoIgual().
+const GRUPOS_PRIMARIOS   = new Set(['Quadriceps','Gluteos','Isquiossurais','Peitoral','Latissimo','Deltoide','Trapezio']);
+const GRUPOS_SECUNDARIOS = new Set(['RetoAbdominal','Obliquo','TransversoDoAbdomen','Panturrilhas','Biceps','Triceps','Antebracos','FlexoresDoPe','Adutores']);
 
 // Lê os valores REAIS dos inputs do DOM para uma sessão específica
 // Retorna array [{g, numEx, serEx}] respeitando o que o usuário editou
@@ -4997,18 +5516,42 @@ const GRUPOS_SECUNDARIOS = new Set(['Reto Abdominal','Oblíquo','Transverso do A
 // o que embaralhava a hierarquia na ficha final mesmo quando a tela de
 // Distribuição mostrava a ordem certa (bug real, confirmado: Quadríceps #1
 // na distribuição virava 2º exercício na ficha, atrás de Peitoral).
+// IMPORTANTE: a tela e esta leitura percorrem listas DIFERENTES — o render
+// itera calcSeriesSessaoExibida(...).grupos e aqui iteramos sessaoGrupos
+// (divisao.default[ti]). Quando um grupo ativo existe em sessaoGrupos mas nao
+// teve input desenhado, a versao antiga simplesmente NAO o incluia; como o
+// chamador usa `if(fromDOM.length > 0) return fromDOM`, essa lista parcial
+// virava autoridade e o grupo sumia da ficha em silencio — enquanto todos os
+// outros apareciam normalmente. Foi o que aconteceu com Biceps.
+// (Mesma classe de bug ja corrigida no caminho dos _sessionOverrides, ver
+// comentario em montarFichaFinal.)
+// Agora: input ausente NAO descarta o grupo — calcula inline, mesmo algoritmo
+// da 3a prioridade.
+function _calcSessaoGrupoInline(id){
+  const vg = _s3.volPorGrupo[id];
+  if(!vg || vg.ativo === false) return null;
+  const sEx     = vg.serEx || _s3.seriesPorEx;
+  const freq_g  = Math.max(1, vg.freq || 1);
+  const serSem  = Math.round(((vg.semMin||0) + (vg.semMax||0)) / 2);
+  const serSess = Math.max(sEx, Math.round(serSem / freq_g));
+  const numEx   = Math.max(1, Math.round(serSess / sEx));
+  return { g: id, numEx, serEx: sEx, serSessao: numEx * sEx };
+}
+
 function lerSessionDataDOM(cardIdx, ti, sessaoGrupos){
   const sessionData = [];
   sessaoGrupos.forEach(({g: id}) => {
+    const vg = _s3.volPorGrupo[id];
+    if(!vg || vg.ativo === false) return;   // desligado de proposito na tela de Volume
     const inpEx  = $('iex-'  + cardIdx + '-' + ti + '-' + id);
     const inpSer = $('iser-' + cardIdx + '-' + ti + '-' + id);
     if(inpEx && inpSer){
       const numEx = Math.max(1, parseInt(inpEx.value)||1);
       const serEx = Math.max(1, parseInt(inpSer.value)||1);
-      const vg = _s3.volPorGrupo[id];
-      if(vg && vg.ativo !== false){
-        sessionData.push({ g: id, numEx, serEx, serSessao: numEx * serEx });
-      }
+      sessionData.push({ g: id, numEx, serEx, serSessao: numEx * serEx });
+    } else {
+      const calc = _calcSessaoGrupoInline(id);   // sem input na tela: calcula, nao descarta
+      if(calc) sessionData.push(calc);
     }
   });
   return sessionData;
@@ -5054,7 +5597,7 @@ function gerarAquecimentoArticular(articsTreino, resistPermitida, nivel, contrai
       (e.tp||[]).some(t => tipos.includes(t.nome)) &&
       (e.artic||[]).some(x=>x.nome === artic) &&
       e.r && resistPermitida.includes(e.r.id) &&
-      e.nv && nivelOk(e.nv.nome, nivelLabel(nivel)) &&
+      e.nv && nivelOk(e.nv.chave, nivelChave(nivel)) &&
       !usados.has(e.n)
     );
     if(contraindicacoes){
@@ -5088,14 +5631,14 @@ function abrirListaAquecimento(ti, aquecIdx){
   const listId = `lista-aquec-${ti}-${aquecIdx}`;
   const listEl = $(listId); if(!listEl) return;
   const isOpen = !listEl.classList.contains('hidden');
-  document.querySelectorAll('[id^="lista-aquec-"]').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('[id^="lista-aquec-"]').forEach(el => { _desancorarDrop(el); el.classList.add('hidden'); });
   if(isOpen) return;
 
   const treino = _s3.fichaObj.treinos[ti];
   const item = treino.aquecimento[aquecIdx];
   const s = getActive();
   const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
-  const local = s?.anamnese?.local || 'academia';
+  const local = s?.anamnese?.local || '';
   const resist = getResistPermitida(local);
   const tipoFiltro = item.tipo || 'Mobilidade';
   const isMobilidade = tipoFiltro === 'Mobilidade';
@@ -5107,7 +5650,7 @@ function abrirListaAquecimento(ti, aquecIdx){
       ? (e.artic||[]).some(x => x.nome === item.artic)
       : (e.g||[]).some(g => g.nome === item.musculo)) &&
     e.r && resist.includes(e.r.id) &&
-    e.nv && nivelOk(e.nv.nome, nivelLabel(nivel))
+    e.nv && nivelOk(e.nv.chave, nivelChave(nivel))
   );
   // fallback sem filtro de nível/resistência
   if(!pool.length){
@@ -5145,7 +5688,7 @@ function abrirListaAquecimento(ti, aquecIdx){
           item.nome = e.n;
           item.url  = e.url || '';
           item.duracao = e.tempo ? '10 rep' : '45s';
-          document.querySelectorAll('[id^="lista-aquec-"]').forEach(el => el.classList.add('hidden'));
+          document.querySelectorAll('[id^="lista-aquec-"]').forEach(el => { _desancorarDrop(el); el.classList.add('hidden'); });
           renderTreinoAtivo();
         };
       }
@@ -5172,19 +5715,17 @@ function abrirListaAquecimento(ti, aquecIdx){
 
   // Área de resultados com scroll
   const resultsEl = document.createElement('div');
-  resultsEl.style.cssText = 'max-height:180px;overflow-y:auto;padding:4px 0';
+  resultsEl.style.cssText = 'overflow-y:auto;padding:4px 0';
   listEl.appendChild(resultsEl);
 
   _renderAquecItems(pool);
   setTimeout(() => srch.focus(), 40);
   listEl.classList.remove('hidden');
 
-  // Posicionar como fixed para não ser clipado pelo overflow do container
-  const nwEl = document.getElementById(`aqv2-nw-${ti}-${aquecIdx}`);
-  if(nwEl){
-    const r = nwEl.getBoundingClientRect();
-    listEl.style.cssText = `position:fixed;top:${r.bottom+4}px;left:${r.left}px;width:${Math.max(r.width,260)}px;min-width:260px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);box-shadow:0 6px 28px rgba(0,0,0,.55);z-index:9000;overflow:hidden`;
-  }
+  // Ancorar como fixed (escapa do overflow do container, vira pra cima se preciso)
+  searchWrap.style.flexShrink = '0';
+  _ancorarDropFixo(listEl, document.getElementById(`aqv2-nw-${ti}-${aquecIdx}`) || listEl.parentElement,
+    { minWidth: 300, scrollEl: resultsEl });
 
   // Click-outside: fechar sem trocar seleção
   if(window._aquecOutsideHandler){
@@ -5197,7 +5738,7 @@ function abrirListaAquecimento(ti, aquecIdx){
     allNws.forEach(n => { if(n.contains(e.target)) inside = true; });
     allLists.forEach(l => { if(l.contains(e.target)) inside = true; });
     if(!inside){
-      allLists.forEach(l => l.classList.add('hidden'));
+      allLists.forEach(l => { _desancorarDrop(l); l.classList.add('hidden'); });
       document.removeEventListener('click', window._aquecOutsideHandler, true);
       window._aquecOutsideHandler = null;
     }
@@ -5216,16 +5757,16 @@ function toggleAquecArtic(ti, artic){
   } else {
     const s = getActive();
     const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
-    const local = s?.anamnese?.local || 'academia';
+    const local = s?.anamnese?.local || '';
     const resist = getResistPermitida(local);
     let pool = DB_EXERCICIOS.filter(e =>
-      (e.tp||[]).some(t=>t.nome==='Mobilidade') &&
+      (e.tp||[]).some(t=>t.chave==='Mobilidade') &&
       (e.artic||[]).some(a=>a.nome===artic) &&
       e.r && resist.includes(e.r.id) &&
-      e.nv && nivelOk(e.nv.nome, nivelLabel(nivel))
+      e.nv && nivelOk(e.nv.chave, nivelChave(nivel))
     );
     if(!pool.length) pool = DB_EXERCICIOS.filter(e =>
-      (e.tp||[]).some(t=>t.nome==='Mobilidade') && (e.artic||[]).some(a=>a.nome===artic));
+      (e.tp||[]).some(t=>t.chave==='Mobilidade') && (e.artic||[]).some(a=>a.nome===artic));
     if(!pool.length) return;
     const ex = pool[motorRand(0, pool.length-1)];
     treino.aquecimento.push({ tipo:'Mobilidade', artic, musculo:null, nome:ex.n, duracao:ex.tempo?'10 rep':'45s', url:ex.url||'' });
@@ -5243,13 +5784,13 @@ function toggleAquecMusculo(ti, musculo, tipo){
   } else {
     const s = getActive();
     const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
-    const local = s?.anamnese?.local || 'academia';
+    const local = s?.anamnese?.local || '';
     const resist = getResistPermitida(local);
     let pool = DB_EXERCICIOS.filter(e =>
       (e.tp||[]).some(t=>t.nome===tipo) &&
       (e.g||[]).some(g=>g.nome===musculo) &&
       e.r && resist.includes(e.r.id) &&
-      e.nv && nivelOk(e.nv.nome, nivelLabel(nivel))
+      e.nv && nivelOk(e.nv.chave, nivelChave(nivel))
     );
     if(!pool.length) pool = DB_EXERCICIOS.filter(e =>
       (e.tp||[]).some(t=>t.nome===tipo) && (e.g||[]).some(g=>g.nome===musculo));
@@ -5459,7 +6000,7 @@ function _adicionarExercicioPrincipal(ti, nome, musculo, pickerId){
     _artic: (dbEx?.artic||[]).map(a=>a.nome),
     _pad:   dbEx?.pad?.id || '',
     _tempoRep: dbEx?.tempo || '',
-    _contracaoIsometrica: dbEx?.contracao?.nome==='Isométrica',
+    _contracaoIsometrica: dbEx?.contracao?.chave==='Isometrica',
     _uni: (dbEx?.lateralidade?.id===3)?1:0,
   });
   if(treino.aquecimento && treino.aquecimento.length) treino._aquecDesatualizado = true;
@@ -5479,8 +6020,8 @@ function selecionarMusculoAquec(ti, musculo, btn){
   // Mostra picker de tipo inline
   const pickerId = `picker-tipo-aquec-${ti}`;
   const pickerEl = document.getElementById(pickerId); if(!pickerEl) return;
-  const hasLib  = DB_EXERCICIOS.some(e => (e.tp||[]).some(t=>t.nome==='Liberação Miofascial') && (e.g||[]).some(g=>g.nome===musculo));
-  const hasFlex = DB_EXERCICIOS.some(e => (e.tp||[]).some(t=>t.nome==='Flexibilidade') && (e.g||[]).some(g=>g.nome===musculo));
+  const hasLib  = DB_EXERCICIOS.some(e => (e.tp||[]).some(t=>t.chave==='LiberacaoMiofascial') && (e.g||[]).some(g=>g.nome===musculo));
+  const hasFlex = DB_EXERCICIOS.some(e => (e.tp||[]).some(t=>t.chave==='Flexibilidade') && (e.g||[]).some(g=>g.nome===musculo));
   const mSafe = musculo.replace(/'/g,"\\'");
   pickerEl.innerHTML = `
     <span style="font-size:10px;color:var(--text3);white-space:nowrap">Tipo para <strong style="color:var(--text2)">${musculo}</strong>:</span>
@@ -5501,13 +6042,13 @@ function adicionarAquecMusculo(ti, musculo, tipo){
   if(!treino.aquecimento) treino.aquecimento = [];
   const s = getActive();
   const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
-  const local = s?.anamnese?.local || 'academia';
+  const local = s?.anamnese?.local || '';
   const resist = getResistPermitida(local);
   let pool = DB_EXERCICIOS.filter(e =>
     (e.tp||[]).some(t=>t.nome===tipo) &&
     (e.g||[]).some(g=>g.nome===musculo) &&
     e.r && resist.includes(e.r.id) &&
-    e.nv && nivelOk(e.nv.nome, nivelLabel(nivel))
+    e.nv && nivelOk(e.nv.chave, nivelChave(nivel))
   );
   if(!pool.length) pool = DB_EXERCICIOS.filter(e =>
     (e.tp||[]).some(t=>t.nome===tipo) && (e.g||[]).some(g=>g.nome===musculo));
@@ -5557,14 +6098,14 @@ function gerarFichaMotorV2(params){
   const sexo = p.sexo || '';
   const gruposPrioritariosFinal = new Set([...GRUPOS_PRIMARIOS]);
   if(sexo === 'F'){
-    gruposPrioritariosFinal.add('Glúteos');
-    gruposPrioritariosFinal.add('Glúteos (Máximo)');
-    gruposPrioritariosFinal.add('Glúteos (Médio)');
+    gruposPrioritariosFinal.add('Gluteos');
+    // 'Gluteos (Maximo)' / '(Medio)' foram removidos: nao existem como id de
+    // GRUPOS_MAPA nem como chave do banco — nunca casavam com nada.
     // Peitoral é menos prioritário para mulheres
     gruposPrioritariosFinal.delete('Peitoral');
   } else if(sexo === 'M'){
     // Para homens, glúteos ficam em nível neutro (nem primário nem secundário)
-    gruposPrioritariosFinal.delete('Glúteos');
+    gruposPrioritariosFinal.delete('Gluteos');
   }
 
   const repsRef   = REPS_REF[objetivo]     || '10–15';
@@ -5613,12 +6154,9 @@ function gerarFichaMotorV2(params){
     if(totalSessao > lim && lim > 0){
       // Cortar de secundários primeiro, depois primários
       const sorted = [...sessaoGrupos].sort((a, b) => {
-        // .has() comparava string exata — gruposPrioritariosFinal/GRUPOS_SECUNDARIOS
-        // usam nomes com acento ('Latíssimo'), mas a.g/b.g vêm de GRUPOS_MAPA sem
-        // acento ('Latissimo'). Sem normalização, esta priorização nunca encontrava
-        // correspondência para a maioria dos grupos — mesma causa raiz do bug
-        // de filtrarExerciciosFicha corrigido acima.
-        const temPrioridade = (set, g) => [...set].some(item => textoIgual(item, g));
+        // Os dois lados agora sao chave ASCII (GRUPOS_PRIMARIOS/SECUNDARIOS
+        // migrados) — .has() direto, sem normalizacao em runtime.
+        const temPrioridade = (set, g) => set.has(g);
         const aPri = temPrioridade(gruposPrioritariosFinal, a.g) ? 2 : temPrioridade(GRUPOS_SECUNDARIOS, a.g) ? 0 : 1;
         const bPri = temPrioridade(gruposPrioritariosFinal, b.g) ? 2 : temPrioridade(GRUPOS_SECUNDARIOS, b.g) ? 0 : 1;
         return aPri - bPri; // secundários primeiro (menores ficam no começo → cortados primeiro)
@@ -5690,7 +6228,7 @@ function gerarFichaMotorV2(params){
             // não aparece na ficha, é só o insumo pra montar o aquecimento da sessão logo abaixo.
             _pad: ex.pad?.id || '', // insumo pro bônus de variedade por tipo de movimentação (Fase C) — não aparece na ficha.
             _tempoRep: ex.tempo || '',
-            _contracaoIsometrica: ex.contracao?.nome === 'Isométrica',
+            _contracaoIsometrica: ex.contracao?.chave === 'Isometrica',
             _uni: _exercicioUnilateral(ex) ? 1 : 0,
           });
         }
@@ -6032,7 +6570,7 @@ function coletarPeriodDoForm(){
   })).filter(r => r.criterio);
 
   return {
-    id: idVal ? parseInt(idVal) : Date.now(),
+    id: idVal ? parseInt(idVal) : novoId(),
     nome:          $('period-nome').value.trim()||'Modelo sem nome',
     sigla:         $('period-sigla').value,
     duracao:       $('period-duracao').value,
@@ -6231,7 +6769,7 @@ function gravarAcomp(dado){
   s.acomp_period[dado.periodId] = { cargas: dado.cargas, data: new Date().toLocaleDateString('pt-BR') };
   // Não usa saveStudent(): s vem do dropdown (acomp-aluno-sel), pode ser diferente
   // do aluno ativo (activeId) na tela principal, ou não haver nenhum ativo agora.
-  try{ localStorage.setItem('acm-students', JSON.stringify(students)); }catch(e){}
+  try{ localStorage.setItem(lsKey('acm-students'), JSON.stringify(students)); }catch(e){}
   supaAutoSave();
 }
 function salvarAcompPeriod(){

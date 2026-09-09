@@ -2,7 +2,7 @@
 renderObjGrid();
 // Load persisted students
 try{
-  const saved = localStorage.getItem('acm-students');
+  const saved = localStorage.getItem(lsKey('acm-students'));
   if(saved){
     const parsed = JSON.parse(saved);
     if(Array.isArray(parsed) && parsed.length){
@@ -31,7 +31,7 @@ function _removerAlunoTeste(id){
 // sozinho). Roda uma vez, sem precisar de ?demo, e não faz nada se já não
 // existirem.
 [1782498533431, 1782498535600, 1782498536358].forEach(_removerAlunoTeste);
-try{ localStorage.setItem('acm-students', JSON.stringify(students)); }catch(e){}
+try{ localStorage.setItem(lsKey('acm-students'), JSON.stringify(students)); }catch(e){}
 
 // ─── ALUNO DE TESTE ───────────────────────────────────────────────────────────
 (function(){
@@ -297,9 +297,9 @@ try{ localStorage.setItem('acm-students', JSON.stringify(students)); }catch(e){}
     },
   };
   students.push(amanda);
-  try{ localStorage.setItem('acm-students', JSON.stringify(students)); }catch(e){}
+  try{ localStorage.setItem(lsKey('acm-students'), JSON.stringify(students)); }catch(e){}
   renderStudentList();
-  navGo('alunos');
+  navGo('dashboard');
   // Detect unsaved drafts after students load
   if(typeof detectarDraftsNaoSalvos==='function') setTimeout(detectarDraftsNaoSalvos, 400);
 })();
@@ -580,7 +580,7 @@ try{ localStorage.setItem('acm-students', JSON.stringify(students)); }catch(e){}
     },
   };
   students.push(thais);
-  try{ localStorage.setItem('acm-students', JSON.stringify(students)); }catch(e){}
+  try{ localStorage.setItem(lsKey('acm-students'), JSON.stringify(students)); }catch(e){}
   renderStudentList();
 })();
 
@@ -1286,9 +1286,9 @@ try{ localStorage.setItem('acm-students', JSON.stringify(students)); }catch(e){}
     }
 };
   students.push(eduardo);
-  try{ localStorage.setItem('acm-students', JSON.stringify(students)); }catch(e){}
+  try{ localStorage.setItem(lsKey('acm-students'), JSON.stringify(students)); }catch(e){}
   renderStudentList();
-  navGo('alunos');
+  navGo('dashboard');
 })();
 
 // ─── ALUNA DE TESTE 4 — DADOS REAIS (Lila) ──────────────────────────────────────
@@ -1793,9 +1793,9 @@ try{ localStorage.setItem('acm-students', JSON.stringify(students)); }catch(e){}
     }
 };
   students.push(lila);
-  try{ localStorage.setItem('acm-students', JSON.stringify(students)); }catch(e){}
+  try{ localStorage.setItem(lsKey('acm-students'), JSON.stringify(students)); }catch(e){}
   renderStudentList();
-  navGo('alunos');
+  navGo('dashboard');
 })();
 
 // ─── ALUNO DE TESTE 5 — DADOS REAIS (Oséias) ────────────────────────────────────
@@ -2534,7 +2534,7 @@ try{ localStorage.setItem('acm-students', JSON.stringify(students)); }catch(e){}
     }
 };
   students.push(oseias);
-  try{ localStorage.setItem('acm-students', JSON.stringify(students)); }catch(e){}
+  try{ localStorage.setItem(lsKey('acm-students'), JSON.stringify(students)); }catch(e){}
   renderStudentList();
-  navGo('alunos');
+  navGo('dashboard');
 })();
