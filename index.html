@@ -1299,6 +1299,40 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
     </div>
 
 
+    <!-- ══ MODAL: EXPORTAR / INJETAR NO FITCPX LEGADO ══ -->
+    <div id="modal-fitcpx-export" class="modal-overlay hidden">
+      <div class="modal" style="width:680px;max-height:93vh;overflow-y:auto">
+        <div class="modal-title">📋 Injetar treino no FitCpx</div>
+
+        <div id="fitcpx-export-avisos" class="alert alert-amber hidden" style="margin-bottom:12px;font-size:12px"></div>
+
+        <ol style="font-size:13px;color:var(--text2);line-height:1.7;margin:0 0 16px 18px;padding:0">
+          <li>Abra <code>app.fitcpx.com</code> e entre na tela <strong>"Treino do aluno: [nome]"</strong> do aluno certo.</li>
+          <li>Abra o Console do navegador (F12 → aba Console).</li>
+          <li>Cole o <strong>Código 1</strong> abaixo e aperte Enter.</li>
+          <li>Clique em qualquer outra aba da tela (ex: "Treinos" ou "Avaliações Físicas") — isso dispara uma request que carrega o token de acesso.</li>
+          <li>Volte pro Console, cole o <strong>Código 2</strong> e aperte Enter.</li>
+          <li>Confira o resultado no console: <code>STATUS: 201</code> = deu certo. Qualquer outro status, leia a mensagem de erro (geralmente é token expirado — repete o passo 3 e 4).</li>
+        </ol>
+
+        <div class="section-label" style="margin-top:0;display:flex;align-items:center;justify-content:space-between">
+          <span>Código 1 — Interceptor</span>
+          <button class="tbtn" onclick="_copiarBlocoFitCpx('fitcpx-cod1', this)">📋 Copiar</button>
+        </div>
+        <pre id="fitcpx-cod1" style="white-space:pre-wrap;word-break:break-all;font-family:var(--mono);font-size:11px;line-height:1.5;max-height:140px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px;color:var(--text2);margin-bottom:14px"></pre>
+
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Código 2 — Injeção (com o treino já embutido)</span>
+          <button class="tbtn" onclick="_copiarBlocoFitCpx('fitcpx-cod2', this)">📋 Copiar</button>
+        </div>
+        <pre id="fitcpx-cod2" style="white-space:pre-wrap;word-break:break-all;font-family:var(--mono);font-size:11px;line-height:1.5;max-height:280px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px;color:var(--text2);margin-bottom:14px"></pre>
+
+        <div class="btn-row" style="justify-content:flex-end">
+          <button class="btn btn-ghost" onclick="fecharModalExportFitCpx()">Fechar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ══ MODAL: SALVAR TREINO NA BIBLIOTECA ══ -->
     <div id="modal-salvar-bib" class="modal-overlay hidden">
       <div class="modal" style="width:600px;max-height:93vh;overflow-y:auto">
@@ -2632,9 +2666,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
               <div id="ciclo-comparacao" style="display:none"></div>
               <div class="btn-row" style="justify-content:space-between">
                 <button class="btn btn-ghost" onclick="novaPrescricao()">Nova prescrição</button>
-                <button class="btn btn-primary" onclick="abrirSalvarBiblioteca()" style="gap:6px">
-                  📚 Salvar na Biblioteca
-                </button>
+                <div style="display:flex;gap:8px">
+                  <button class="btn btn-ghost" onclick="exportarTreinoParaFitCpx()" style="gap:6px">
+                    📋 Copiar JSON pro FitCpx
+                  </button>
+                  <button class="btn btn-primary" onclick="abrirSalvarBiblioteca()" style="gap:6px">
+                    📚 Salvar na Biblioteca
+                  </button>
+                </div>
               </div>
             </div>
 

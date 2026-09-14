@@ -4369,6 +4369,7 @@ function renderTreinoAtivo(){
           <button class="excv2-arr" title="Descer" ${podeDescer?`onclick="moverExercicio(${ti},${rowIdx},1)"`:'disabled'}>▼</button>
         </div>
         <span class="excv2-chip" style="background:${corChip.bg};color:${corChip.fg}">${mLabel}</span>
+        ${emGrupo ? `<span style="flex-shrink:0;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;background:${_corGrupo(info.grupoIdx)}22;color:${_corGrupo(info.grupoIdx)};white-space:nowrap" title="Grupo combinado sem descanso entre os exercícios">🔗 ${info.total===2?'Bi-set':'Tri-set'} ${info.pos}/${info.total}</span>` : ''}
         <div class="excv2-namewrap" id="excv2-nw-${ti}-${rowIdx}">
           <button class="excv2-namebtn" id="excv2-nb-${ti}-${rowIdx}"
             onclick="_toggleBuscaExercicio(${ti},${rowIdx},'${ex.musculo}','${porcaoSafe}')">
@@ -5253,6 +5254,232 @@ const TREINOS_OBJ_LABEL = {Hip:'Hipertrofia',Forca:'Força',Emagr:'Emagrecimento
   Resist:'Resistência',CardioR:'Cardio',Func:'Funcional',Saude:'Saúde',
   Esport:'Esportivo',Reab:'Reabilitação',Envelhec:'Envelhecimento',Gestacao:'Gestação'};
 
+// ══════════════════════════════════════════════════════════════════════════════
+// EXPORTADOR → FitCpx legado (app.fitcpx.com)
+// ══════════════════════════════════════════════════════════════════════════════
+// Converte a ficha aprovada (_s3.fichaObj) pro formato que o backend legado
+// espera em POST /workouts (payload validado em 2026-09 — ver prompt de
+// continuação). Gera { treino:{...sem cod_aluno/nome_aluno/cod_usuario/
+// cod_empresa...}, sessoes:[...] } — os campos do aluno ficam de fora de
+// propósito, quem completa é o Injetor (roda no console do FitCpx legado,
+// já tem `history.state.usr.aluno` da tela aberta).
+//
+// PONTOS AINDA NÃO VALIDADOS EM PRODUÇÃO (Milton pediu pra criar mesmo assim
+// e corrigir durante os testes):
+//   1. Aquecimento — o motor gera `treino.aquecimento` separado de
+//      `treino.exercicios` (não soma no volume). O legado não tem esse
+//      conceito, só uma lista de exercícios por sessão. Aqui o aquecimento
+//      entra como os PRIMEIROS itens de `exercicios[]` da sessão. Formato de
+//      série/rep/intervalo do aquecimento é um chute (ver
+//      _exportarItemAquecimento) — pode precisar ajuste.
+//   2. Bi-set/tri-set — o motor encadeia via `_vinculadoProximo` (flag no
+//      item anterior). Aqui viro isso em aninhamento `sets[]` no primeiro
+//      item do grupo, como confirmado na Tarefa 1 pro caso de 2 itens. Ainda
+//      NÃO testamos grupo de 3+ (tri-set) contra o legado — se o backend não
+//      aceitar mais de 1 nível, ajustar _agruparExerciciosSessao.
+const _NIVEL_LEGADO = {Inic:'Iniciante', Inte:'Intermediário', Avan:'Avançado'};
+
+// Acha o cod_exercicio real (= `id` de DB_EXERCICIOS) a partir do nome usado
+// na ficha. Casamento por nome exato primeiro, depois normalizado (trim +
+// lowercase) como fallback — ver Tarefa 1: nos 16 casos testados bateu 1:1.
+function _buscarCodExercicioPorNome(nome){
+  if(!nome) return null;
+  let ex = DB_EXERCICIOS.find(e => e.n === nome);
+  if(!ex){
+    const alvo = nome.trim().toLowerCase();
+    ex = DB_EXERCICIOS.find(e => e.n.trim().toLowerCase() === alvo);
+  }
+  return ex ? ex.id : null;
+}
+
+// Extrai o primeiro número de uma string tipo "8-12", "60s", "10 rep" — usado
+// pros campos numéricos do legado (repeticao_sessao_exercicio,
+// intervalo_sessao_exercicio). Se não achar número nenhum, devolve o default.
+function _primeiroNumero(v, def){
+  if(v==null) return def;
+  if(typeof v === 'number') return v;
+  const m = String(v).match(/\d+/);
+  return m ? parseInt(m[0], 10) : def;
+}
+
+// Converte 1 exercício da ficha (formato fitcpx-auto) pro item do legado.
+// `avisos` acumula nomes que não bateram em DB_EXERCICIOS (cod_exercicio null).
+function _exportarItemExercicio(ex, seq, avisos){
+  const cod = _buscarCodExercicioPorNome(ex.nome);
+  if(cod == null) avisos.push(ex.nome);
+  return {
+    cod_exercicio: cod,
+    sequencia_sessao_exercicio: seq,
+    sets: [],
+    serie_sessao_exercicio: _primeiroNumero(ex.series, 1),
+    repeticao_sessao_exercicio: _primeiroNumero(ex.reps, 10),
+    intervalo_sessao_exercicio: _primeiroNumero(ex.intervalo, 60),
+    carga_sessao_exercicio: 0,
+  };
+}
+
+// Converte 1 item de aquecimento (formato: {tipo, artic, musculo, nome,
+// duracao, url}) pro item do legado. CHUTE (ponto 1 do comentário acima):
+// 1 série, reps = primeiro número da duração (ex "10 rep"→10, "45s"→45),
+// intervalo 0 (sem descanso planejado entre itens de aquecimento).
+function _exportarItemAquecimento(item, seq, avisos){
+  const cod = _buscarCodExercicioPorNome(item.nome);
+  if(cod == null) avisos.push(item.nome);
+  return {
+    cod_exercicio: cod,
+    sequencia_sessao_exercicio: seq,
+    sets: [],
+    serie_sessao_exercicio: 1,
+    repeticao_sessao_exercicio: _primeiroNumero(item.duracao, 1),
+    intervalo_sessao_exercicio: 0,
+    carga_sessao_exercicio: 0,
+  };
+}
+
+// Recebe a lista `treino.exercicios` (flat, com `_vinculadoProximo` encadeando
+// bi-set/tri-set) e devolve os itens já no formato legado, com os itens
+// agrupados aninhados em `sets[]` do primeiro item do grupo (ponto 2 acima).
+function _agruparExerciciosSessao(exercicios, seqInicial, avisos){
+  const out = [];
+  let seq = seqInicial;
+  let i = 0;
+  while(i < exercicios.length){
+    const item = _exportarItemExercicio(exercicios[i], seq++, avisos);
+    // enquanto o exercício atual estiver "vinculado ao próximo", o próximo
+    // entra em sets[] deste item (mesma sequência do grupo, não soma seq
+    // separada porque não é um item de topo em exercicios[]).
+    let j = i;
+    while(exercicios[j] && exercicios[j]._vinculadoProximo && exercicios[j+1]){
+      j++;
+      item.sets.push(_exportarItemExercicio(exercicios[j], seq++, avisos));
+    }
+    out.push(item);
+    i = j + 1;
+  }
+  return out;
+}
+
+// Monta a ficha aprovada (_s3.fichaObj) no formato de export do FitCpx legado
+// e copia o JSON pra área de transferência. Chamado pelo botão "Copiar JSON
+// pro FitCpx" na tela de ficha aprovada (STEP 4).
+function exportarTreinoParaFitCpx(){
+  const f = _s3.fichaObj;
+  if(!f){ alert('Nenhuma ficha aprovada em memória pra exportar. Aprove ou reabra uma prescrição antes.'); return; }
+  const s = getActive();
+
+  const avisos = [];
+  const sessoes = f.treinos.map((t, ti) => {
+    const itens = [];
+    let seq = 1;
+    (t.aquecimento||[]).forEach(a => { itens.push(_exportarItemAquecimento(a, seq++, avisos)); });
+    itens.push(..._agruparExerciciosSessao(t.exercicios||[], seq, avisos));
+    return {
+      key: String(ti+1),
+      nome_sessao: t.label || `Treino ${String.fromCharCode(65+ti)}`,
+      sequencia_sessao: ti+1,
+      exercicios: itens,
+    };
+  });
+
+  const freqNum = _primeiroNumero(f.frequencia, null);
+
+  const payload = {
+    treino: {
+      sexo_treino: (s?.perfil?.sexo) || 'M',
+      nome_treino: `${TREINOS_OBJ_LABEL[f.objetivo]||f.objetivo||'Treino'} — ${f.dataGeracao||''}`,
+      frequencia_treino: freqNum != null ? String(freqNum) : '',
+      nivel_treino: _NIVEL_LEGADO[f.nivel] || f.nivel || '',
+      desenvolvimento_treino: TREINOS_OBJ_LABEL[f.objetivo] || f.objetivo || '',
+      // cod_aluno / nome_aluno / cod_usuario / cod_empresa: preenchidos pelo
+      // Injetor a partir de history.state.usr.aluno na tela do FitCpx legado.
+    },
+    sessoes,
+  };
+
+  abrirModalExportFitCpx(payload, [...new Set(avisos)]);
+}
+
+// ── Modal "Copiar JSON FitCpx" — instruções + Código 1 (interceptor, fixo) +
+// Código 2 (injeção, com o JSON do treino já embutido) ────────────────────
+// Fluxo validado ponta a ponta em produção (POST real, 201, treino conferido
+// na tela do FitCpx legado) — ver prompt de ajuste 2026-09-13. 2 passos, não 3:
+// o Código 2 já checa sozinho se o token foi capturado e se a tela do aluno
+// certo está aberta, e avisa no console em vez de falhar silencioso.
+const _FITCPX_COD1_INTERCEPTOR = `window.__capturedAuth = null;
+const _origSetHeader = XMLHttpRequest.prototype.setRequestHeader;
+XMLHttpRequest.prototype.setRequestHeader = function(name, value) {
+  if (name.toLowerCase() === 'authorization') window.__capturedAuth = value;
+  return _origSetHeader.apply(this, arguments);
+};
+'interceptor ativo'`;
+
+function _fitcpxMontarCodigo2(payload){
+  const json = JSON.stringify(payload, null, 2);
+  return `const TREINO_EXPORTADO = ${json};
+
+(function injetar() {
+  const aluno = history.state?.usr?.aluno;
+  if (!aluno?.cod_aluno) { console.error('Não achei o aluno da tela. Confirma que está em "Treino do aluno: ..."'); return; }
+  if (!window.__capturedAuth) { console.error('Sem token. Roda o Código 1 e clica em outra aba (Treinos/Avaliações) antes de rodar de novo.'); return; }
+
+  const payload = {
+    treino: { ...TREINO_EXPORTADO.treino, cod_aluno: aluno.cod_aluno, nome_aluno: aluno.nome_aluno, cod_usuario: 5, cod_empresa: 3 },
+    sessoes: TREINO_EXPORTADO.sessoes
+  };
+
+  fetch('https://api.fitcpx.com/workouts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': window.__capturedAuth },
+    body: JSON.stringify(payload)
+  }).then(r => r.json().then(data => console.log('STATUS:', r.status, 'DATA:', data)));
+})();`;
+}
+
+function abrirModalExportFitCpx(payload, avisosUnicos){
+  const modal = $('modal-fitcpx-export');
+  if(!modal){ alert('Modal de export não encontrado na tela — recarregue a página.'); return; }
+
+  const avisosEl = $('fitcpx-export-avisos');
+  if(avisosEl){
+    if(avisosUnicos && avisosUnicos.length){
+      avisosEl.classList.remove('hidden');
+      avisosEl.innerHTML = `⚠ ${avisosUnicos.length} nome(s) de exercício não encontrados em DB_EXERCICIOS ` +
+        `(cod_exercicio ficou <code>null</code> — corrigir antes de injetar):<br>- ${avisosUnicos.join('<br>- ')}`;
+    } else {
+      avisosEl.classList.add('hidden');
+      avisosEl.innerHTML = '';
+    }
+  }
+
+  const cod1El = $('fitcpx-cod1');
+  const cod2El = $('fitcpx-cod2');
+  if(cod1El) cod1El.textContent = _FITCPX_COD1_INTERCEPTOR;
+  if(cod2El) cod2El.textContent = _fitcpxMontarCodigo2(payload);
+
+  modal.classList.remove('hidden');
+}
+
+function fecharModalExportFitCpx(){
+  const modal = $('modal-fitcpx-export');
+  if(modal) modal.classList.add('hidden');
+}
+
+function _copiarBlocoFitCpx(elId, btnEl){
+  const el = $(elId); if(!el) return;
+  const texto = el.textContent;
+  const marcarCopiado = () => {
+    if(!btnEl) return;
+    const original = btnEl.textContent;
+    btnEl.textContent = '✓ Copiado!';
+    setTimeout(() => { btnEl.textContent = original; }, 1500);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(texto).then(marcarCopiado).catch(()=>prompt('Copie manualmente (Ctrl+C):', texto));
+  } else {
+    prompt('Copie manualmente (Ctrl+C):', texto);
+  }
+}
+
 function renderTreinosLista(){
   const s=getActive();
   const cont=$('treinos-lista-tabela'); if(!cont) return;
@@ -5331,11 +5558,34 @@ function fichaObjParaTexto(ficha){
   txt += fence + nl + nl;
   ficha.treinos.forEach(treino => {
     const total = treino.exercicios.reduce((a,e)=>a+parseInt(e.series||0),0);
-    txt += '### ' + treino.label + ' (' + total + ' séries)' + nl;
-    txt += '| # | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |' + nl;
-    txt += '|---|---------|-----------|--------|------|-------------|----------|' + nl;
+    txt += '### ' + treino.label + ' (' + total + ' séries)' + nl + nl;
+
+    // Aquecimento — antes ficava fora do texto (só entrava no export pro
+    // FitCpx), mas o Milton precisa ver na ficha de confirmação também.
+    if((treino.aquecimento||[]).length){
+      txt += '**🔥 Aquecimento**' + nl;
+      txt += '| Articulação/Músculo | Exercício | Duração |' + nl;
+      txt += '|---|---|---|' + nl;
+      treino.aquecimento.forEach(a => {
+        const ref = a.tipo==='Mobilidade' ? (a.artic||'—') : (a.musculo||'—');
+        txt += '| ' + ref + ' | ' + a.nome + ' | ' + a.duracao + ' |' + nl;
+      });
+      txt += nl;
+    }
+
+    // Parte principal — coluna "Grupo" marca bi-set/tri-set (_vinculadoProximo),
+    // já que a lista aqui é plana e sem isso não dava pra ver que dois exercícios
+    // são pra fazer um atrás do outro sem descanso (mesma lógica do export).
+    txt += '**💪 Parte Principal**' + nl;
+    txt += '| # | Grupo | Músculo | Exercício | Séries | Reps | Intensidade | Intervalo |' + nl;
+    txt += '|---|---|---------|-----------|--------|------|-------------|----------|' + nl;
+    const gruposInfo = _computarGruposExercicios(treino.exercicios);
     treino.exercicios.forEach((ex,i) => {
-      txt += '| ' + (i+1) + ' | ' + ex.musculo + ' | ' + ex.nome + ' | ' + ex.series + ' | ' + ex.reps + ' | ' + ex.intensidade + ' | ' + ex.intervalo + ' |' + nl;
+      const info = gruposInfo[i];
+      const grupoTxt = info
+        ? `🔗 ${info.total===2?'Bi-set':'Tri-set'} ${String.fromCharCode(65+info.grupoIdx)} (${info.pos}/${info.total})`
+        : '—';
+      txt += '| ' + (i+1) + ' | ' + grupoTxt + ' | ' + ex.musculo + ' | ' + ex.nome + ' | ' + ex.series + ' | ' + ex.reps + ' | ' + ex.intensidade + ' | ' + ex.intervalo + ' |' + nl;
     });
     txt += nl;
   });
@@ -5568,9 +5818,14 @@ function lerSessionDataDOM(cardIdx, ti, sessaoGrupos){
 // nenhum. Não força mobilização se não existir nenhuma pra aquela articulação
 // dentro dos filtros — melhor um aquecimento mais curto do que forçar um
 // exercício fora de nível/recurso/contraindicação.
-const ORDEM_ARTIC_AQUECIMENTO = ['Quadril','Tornozelo','Arco Plantar','Tórax','Escápula','Ombro','Punho'];
-// Articulações com exercícios de Mobilidade no banco — única lista válida para chips de aquecimento
-const ARTIC_MOBILIDADE_VALIDAS = new Set(['Arco Plantar','Escápula','Ombro','Punho','Quadril','Tórax','Tornozelo']);
+const ORDEM_ARTIC_AQUECIMENTO = ['Quadril','Joelho','Tornozelo','Arco Plantar','Tórax','Escápula','Ombro','Cotovelo','Punho'];
+// Articulações com exercícios de Mobilidade no banco — única lista válida para chips de aquecimento.
+// Corrigido 2026-09-11: faltavam Joelho (4 exercícios) e Cotovelo (2) — reimportação do banco
+// (2026-08-28) adicionou Mobilidade pra essas articulações e essa lista não foi atualizada junto,
+// o que zerava o aquecimento em qualquer sessão cujos exercícios principais só batiam Joelho/Cotovelo
+// (ex: treino de perna focado em joelho, ou treino de braço isolado). "Arco Plantar" fica na lista
+// mas tem 0 exercícios de Mobilidade no banco hoje — inofensivo, só nunca vai gerar chip/item.
+const ARTIC_MOBILIDADE_VALIDAS = new Set(['Arco Plantar','Escápula','Ombro','Cotovelo','Punho','Quadril','Joelho','Tórax','Tornozelo']);
 const _TETO_ITENS_AQUECIMENTO = 5; // teto propositalmente baixo — aquecimento não pode virar treino paralelo
 
 // Tipos de aquecimento disponíveis no banco (campo `tp` dos exercícios).
