@@ -247,6 +247,55 @@ function getResistPermitida(local){
   return [...TODAS_RESIST];   // sem local definido: nao restringe
 }
 
+// ── Corte por equipamento EXATO (2026-09-16) ─────────────────────────────────
+// getResistPermitida() acima e um proxy furado pro corte automatico de
+// disponibilidade: ele libera o TIPO INTEIRO de resistencia (Cabo/Peso
+// Livre/Suspenso/...) sempre que algum equipamento do local aparece em
+// QUALQUER exercicio daquele tipo — mesmo que esse exercicio especifico
+// tambem exija outro equipamento que o local nao tem. Ex.: "Abdominal de
+// Costas para o Cross" usa Colchonete+CrossOver e e do tipo Cabo; um local
+// que so tem Colchonete ja destravava o tipo Cabo inteiro, inclusive pra
+// exercicios que nem usam Colchonete (tipo "Pull Over - Barra"). Confirmado
+// em teste real: local com só Colchonete+Mini Band+Peso Corporal+Super
+// Band+Tube Band liberava 5 dos 6 tipos de resistencia.
+//
+// getResistPermitida() fica mantida só pro dropdown manual de "Tipo de
+// resistência" (filtro avulso que o personal escolhe na tela, não é corte
+// automático). O corte automático de disponibilidade agora usa a função
+// abaixo, que confere equipamento a equipamento, exercício por exercício —
+// só entra se TODOS os equipamentos que aquele exercício exige (`e.eq`)
+// estiverem disponíveis no local (peso corporal sempre disponível).
+function getEquipamentosPermitidos(local){
+  const locais = (typeof LIBS !== 'undefined') ? (LIBS?.locais||[]) : [];
+  let libsLocal = null;
+  if(local && String(local).startsWith('libs:')){
+    const libsId = parseInt(String(local).split(':')[1]);
+    libsLocal = locais.find(l => l.id === libsId);
+  }
+  if(!libsLocal && local){
+    libsLocal = locais.find(l => (l.nome||'') === local); // compat: anamnese antiga guardava nome
+  }
+  if(!libsLocal) return null; // sem local definido/reconhecido: nao restringe
+  const set = new Set(libsLocal.equipamentos || []);
+  set.add('PesoCorporal'); // o corpo do aluno esta sempre disponivel
+  return set;
+}
+
+// equipPermitidos === null → sem restrição (nenhum local definido).
+// Caso contrário, só passa se TODO equipamento exigido pelo exercício está
+// no set. Aceita variação de chave/nome via normalizarIdentificador (mesma
+// tolerância que _resistFromEquipamentos já usava).
+function _exercicioEquipamentoOk(e, equipPermitidos){
+  if(!equipPermitidos) return true;
+  const itens = e.eq || [];
+  if(!itens.length) return true; // exercicio sem equipamento cadastrado — nao bloqueia
+  return itens.every(q => {
+    if(equipPermitidos.has(q.chave)) return true;
+    const alvo = normalizarIdentificador(q.chave).replace(/[^a-z0-9]/g, '');
+    return [...equipPermitidos].some(c => normalizarIdentificador(c).replace(/[^a-z0-9]/g,'') === alvo);
+  });
+}
+
 // Popula o select #pr-local com opções genéricas + locais personalizados do
 // LIBS. Chamado ao abrir o Step 1 da prescrição (preencherStep1DaAnamnese),
 // ANTES do setVal dos outros campos — assim as opções libs:X já existem quando
@@ -503,16 +552,16 @@ const _NOM_EXCLUI_PRESCRICAO = [
 // e um studio limitado — divergindo do pool que o motor de fato sorteia.
 // Agora as duas passam por aqui: é impossível divergir de novo.
 //
-// Corte inicial = grupo + resistência (local) + nível + exclusão de nomes + CI.
-// Tudo que vem depois (camada clínica, classificação, sorteio) opera sobre este
-// pool, nunca sobre o banco inteiro.
-function poolBaseExercicios(musculo, porcao, resistPermitida, nivelAluno, contraindicacoes){
+// Corte inicial = grupo + equipamento exato (local) + nível + exclusão de nomes
+// + CI. Tudo que vem depois (camada clínica, classificação, sorteio) opera
+// sobre este pool, nunca sobre o banco inteiro. (2026-09-16: corte de
+// equipamento trocou de "tipo de resistência liberado" — furado, ver
+// getEquipamentosPermitidos — pra match exato do e.eq de cada exercício.)
+function poolBaseExercicios(musculo, porcao, equipPermitidos, nivelAluno, contraindicacoes){
   const chaveGrupo = porcao ? musculo + normalizarIdentificador(porcao) : musculo;
-  const resist = Array.isArray(resistPermitida) && resistPermitida.length
-    ? resistPermitida : TODAS_RESIST;
   return DB_EXERCICIOS.filter(e=>{
     if(!e.g.some(x=>x.chave === chaveGrupo)) return false;
-    if(!e.r || !resist.includes(e.r.id)) return false;
+    if(!_exercicioEquipamentoOk(e, equipPermitidos)) return false;
     if(!e.nv || !nivelOk(e.nv.chave, nivelChave(nivelAluno))) return false;
     // Excluir exercícios de mobilidade, liberação e aeróbio da prescrição
     if(_NOM_EXCLUI_PRESCRICAO.some(pref => e.n.startsWith(pref))) return false;
@@ -532,7 +581,7 @@ function getContextoPool(){
   const nivel  = val('pr-nivel')  || s?.anamnese?.nivel || 'Inic';
   const local  = val('pr-local')  || s?.anamnese?.local || '';
   const lesoes = (s?.perfil?.lesoes||'') + ' ' + (s?.anamnese?.preferencias||'');
-  return { nivel, local, resist: getResistPermitida(local), lesoes };
+  return { nivel, local, resist: getEquipamentosPermitidos(local), lesoes };
 }
 
 function filtrarExerciciosFicha(musculo, porcao, resistPermitida, nivelAluno, contraindicacoes){
@@ -2578,7 +2627,13 @@ function dcAdicionarGrupo(cardIdx, ti, g){
   if(_s3.volPorGrupo[g]?._semEx) return;
   sessao.push({ g });
   if(!_s3._sessionOverrides) _s3._sessionOverrides = {};
-  _s3._sessionOverrides[String(ti) + '-' + g] = { numEx: 0, serEx: 0, serSessao: 0 };
+  // Nasce com 1 exercício e a série já configurada na tela de Volume (vg.serEx) —
+  // não com zero: zerado fazia o grupo aparecer "fantasma" (0×0=0s) na sessão até
+  // o personal clicar manualmente em "+", com a régua e o total da sessão
+  // ignorando esse grupo enquanto isso.
+  const _vgNovo    = _s3.volPorGrupo[g];
+  const _serExNovo = (_vgNovo && _vgNovo.serEx) || _s3.seriesPorEx || 3;
+  _s3._sessionOverrides[String(ti) + '-' + g] = { numEx: 1, serEx: _serExNovo, serSessao: _serExNovo };
   // Invalida o backup — o personal acabou de mudar a composição manual,
   // esse novo estado é a nova verdade; a próxima chamada salva backup fresh.
   delete divisao._defaultOrig;
@@ -3084,6 +3139,7 @@ function renderTelaDivisao(){
 
         // Dot cor
         const dot = document.createElement('div');
+        dot.id = 'vdot-' + i + '-' + ti + '-' + g;
         dot.style.cssText = 'width:10px;height:10px;border-radius:3px;flex-shrink:0;background:' + cor;
 
         // Nome
@@ -3093,6 +3149,7 @@ function renderTelaDivisao(){
 
         // Barra "chegamos ao alvo?" — régua B, traço na posição do volume semanal
         const barWrap = document.createElement('div');
+        barWrap.id = 'vbar-' + i + '-' + ti + '-' + g;
         barWrap.style.cssText = 'flex:1;min-width:88px';
         barWrap.title = 'Semana: ' + semanaG + 's · escolhido: ' + alvoMin + '–' + alvoMax +
                         's · esta sessão: ' + (serSessao||0) + 's — ' + VOL_ALVO_FAIXAS[faixaG].label;
@@ -3444,6 +3501,38 @@ function atualizarResumоSemanal(cardIdx){
     const valEl = chip.querySelector('[data-val]');
     if(valEl){ valEl.textContent = ser + 's'; valEl.style.color = cor; }
     chip.style.borderTopColor = cor;
+  });
+
+  // Atualiza a régua "chegamos ao alvo?" (e o dot de cor) de CADA linha onde o
+  // grupo aparece — precisa varrer todas as sessões do grupo, não só a que foi
+  // editada, porque a régua compara o volume SEMANAL (soma de todas as sessões
+  // do grupo), igual ao chip. Antes desta função não tocava nessa barra: ela
+  // ficava com a posição do primeiro render, congelada, mesmo o "= Xs" e os
+  // chips do topo já tendo atualizado.
+  divisao.default.forEach((sessaoGrupos, ti) => {
+    sessaoGrupos.forEach(({g}) => {
+      const vg = _s3.volPorGrupo[g]; if(!vg) return;
+      const iEx  = $('iex-'  + cardIdx + '-' + ti + '-' + g);
+      const iSer = $('iser-' + cardIdx + '-' + ti + '-' + g);
+      if(!iEx || !iSer) return;
+      const serSessaoAtual = (parseInt(iEx.value)||1) * (parseInt(iSer.value)||1);
+      const alvoMin = vg.semMin || 0;
+      const alvoMax = vg.semMax || 0;
+      const semanaG = semAtual[g] || 0;
+      const faixaG  = classificarVolumeAlvo(semanaG, alvoMin, alvoMax, true);
+      const cor     = VOL_ALVO_FAIXAS[faixaG].cor;
+
+      const barWrap = $('vbar-' + cardIdx + '-' + ti + '-' + g);
+      if(barWrap){
+        barWrap.title = 'Semana: ' + semanaG + 's · escolhido: ' + alvoMin + '–' + alvoMax +
+                        's · esta sessão: ' + serSessaoAtual + 's — ' + VOL_ALVO_FAIXAS[faixaG].label;
+        barWrap.innerHTML =
+          barraVolumeAlvoHTML(volMarcadorHTML(posVolReguaB(semanaG, alvoMin, alvoMax), cor), 10) +
+          escalaVolumeHTML([alvoMin, alvoMax], VOL_RB_X);
+      }
+      const dotEl = $('vdot-' + cardIdx + '-' + ti + '-' + g);
+      if(dotEl) dotEl.style.background = cor;
+    });
   });
 }
 
@@ -4042,187 +4131,11 @@ function _htmlSessaoInfo(treino, fichaObj, objetivoStr){
   </div>`;
 }
 
-function renderTreinoAtivo(){
-  const f = _s3.fichaObj; if(!f) return;
-  const treino = f.treinos[_s3.treinoAtivo];
-  const cont   = $('ficha-treinos-content');
-  const obj    = selectedObj || getUltimoTreino(getActive()).objetivo || 'Saude';
-
-  // ── Painel de info da sessão ────────────────────────────────────────────
-  const sessaoInfoHtml = _htmlSessaoInfo(treino, f, obj);
-
-  // ── Bloco de Aquecimento — 3 seções separadas ──────────────────────────────
-  const aquecimento = treino.aquecimento || [];
-  const ti = _s3.treinoAtivo;
-
-  // Articulações e músculos presentes no treino
-  const articsTreinoSet = new Set();
-  treino.exercicios.forEach(ex => { (ex._artic||[]).forEach(a => { if(a && ARTIC_MOBILIDADE_VALIDAS.has(a)) articsTreinoSet.add(a); }); });
-  const sortedArtics = [...articsTreinoSet].sort((a,b) =>
-    (ORDEM_ARTIC_AQUECIMENTO.indexOf(a)<0?999:ORDEM_ARTIC_AQUECIMENTO.indexOf(a)) -
-    (ORDEM_ARTIC_AQUECIMENTO.indexOf(b)<0?999:ORDEM_ARTIC_AQUECIMENTO.indexOf(b)));
-  const musculosTreinoArr = [...new Set(treino.exercicios.map(ex => ex.musculo).filter(Boolean))];
-
-  // Helper: renderiza uma row de item de aquecimento
-  function _rowAquecItem(a, ai){
-    const refLabel = a.tipo==='Mobilidade' ? (a.artic||'—') : (a.musculo||'—');
-    const videoBtn = a.url
-      ? `<a data-url="${a.url}" data-nome="${(a.nome||'').replace(/"/g,'&quot;')}" onclick="abrirVideoModal(this.dataset.url,this.dataset.nome)" style="font-size:9px;color:var(--accent);text-decoration:none;cursor:pointer;margin-left:4px" title="Ver vídeo">▶</a>`
-      : '';
-    return `<div style="padding:7px 12px;border-top:1px solid var(--border);background:var(--bg4);transition:background .15s"
-      onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background='var(--bg4)'">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-size:11px;color:var(--text3);min-width:72px;flex-shrink:0">${refLabel}</span>
-        <span style="flex:1;font-size:12px;color:var(--text);min-width:100px">${a.nome}${videoBtn}</span>
-        <span style="font-size:11px;color:var(--text2);white-space:nowrap;font-family:var(--mono)">${a.duracao}</span>
-        <button class="tbtn" style="font-size:10px;padding:2px 8px;flex-shrink:0"
-          onclick="abrirListaAquecimento(${ti},${ai})" title="Alternativos">▼</button>
-        <button class="tbtn" style="font-size:10px;padding:2px 6px;flex-shrink:0;color:var(--red);border-color:var(--red)"
-          onclick="removerItemAquecimento(${ti},${ai})" title="Remover">✕</button>
-      </div>
-      <div id="lista-aquec-${ti}-${ai}" class="hidden"
-        style="margin-top:6px;max-height:160px;overflow-y:auto;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:4px"></div>
-    </div>`;
-  }
-
-  // Helper: chips de articulações para Mobilidade
-  function _chipsArticMob(){
-    if(!sortedArtics.length) return `<span style="font-size:10px;color:var(--text3);font-style:italic">Nenhuma articulação identificada</span>`;
-    return sortedArtics.map(artic => {
-      const inDB = DB_EXERCICIOS.some(e => (e.tp||[]).some(t=>t.chave==='Mobilidade') && (e.artic||[]).some(a=>a.nome===artic));
-      const sel  = aquecimento.some(x => x.tipo==='Mobilidade' && x.artic===artic);
-      if(!inDB) return `<span style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);color:var(--text3);opacity:.4">${artic}</span>`;
-      return `<button onclick="toggleAquecArtic(${ti},'${artic.replace(/'/g,"\\'")}')"
-        style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid ${sel?'var(--accent)':'var(--border)'};background:${sel?'var(--accent)':'transparent'};color:${sel?'#fff':'var(--text2)'};cursor:pointer;transition:all .15s"
-        >${artic}${sel?' ✓':''}</button>`;
-    }).join('');
-  }
-
-  // Helper: chips de músculos para Flex ou Lib
-  function _chipsMuscTipo(tipo, color){
-    if(!musculosTreinoArr.length) return `<span style="font-size:10px;color:var(--text3);font-style:italic">Nenhum grupo identificado</span>`;
-    return musculosTreinoArr.map(m => {
-      const inDB = DB_EXERCICIOS.some(e => (e.tp||[]).some(t=>t.nome===tipo) && (e.g||[]).some(g=>g.nome===m));
-      const sel  = aquecimento.some(x => x.tipo===tipo && x.musculo===m);
-      const mSafe = m.replace(/'/g,"\\'");
-      if(!inDB) return `<span style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);color:var(--text3);opacity:.4">${m}</span>`;
-      return `<button onclick="toggleAquecMusculo(${ti},'${mSafe}','${tipo}')"
-        style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid ${sel?color:'var(--border)'};background:${sel?color:'transparent'};color:${sel?'#fff':'var(--text2)'};cursor:pointer;transition:all .15s"
-        >${m}${sel?' ✓':''}</button>`;
-    }).join('');
-  }
-
-  // ── Tabela unificada de aquecimento ──────────────────────────────────────
-  function _rowAquecUnif(a, ai){
-    const isMob  = a.tipo==='Mobilidade';
-    const isFlex = a.tipo==='Flexibilidade';
-    // Chip visual: MOB azul-ciano / FLEX verde / LIB âmbar
-    const tipBg  = isMob ? 'rgba(0,188,212,.18)' : isFlex ? 'rgba(56,142,60,.18)' : 'rgba(255,152,0,.18)';
-    const tipFg  = isMob ? '#00bcd4'             : isFlex ? '#66bb6a'              : 'var(--amber)';
-    const tipLbl = isMob ? 'MOB'                 : isFlex ? 'FLEX'                 : 'LIB';
-    const refLabel = isMob ? (a.artic||'—') : (a.musculo||'—');
-    const videoBtn = a.url
-      ? `<button class="excv2-iconbtn excv2-video" title="Ver vídeo"
-          onclick="abrirVideoModal('${a.url.replace(/'/g,"\\'")}','${(a.nome||'').replace(/'/g,"\\'")}')">▶</button>`
-      : `<button class="excv2-iconbtn excv2-video" title="Sem vídeo" disabled style="opacity:.3">▶</button>`;
-    const podeSubir  = ai > 0;
-    const podeDescer = ai < aquecimento.length - 1;
-    return `<div style="border-top:1px solid var(--border);position:relative">
-      <div class="aqv2-row">
-        <span class="excv2-drag" title="Arrastar">⋮⋮</span>
-        <div class="excv2-arrows" style="flex-shrink:0">
-          <button class="excv2-arr" title="Subir" ${podeSubir?`onclick="moverAquecimento(${ti},${ai},-1)"`:'disabled'}>▲</button>
-          <button class="excv2-arr" title="Descer" ${podeDescer?`onclick="moverAquecimento(${ti},${ai},1)"`:'disabled'}>▼</button>
-        </div>
-        <span class="aqv2-tipc" style="background:${tipBg};color:${tipFg}">${tipLbl}</span>
-        <span class="aqv2-artic" title="${refLabel}">${refLabel}</span>
-        <div style="flex:1;min-width:0;position:relative" id="aqv2-nw-${ti}-${ai}">
-          <button class="excv2-namebtn" onclick="abrirListaAquecimento(${ti},${ai})">
-            <span class="nm">${a.nome}</span>
-            <span class="caret">▾</span>
-          </button>
-          <div id="lista-aquec-${ti}-${ai}" class="hidden excv2-sdrop"
-            style="max-height:220px;overflow-y:auto;padding:4px 0"></div>
-        </div>
-        <div class="aqv2-durctrl">
-          <button class="aqv2-dpm mi" onclick="_pmAquecimento(${ti},${ai},-1)">−</button>
-          <input id="aqv2-dur-${ti}-${ai}" type="text" value="${a.duracao}"
-            onblur="(function(v){const t=_s3.fichaObj?.treinos[${ti}];if(t?.aquecimento?.[${ai}])t.aquecimento[${ai}].duracao=v;})(this.value)">
-          <button class="aqv2-dpm pl" onclick="_pmAquecimento(${ti},${ai},1)">+</button>
-        </div>
-        ${videoBtn}
-        <button class="aqv2-rmbtn" onclick="removerItemAquecimento(${ti},${ai})" title="Remover">✕</button>
-      </div>
-    </div>`;
-  }
-
-  const warningHtml = treino._aquecDesatualizado
-    ? `<div style="padding:6px 12px;background:rgba(255,180,0,.12);border-bottom:1px solid rgba(255,180,0,.3);font-size:11px;color:#ffb400;display:flex;align-items:center;gap:8px">
-        <span>⚠️ Exercícios da parte principal foram alterados — revise o aquecimento</span>
-        <button onclick="_s3.fichaObj.treinos[${ti}]._aquecDesatualizado=false;renderTreinoAtivo()"
-          style="font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;text-decoration:underline;flex-shrink:0">Dispensar</button>
-      </div>` : '';
-
-  const tabelaAquecHtml = aquecimento.length
-    ? aquecimento.map((a,ai) => _rowAquecUnif(a,ai)).join('')
-    : `<div style="padding:12px;font-size:11px;color:var(--text3);text-align:center;font-style:italic">Clique nos chips acima para adicionar exercícios ao aquecimento</div>`;
-
-  const aquecPickerId = `picker-add-aquec-${ti}`;
-
-  const aquecimentoHtml = `<div style="margin-bottom:16px;border:1px solid var(--border);border-radius:var(--radius);overflow:visible">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border);gap:8px">
-      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">🔥 Aquecimento</div>
-      <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="regerarAquecimentoTreinoAtivo()">🔄 Gerar</button>
-    </div>
-    ${warningHtml}
-    <!-- 3 linhas de filtro -->
-    <div style="border-bottom:1px solid var(--border)">
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--border)">
-        <span style="font-size:10px;font-weight:700;color:var(--accent);min-width:80px;flex-shrink:0">Mobilidade</span>
-        <div style="display:flex;gap:4px;flex-wrap:wrap">${_chipsArticMob()}</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--border)">
-        <span style="font-size:10px;font-weight:700;color:var(--accent2);min-width:80px;flex-shrink:0">Flexibilidade</span>
-        <div style="display:flex;gap:4px;flex-wrap:wrap">${_chipsMuscTipo('Flexibilidade','var(--accent2)')}</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 12px">
-        <span style="font-size:10px;font-weight:700;color:var(--amber);min-width:80px;flex-shrink:0">Liberação</span>
-        <div style="display:flex;gap:4px;flex-wrap:wrap">${_chipsMuscTipo('Liberação Miofascial','var(--amber)')}</div>
-      </div>
-    </div>
-    <!-- tabela unificada -->
-    ${tabelaAquecHtml}
-    <!-- botão adicionar -->
-    <div style="padding:5px 12px 8px;border-top:1px solid var(--border)">
-      <button onclick="abrirPickerAdicionarAquecNovo('${aquecPickerId}',${ti})"
-        style="font-size:10px;padding:3px 10px;border-radius:var(--radius);border:1px dashed var(--border);background:transparent;color:var(--text3);cursor:pointer;transition:all .15s"
-        onmouseenter="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
-        onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">+ Adicionar exercício</button>
-      <div id="${aquecPickerId}" class="hidden" data-ti="${ti}" style="margin-top:6px"></div>
-    </div>
-  </div>`;
-
-  // ── Parte Principal ──────────────────────────────────────────────────────
-  cont.innerHTML = `
-    ${sessaoInfoHtml}
-    ${aquecimentoHtml}
-    <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:8px">
-      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border)">💪 Parte Principal</div>
-      <div id="cards-treino"></div>
-      <div style="padding:5px 12px 8px;border-top:1px solid var(--border)">
-        <button onclick="abrirPickerPrincipal(${ti},'picker-add-principal-${ti}')"
-          style="font-size:10px;padding:3px 10px;border-radius:var(--radius);border:1px dashed var(--border);background:transparent;color:var(--text3);cursor:pointer;transition:all .15s"
-          onmouseenter="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'"
-          onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">+ Adicionar exercício</button>
-        <div id="picker-add-principal-${ti}" class="hidden" data-ti="${ti}" style="margin-top:6px"></div>
-      </div>
-    </div>`;
-
-  // ── Cards de exercício (novo layout) ────────────────────────────────────
-  const cardsEl = $('cards-treino');
-  const gruposInfo = _computarGruposExercicios(treino.exercicios);
-
-  // Injetar CSS do novo card se ainda não estiver na página
+// Injeta o CSS compartilhado dos cards de exercicio/aquecimento (v2) uma
+// unica vez na pagina. Usado tanto pela tela editavel (renderTreinoAtivo)
+// quanto pela ficha aprovada read-only (renderFichaAprovadaVisual) — mesmo
+// padrao visual nos dois lugares.
+function _injetarEstilosExcv2(){
   if(!document.getElementById('ex-card-v2-styles')){
     const st = document.createElement('style');
     st.id = 'ex-card-v2-styles';
@@ -4327,16 +4240,204 @@ function renderTreinoAtivo(){
     `;
     document.head.appendChild(st);
   }
+}
+
+function renderTreinoAtivo(){
+  const f = _s3.fichaObj; if(!f) return;
+  const treino = f.treinos[_s3.treinoAtivo];
+  const cont   = $('ficha-treinos-content');
+  const obj    = selectedObj || getUltimoTreino(getActive()).objetivo || 'Saude';
+
+  // ── Painel de info da sessão ────────────────────────────────────────────
+  const sessaoInfoHtml = _htmlSessaoInfo(treino, f, obj);
+
+  // ── Bloco de Aquecimento — 3 seções separadas ──────────────────────────────
+  const aquecimento = treino.aquecimento || [];
+  const ti = _s3.treinoAtivo;
+
+  // Articulações e músculos presentes no treino
+  const articsTreinoSet = new Set();
+  treino.exercicios.forEach(ex => { (ex._artic||[]).forEach(a => { if(a && ARTIC_MOBILIDADE_VALIDAS.has(a)) articsTreinoSet.add(a); }); });
+  const sortedArtics = [...articsTreinoSet].sort((a,b) =>
+    (ORDEM_ARTIC_AQUECIMENTO.indexOf(a)<0?999:ORDEM_ARTIC_AQUECIMENTO.indexOf(a)) -
+    (ORDEM_ARTIC_AQUECIMENTO.indexOf(b)<0?999:ORDEM_ARTIC_AQUECIMENTO.indexOf(b)));
+  const musculosTreinoArr = [...new Set(treino.exercicios.map(ex => ex.musculo).filter(Boolean))];
+
+  // Helper: renderiza uma row de item de aquecimento
+  function _rowAquecItem(a, ai){
+    const refLabel = a.tipo==='Mobilidade' ? (a.artic||'—') : (a.musculo||'—');
+    const videoBtn = a.url
+      ? `<a data-url="${a.url}" data-nome="${(a.nome||'').replace(/"/g,'&quot;')}" onclick="abrirVideoModal(this.dataset.url,this.dataset.nome)" style="font-size:9px;color:var(--accent);text-decoration:none;cursor:pointer;margin-left:4px" title="Ver vídeo">▶</a>`
+      : '';
+    return `<div style="padding:7px 12px;border-top:1px solid var(--border);background:var(--bg4);transition:background .15s"
+      onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background='var(--bg4)'">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--text3);min-width:72px;flex-shrink:0">${refLabel}</span>
+        <span style="flex:1;font-size:12px;color:var(--text);min-width:100px">${a.nome}${videoBtn}</span>
+        <span style="font-size:11px;color:var(--text2);white-space:nowrap;font-family:var(--mono)">${a.duracao}</span>
+        <button class="tbtn" style="font-size:10px;padding:2px 8px;flex-shrink:0"
+          onclick="abrirListaAquecimento(${ti},${ai})" title="Alternativos">▼</button>
+        <button class="tbtn" style="font-size:10px;padding:2px 6px;flex-shrink:0;color:var(--red);border-color:var(--red)"
+          onclick="removerItemAquecimento(${ti},${ai})" title="Remover">✕</button>
+      </div>
+      <div id="lista-aquec-${ti}-${ai}" class="hidden"
+        style="margin-top:6px;max-height:160px;overflow-y:auto;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:4px"></div>
+    </div>`;
+  }
+
+  // Helper: chips de articulações para Mobilidade
+  function _chipsArticMob(){
+    if(!sortedArtics.length) return `<span style="font-size:10px;color:var(--text3);font-style:italic">Nenhuma articulação identificada</span>`;
+    return sortedArtics.map(artic => {
+      const inDB = DB_EXERCICIOS.some(e => (e.tp||[]).some(t=>t.chave==='Mobilidade') && (e.artic||[]).some(a=>a.nome===artic));
+      const sel  = aquecimento.some(x => x.tipo==='Mobilidade' && x.artic===artic);
+      if(!inDB) return `<span style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);color:var(--text3);opacity:.4">${artic}</span>`;
+      return `<button onclick="toggleAquecArtic(${ti},'${artic.replace(/'/g,"\\'")}')"
+        style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid ${sel?'var(--accent)':'var(--border)'};background:${sel?'var(--accent)':'transparent'};color:${sel?'#fff':'var(--text2)'};cursor:pointer;transition:all .15s"
+        >${artic}${sel?' ✓':''}</button>`;
+    }).join('');
+  }
+
+  // Helper: chips de músculos para Flex ou Lib
+  function _chipsMuscTipo(tipo, color){
+    if(!musculosTreinoArr.length) return `<span style="font-size:10px;color:var(--text3);font-style:italic">Nenhum grupo identificado</span>`;
+    const disponiveis = musculosTreinoArr.filter(m =>
+      DB_EXERCICIOS.some(e => (e.tp||[]).some(t=>t.nome===tipo) && (e.g||[]).some(g=>g.nome===m)));
+    if(!disponiveis.length) return `<span style="font-size:10px;color:var(--text3);font-style:italic">Sem exercício disponível</span>`;
+    return disponiveis.map(m => {
+      const sel  = aquecimento.some(x => x.tipo===tipo && x.musculo===m);
+      const mSafe = m.replace(/'/g,"\\'");
+      return `<button onclick="toggleAquecMusculo(${ti},'${mSafe}','${tipo}')"
+        style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid ${sel?color:'var(--border)'};background:${sel?color:'transparent'};color:${sel?'#fff':'var(--text2)'};cursor:pointer;transition:all .15s"
+        >${m}${sel?' ✓':''}</button>`;
+    }).join('');
+  }
+
+  // ── Tabela unificada de aquecimento ──────────────────────────────────────
+  function _rowAquecUnif(a, ai){
+    const isMob  = a.tipo==='Mobilidade';
+    const isFlex = a.tipo==='Flexibilidade';
+    // Chip visual: MOB azul-ciano / FLEX verde / LIB âmbar
+    const tipBg  = isMob ? 'rgba(0,188,212,.18)' : isFlex ? 'rgba(56,142,60,.18)' : 'rgba(255,152,0,.18)';
+    const tipFg  = isMob ? '#00bcd4'             : isFlex ? '#66bb6a'              : 'var(--amber)';
+    const tipLbl = isMob ? 'MOB'                 : isFlex ? 'FLEX'                 : 'LIB';
+    const refLabel = isMob ? (a.artic||'—') : (a.musculo||'—');
+    const videoBtn = a.url
+      ? `<button class="excv2-iconbtn excv2-video" title="Ver vídeo"
+          onclick="abrirVideoModal('${a.url.replace(/'/g,"\\'")}','${(a.nome||'').replace(/'/g,"\\'")}')">▶</button>`
+      : `<button class="excv2-iconbtn excv2-video" title="Sem vídeo" disabled style="opacity:.3">▶</button>`;
+    const podeSubir  = ai > 0;
+    const podeDescer = ai < aquecimento.length - 1;
+    return `<div style="border-top:1px solid var(--border);position:relative">
+      <div class="aqv2-row">
+        <span class="excv2-drag" title="Arrastar">⋮⋮</span>
+        <div class="excv2-arrows" style="flex-shrink:0">
+          <button class="excv2-arr" title="Subir" ${podeSubir?`onclick="moverAquecimento(${ti},${ai},-1)"`:'disabled'}>▲</button>
+          <button class="excv2-arr" title="Descer" ${podeDescer?`onclick="moverAquecimento(${ti},${ai},1)"`:'disabled'}>▼</button>
+        </div>
+        <span class="aqv2-tipc" style="background:${tipBg};color:${tipFg}">${tipLbl}</span>
+        <span class="aqv2-artic" title="${refLabel}">${refLabel}</span>
+        <div style="flex:1;min-width:0;position:relative" id="aqv2-nw-${ti}-${ai}">
+          <button class="excv2-namebtn" onclick="abrirListaAquecimento(${ti},${ai})">
+            <span class="nm">${a.nome}</span>
+            <span class="caret">▾</span>
+          </button>
+          <div id="lista-aquec-${ti}-${ai}" class="hidden excv2-sdrop"
+            style="max-height:220px;overflow-y:auto;padding:4px 0"></div>
+        </div>
+        <div class="aqv2-durctrl">
+          <button class="aqv2-dpm mi" onclick="_pmAquecimento(${ti},${ai},-1)">−</button>
+          <input id="aqv2-dur-${ti}-${ai}" type="text" value="${a.duracao}"
+            onblur="(function(v){const t=_s3.fichaObj?.treinos[${ti}];if(t?.aquecimento?.[${ai}])t.aquecimento[${ai}].duracao=v;})(this.value)">
+          <button class="aqv2-dpm pl" onclick="_pmAquecimento(${ti},${ai},1)">+</button>
+        </div>
+        ${videoBtn}
+        <button class="aqv2-rmbtn" onclick="removerItemAquecimento(${ti},${ai})" title="Remover">✕</button>
+      </div>
+    </div>`;
+  }
+
+  const warningHtml = treino._aquecDesatualizado
+    ? `<div style="padding:6px 12px;background:rgba(255,180,0,.12);border-bottom:1px solid rgba(255,180,0,.3);font-size:11px;color:#ffb400;display:flex;align-items:center;gap:8px">
+        <span>⚠️ Exercícios da parte principal foram alterados — revise o aquecimento</span>
+        <button onclick="_s3.fichaObj.treinos[${ti}]._aquecDesatualizado=false;renderTreinoAtivo()"
+          style="font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;text-decoration:underline;flex-shrink:0">Dispensar</button>
+      </div>` : '';
+
+  const tabelaAquecHtml = aquecimento.length
+    ? aquecimento.map((a,ai) => _rowAquecUnif(a,ai)).join('')
+    : `<div style="padding:12px;font-size:11px;color:var(--text3);text-align:center;font-style:italic">Clique nos chips acima para adicionar exercícios ao aquecimento</div>`;
+
+  const aquecPickerId = `picker-add-aquec-${ti}`;
+
+  const aquecimentoHtml = `<div style="margin-bottom:16px;border:1px solid var(--border);border-radius:var(--radius);overflow:visible">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border);gap:8px">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">🔥 Aquecimento</div>
+      <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px" onclick="regerarAquecimentoTreinoAtivo()">🔄 Gerar</button>
+    </div>
+    ${warningHtml}
+    <!-- 3 linhas de filtro -->
+    <div style="border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--border)">
+        <span style="font-size:10px;font-weight:700;color:var(--accent);min-width:80px;flex-shrink:0">Mobilidade</span>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${_chipsArticMob()}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--border)">
+        <span style="font-size:10px;font-weight:700;color:var(--accent2);min-width:80px;flex-shrink:0">Flexibilidade</span>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${_chipsMuscTipo('Flexibilidade','var(--accent2)')}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 12px">
+        <span style="font-size:10px;font-weight:700;color:var(--amber);min-width:80px;flex-shrink:0">Liberação</span>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${_chipsMuscTipo('Liberação Miofascial','var(--amber)')}</div>
+      </div>
+    </div>
+    <!-- tabela unificada -->
+    ${tabelaAquecHtml}
+    <!-- botão adicionar -->
+    <div style="padding:5px 12px 8px;border-top:1px solid var(--border)">
+      <button onclick="abrirPickerAdicionarAquecNovo('${aquecPickerId}',${ti})"
+        style="font-size:10px;padding:3px 10px;border-radius:var(--radius);border:1px dashed var(--border);background:transparent;color:var(--text3);cursor:pointer;transition:all .15s"
+        onmouseenter="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+        onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">+ Adicionar exercício</button>
+      <div id="${aquecPickerId}" class="hidden" data-ti="${ti}" style="margin-top:6px"></div>
+    </div>
+  </div>`;
+
+  // ── Parte Principal ──────────────────────────────────────────────────────
+  cont.innerHTML = `
+    <div id="sessao-info-box">${sessaoInfoHtml}</div>
+    ${aquecimentoHtml}
+    <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:8px">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border)">💪 Parte Principal</div>
+      <div id="cards-treino"></div>
+      <div style="padding:5px 12px 8px;border-top:1px solid var(--border)">
+        <button onclick="abrirPickerPrincipal(${ti},'picker-add-principal-${ti}')"
+          style="font-size:10px;padding:3px 10px;border-radius:var(--radius);border:1px dashed var(--border);background:transparent;color:var(--text3);cursor:pointer;transition:all .15s"
+          onmouseenter="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'"
+          onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">+ Adicionar exercício</button>
+        <div id="picker-add-principal-${ti}" class="hidden" data-ti="${ti}" style="margin-top:6px"></div>
+      </div>
+    </div>`;
+
+  // ── Cards de exercício (novo layout) ────────────────────────────────────
+  const cardsEl = $('cards-treino');
+  const gruposInfo = _computarGruposExercicios(treino.exercicios);
+
+  _injetarEstilosExcv2();
 
   treino.exercicios.forEach((ex, rowIdx) => {
     const info = gruposInfo[rowIdx];
     const podeSubir  = rowIdx > 0;
     const podeDescer = rowIdx < treino.exercicios.length - 1;
-    const vinculadoProximo = !!ex._vinculadoProximo;
-    // Pertence a um grupo bi-set?
+    // Pertence a um grupo (bi-set/tri-set/super-série)?
     const emGrupo = !!info;
     const podeSubirNoGrupo  = emGrupo && info.pos > 1;
     const podeDescerNoGrupo = emGrupo && info.pos < info.total;
+    // Cabeça do grupo (ou solo, que é cabeça de um grupo-de-1) — só ela mostra
+    // o botão de agrupar; "remover do grupo" fica disponível pra qualquer membro.
+    const isHead = !emGrupo || info.pos === 1;
+    const groupEndIdx = emGrupo ? rowIdx + (info.total - info.pos) : rowIdx;
+    const temProximoParaAgrupar = isHead && groupEndIdx < treino.exercicios.length - 1;
 
     const corChip = _corChipMusculo(ex.musculo);
     const mLabel  = ex.musculo.replace('Isquiossurais','Isquio').replace('RetoAbdominal','Abd.').replace('Panturrilhas','Pant.');
@@ -4357,19 +4458,22 @@ function renderTreinoAtivo(){
     const card = document.createElement('div');
     card.style.cssText = `border-bottom:1px solid var(--border);${emGrupo?`border-left:3px solid ${_corGrupo(info.grupoIdx)};background:rgba(91,140,247,.025)`:'border-left:3px solid transparent'};overflow:visible`;
 
-    // Biset control bar (aparece ANTES do próximo card, ou seja, depois deste se vinculadoProximo)
-    // Montado depois de cada card vinculado
-
     card.innerHTML = `
       <!-- linha principal -->
       <div class="excv2-row">
         <span class="excv2-drag" title="Arrastar">⋮⋮</span>
+        ${isHead ? `
         <div class="excv2-arrows">
-          <button class="excv2-arr" title="Subir" ${podeSubir?`onclick="moverExercicio(${ti},${rowIdx},-1)"`:'disabled'}>▲</button>
-          <button class="excv2-arr" title="Descer" ${podeDescer?`onclick="moverExercicio(${ti},${rowIdx},1)"`:'disabled'}>▼</button>
-        </div>
+          <button class="excv2-arr" title="${emGrupo?'Subir grupo':'Subir'}" ${podeSubir?`onclick="moverExercicio(${ti},${rowIdx},-1)"`:'disabled'}>▲</button>
+          <button class="excv2-arr" title="${emGrupo?'Descer grupo':'Descer'}" ${groupEndIdx<treino.exercicios.length-1?`onclick="moverExercicio(${ti},${rowIdx},1)"`:'disabled'}>▼</button>
+        </div>` : `<div class="excv2-arrows" style="visibility:hidden"><button class="excv2-arr">▲</button><button class="excv2-arr">▼</button></div>`}
         <span class="excv2-chip" style="background:${corChip.bg};color:${corChip.fg}">${mLabel}</span>
-        ${emGrupo ? `<span style="flex-shrink:0;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;background:${_corGrupo(info.grupoIdx)}22;color:${_corGrupo(info.grupoIdx)};white-space:nowrap" title="Grupo combinado sem descanso entre os exercícios">🔗 ${info.total===2?'Bi-set':'Tri-set'} ${info.pos}/${info.total}</span>` : ''}
+        ${emGrupo ? `
+        <span style="flex-shrink:0;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;background:${_corGrupo(info.grupoIdx)}22;color:${_corGrupo(info.grupoIdx)};white-space:nowrap" title="Grupo combinado sem descanso entre os exercícios">🔗 ${_labelGrupo(info.total)} ${info.pos}/${info.total}</span>
+        <div class="excv2-bisetreorder" style="flex-shrink:0">
+          <button title="Subir dentro do grupo" ${podeSubirNoGrupo?`onclick="moverDentroDoGrupo(${ti},${rowIdx},-1)"`:'disabled'}>▲</button>
+          <button title="Descer dentro do grupo" ${podeDescerNoGrupo?`onclick="moverDentroDoGrupo(${ti},${rowIdx},1)"`:'disabled'}>▼</button>
+        </div>` : ''}
         <div class="excv2-namewrap" id="excv2-nw-${ti}-${rowIdx}">
           <button class="excv2-namebtn" id="excv2-nb-${ti}-${rowIdx}"
             onclick="_toggleBuscaExercicio(${ti},${rowIdx},'${ex.musculo}','${porcaoSafe}')">
@@ -4385,8 +4489,9 @@ function renderTreinoAtivo(){
             onclick="_toggleMenuExercicio(${ti},${rowIdx})" title="Mais opções">⋮</button>
           <div id="${menuId}" class="excv2-omenu hidden">
             <div class="excv2-oi" onclick="_toggleObsExercicio(${ti},${rowIdx})"><span>📝</span> Observação</div>
-            ${podeDescer ? `<div class="excv2-oi ${vinculadoProximo?'delink':''}"
-              onclick="toggleVinculoProximo(${ti},${rowIdx})">${vinculadoProximo?'<span>🔓</span> Desagrupar':'<span>🔗</span> Bi-set (agrupar)'}</div>` : ''}
+            ${temProximoParaAgrupar ? `<div class="excv2-oi delink"
+              onclick="agruparProximo(${ti},${rowIdx})"><span>🔗</span> ${_labelGrupo((emGrupo?info.total:1)+1)} (agrupar)</div>` : ''}
+            ${emGrupo ? `<div class="excv2-oi" onclick="removerDoGrupo(${ti},${rowIdx})"><span>🔓</span> Remover do grupo</div>` : ''}
             <div class="excv2-oi danger" onclick="_removerExercicio(${ti},${rowIdx})"><span>🗑</span> Remover</div>
           </div>
         </div>
@@ -4431,32 +4536,21 @@ function renderTreinoAtivo(){
       </div>`;
 
     cardsEl.appendChild(card);
-
-    // Bi-set connector bar após card vinculado
-    if(vinculadoProximo){
-      const barDiv = document.createElement('div');
-      barDiv.className = 'excv2-bisetctrl';
-      barDiv.innerHTML = `
-        <span class="excv2-bisetlbl">Bi-set</span>
-        <div class="excv2-bisetreorder">
-          <span>Ordem no grupo:</span>
-          <button title="Mover este par para cima" ${podeSubirNoGrupo?`onclick="moverExercicio(${ti},${rowIdx},-1)"`:'disabled'}>▲</button>
-          <button title="Mover este par para baixo" ${podeDescerNoGrupo?`onclick="moverExercicio(${ti},${rowIdx+1},1)"`:'disabled'}>▼</button>
-        </div>`;
-      cardsEl.appendChild(barDiv);
-    }
   });
 }
 
-// ── Agrupamento de exercícios (bi-set / tri-set) — RASCUNHO ────────────────
+// ── Agrupamento de exercícios (bi-set / tri-set / super-série) ─────────────
 // Modelo: cada exercício pode ter `_vinculadoProximo=true`, o que significa
 // "este exercício forma um bloco combinado com o PRÓXIMO da lista". Um grupo
 // é, portanto, uma sequência contígua de exercícios encadeados assim — não
 // existe um "id de grupo" salvo à parte, é só a posição + o flag, igual à
-// forma como o personal pensa: "esses dois eu fiz um atrás do outro, sem
-// descanso entre eles". Mover um exercício de posição (▲▼) pode alterar a
-// que grupo ele pertence, já que o vínculo é sempre com quem está imediatamente
-// ao lado — comportamento aceito por ora, é o suficiente pra um rascunho.
+// forma como o personal pensa: "esses eu fiz um atrás do outro, sem descanso
+// entre eles".
+// Reordenação (2026-09-16): `moverExercicio` (setas gerais) e
+// `moverDentroDoGrupo` (setas dentro do grupo) tratam o grupo como bloco
+// fechado — mover um exercício de fora nunca entra no meio de um grupo
+// existente, e mover um membro pra dentro/fora do grupo é feito só por
+// `agruparProximo`/`removerDoGrupo`, nunca pela troca de posição.
 function _computarGruposExercicios(exercicios){
   const membroInfo = {};
   let grupoAtual = null, grupoIdx = -1;
@@ -4477,6 +4571,12 @@ function _computarGruposExercicios(exercicios){
 
 const _CORES_GRUPO = ['#f5a623','#4a90d9','#9b59b6','#2ecc71','#e74c3c','#1abc9c'];
 function _corGrupo(idx){ return _CORES_GRUPO[idx % _CORES_GRUPO.length]; }
+// Nome do agrupamento pelo tamanho: 2 = Bi-set, 3 = Tri-set, 4+ = Super-série.
+function _labelGrupo(total){
+  if(total <= 2) return 'Bi-set';
+  if(total === 3) return 'Tri-set';
+  return 'Super-série';
+}
 
 // ── Helpers novos cards exercício (excv2) ─────────────────────────────────────
 
@@ -4521,6 +4621,19 @@ function _pmExercicio(ti, rowIdx, campo, delta){
     if(campo==='reps'     && inputs[1]) inputs[1].value = ex.reps;
     if(campo==='intervalo'&& inputs[2]) inputs[2].value = ex.intervalo;
   }
+  _atualizarInfoAoVivo();
+}
+
+// ── Recalcula ao vivo os painéis de série/tempo/volume sem full re-render ──
+function _atualizarInfoAoVivo(){
+  const f = _s3.fichaObj; if(!f) return;
+  const treino = f.treinos[_s3.treinoAtivo]; if(!treino) return;
+  const box = document.getElementById('sessao-info-box');
+  if(box){
+    const obj = selectedObj || getUltimoTreino(getActive()).objetivo || 'Saude';
+    box.innerHTML = _htmlSessaoInfo(treino, f, obj);
+  }
+  renderPreviewVolSemanal();
 }
 
 // ── Ancoragem de dropdown flutuante ────────────────────────────────────────
@@ -4617,9 +4730,9 @@ function _toggleBuscaExercicio(ti, rowIdx, musculo, porcaoStr){
   const porcao = (porcaoStr === 'null' || !porcaoStr) ? null : porcaoStr;
   const s    = getActive();
   const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
-  const local  = s?.anamnese?.local || '';
+  const local  = val('pr-local') || s?.anamnese?.local || '';
   const lesoes = (s?.perfil?.lesoes||'') + ' ' + (s?.anamnese?.preferencias||'');
-  const resist = getResistPermitida(local);
+  const resist = getEquipamentosPermitidos(local);
 
   let poolBase = filtrarExerciciosFicha(musculo, porcao, resist, nivel, lesoes);
   if(!poolBase.length) poolBase = filtrarExerciciosFicha(musculo, null, resist, nivel, lesoes);
@@ -4906,19 +5019,93 @@ function calcularTempoEstimadoTreino(treino){
   return { segundos: Math.round(totalSegundos), minutos: Math.round(totalSegundos / 60) };
 }
 
-function toggleVinculoProximo(ti, rowIdx){
+// Agrupa o exercício imediatamente após o fim do grupo atual (ou, se `rowIdx`
+// for solo, agrupa com o próximo direto) — só é chamado a partir da CABEÇA do
+// grupo (única que mostra o botão na UI), então sempre "puxa" o próximo pra
+// dentro do grupo existente, nunca cria um vínculo solto no meio da lista.
+function agruparProximo(ti, rowIdx){
   const treino = _s3.fichaObj?.treinos[ti]; if(!treino) return;
-  const ex = treino.exercicios[rowIdx]; if(!ex || rowIdx >= treino.exercicios.length-1) return;
-  ex._vinculadoProximo = !ex._vinculadoProximo;
+  const arr = treino.exercicios;
+  const info = _computarGruposExercicios(arr)[rowIdx];
+  const groupEndIdx = info ? rowIdx + (info.total - info.pos) : rowIdx;
+  if(groupEndIdx >= arr.length - 1) return; // não há próximo exercício pra puxar
+  arr[groupEndIdx]._vinculadoProximo = true;
   renderTreinoAtivo();
 }
 
+// Remove UM exercício do grupo a que pertence, reinserindo-o logo depois do
+// grupo (que fecha com um membro a menos) — sem deixar buraco nem duplicar.
+// Funciona pra cabeça, meio ou última posição do grupo:
+//  - remover do MEIO: os vizinhos ficam automaticamente adjacentes um do outro
+//    no array, então a flag de quem ficou antes já continua válida (aponta pro
+//    índice seguinte, que agora é o outro membro) — não precisa mexer em nada.
+//  - remover a CABEÇA: o segundo membro vira a nova cabeça, sem mudar flag.
+//  - remover o ÚLTIMO: o penúltimo perde o vínculo (`_vinculadoProximo=false`),
+//    porque ele passa a ser o novo último do grupo encolhido.
+function removerDoGrupo(ti, rowIdx){
+  const treino = _s3.fichaObj?.treinos[ti]; if(!treino) return;
+  const arr = treino.exercicios;
+  const info = _computarGruposExercicios(arr)[rowIdx]; if(!info) return; // não está em grupo
+  const groupStart = rowIdx - (info.pos - 1);
+  const groupEnd   = groupStart + info.total - 1;
+  if(rowIdx === groupEnd && groupEnd > groupStart){
+    arr[rowIdx-1]._vinculadoProximo = false;
+  }
+  const [removido] = arr.splice(rowIdx, 1);
+  removido._vinculadoProximo = false;
+  arr.splice(groupEnd, 0, removido); // groupEnd (índice original) já é a posição certa pós-remoção
+  renderTreinoAtivo();
+}
+
+// Move um "slot" da lista pra cima/baixo — um slot é um exercício solo OU um
+// grupo (bi-set/tri-set/super-série) INTEIRO, tratado como bloco atômico.
+// Funciona a partir de qualquer membro do grupo (não só a cabeça): sempre acha
+// os limites do próprio grupo e do grupo/exercício vizinho antes de mover, então
+// nunca quebra um grupo existente nem funde dois grupos sem querer.
 function moverExercicio(ti, rowIdx, direcao){
   const treino = _s3.fichaObj?.treinos[ti]; if(!treino) return;
-  const alvo = rowIdx + direcao;
-  if(alvo < 0 || alvo >= treino.exercicios.length) return;
   const arr = treino.exercicios;
-  [arr[rowIdx], arr[alvo]] = [arr[alvo], arr[rowIdx]];
+  const gruposInfo = _computarGruposExercicios(arr);
+  const info = gruposInfo[rowIdx];
+  const groupStart = info ? rowIdx - (info.pos - 1) : rowIdx;
+  const groupEnd   = info ? groupStart + info.total - 1 : rowIdx; // fim do grupo — fixo, não depende de qual membro chamou
+  const tamanho    = groupEnd - groupStart + 1;
+
+  if(direcao < 0){
+    if(groupStart === 0) return;
+    const infoAnterior = gruposInfo[groupStart - 1];
+    const prevStart = infoAnterior ? (groupStart - 1) - (infoAnterior.pos - 1) : groupStart - 1;
+    const bloco = arr.splice(groupStart, tamanho);
+    arr.splice(prevStart, 0, ...bloco);
+  } else {
+    if(groupEnd >= arr.length - 1) return;
+    const infoProximo = gruposInfo[groupEnd + 1];
+    const proximoTamanho = infoProximo ? infoProximo.total : 1;
+    const bloco = arr.splice(groupStart, tamanho);
+    arr.splice(groupStart + proximoTamanho, 0, ...bloco);
+  }
+  renderTreinoAtivo();
+}
+
+// Reordena DENTRO do grupo — troca dois membros de posição sem deixar nenhum
+// sair do grupo (a seta trava nas pontas). Como o vínculo "eu ligo ao próximo
+// índice" viaja junto com o objeto, um swap raso de posição confundiria quem
+// liga com quem; por isso os membros são extraídos, reordenados como lista
+// independente, e as flags são recalculadas do zero por posição (todos ligados
+// ao próximo, exceto o último) antes de voltar pro array.
+function moverDentroDoGrupo(ti, rowIdx, direcao){
+  const treino = _s3.fichaObj?.treinos[ti]; if(!treino) return;
+  const arr = treino.exercicios;
+  const info = _computarGruposExercicios(arr)[rowIdx]; if(!info) return;
+  const groupStart = rowIdx - (info.pos - 1);
+  const posAtual = info.pos - 1;
+  const posAlvo  = posAtual + direcao;
+  if(posAlvo < 0 || posAlvo >= info.total) return;
+
+  const membros = arr.slice(groupStart, groupStart + info.total);
+  [membros[posAtual], membros[posAlvo]] = [membros[posAlvo], membros[posAtual]];
+  membros.forEach((m, i) => { m._vinculadoProximo = i < membros.length - 1; });
+  arr.splice(groupStart, info.total, ...membros);
   renderTreinoAtivo();
 }
 
@@ -4931,9 +5118,9 @@ function abrirListaExercicios(ti, rowIdx, musculo, porcaoStr){
 
   const s     = getActive();
   const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
-  const local = s?.anamnese?.local || '';
+  const local = val('pr-local') || s?.anamnese?.local || '';
   const lesoes = (s?.perfil?.lesoes||'') + ' ' + (s?.anamnese?.preferencias||'');
-  const resist = getResistPermitida(local);
+  const resist = getEquipamentosPermitidos(local);
   const porcao = (porcaoStr==='null'||!porcaoStr) ? null : porcaoStr;
 
   // Pool base (nível/recurso/ci)
@@ -5047,6 +5234,7 @@ function selecionarExercicio(ti, rowIdx, nome, listId){
 
 function atualizarCampo(ti, rowIdx, campo, valor){
   if(_s3.fichaObj?.treinos[ti]) _s3.fichaObj.treinos[ti].exercicios[rowIdx][campo] = valor;
+  _atualizarInfoAoVivo();
 }
 
 // Recalcula o aquecimento de UMA sessão a partir das articulações dos
@@ -5058,7 +5246,7 @@ function regerarAquecimentoTreino(ti){
   const s = getActive();
   const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
   const local = val('pr-local') || s?.anamnese?.local || '';
-  const resistPermitida = getResistPermitida(local);
+  const resistPermitida = getEquipamentosPermitidos(local);
   const contraindicacoes = [
     s?.perfil?.lesoes || '', s?.perfil?.condicoes || '', val('pr-evitar') || s?.anamnese?.preferencias || '',
   ].filter(Boolean).join(' ');
@@ -5189,7 +5377,7 @@ function treinosAbrirAprovado(id){
   setVal('pr-horario', t.horario||''); setVal('pr-local', t.local||'');
   setVal('pr-gosta', t.gosta||''); setVal('pr-evitar', t.evitar||'');
   _s3 = {seriesPorEx:3,volPorGrupo:{},divisaoIdx:0,divisaoOpcoes:[],fichaObj:t._fichaObj||null,treinoAtivo:0,aquecTipos:(_s3.aquecTipos||['Mobilidade'])};
-  $('ficha-aprovada').textContent = t.treino||'';
+  renderFichaAprovadaVisual(t._fichaObj||null);
   $('aprovado-data').textContent = t.dataAprovacao||'—';
   const anterior = getTreinoAnteriorA(s, id);
   renderComparacaoCiclos(anterior?._fichaObj||null, t._fichaObj, anterior?.dataAprovacao||null);
@@ -5541,6 +5729,106 @@ function renderTreinosLista(){
   cont.innerHTML = html;
 }
 
+// ── Ficha aprovada — visual read-only (2026-09-16) ───────────────────────────
+// Substitui o antigo bloco de texto/markdown (<pre>) na tela de Aprovação por
+// uma versão que reaproveita o MESMO padrão visual da tela de seleção de
+// exercícios (cards, tags de músculo/grupo, aquecimento separado da parte
+// principal), só que somente leitura: sem drag, sem setas de reordenar, sem
+// dropdown de trocar exercício, sem steppers +/-, sem botões de adicionar.
+// Todas as sessões do ciclo aparecem empilhadas, como um documento — a tela
+// de edição mostra só a sessão ativa (abas), aqui não tem aba, é o ciclo
+// inteiro. As réguas de volume (Volume Semanal por Grupo) continuam vindo de
+// renderPreviewVolSemanal(), a mesma função da tela de exercícios.
+function _htmlAquecimentoReadOnly(treino){
+  const aquecimento = treino.aquecimento || [];
+  if(!aquecimento.length){
+    return `<div style="margin-bottom:14px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;padding:8px 12px;background:var(--bg3)">🔥 Aquecimento</div>
+      <div style="padding:10px 12px;font-size:11px;color:var(--text3);font-style:italic">Nenhum item de aquecimento</div>
+    </div>`;
+  }
+  const rows = aquecimento.map(a => {
+    const isMob  = a.tipo === 'Mobilidade';
+    const isFlex = a.tipo === 'Flexibilidade';
+    const tipBg  = isMob ? 'rgba(0,188,212,.18)' : isFlex ? 'rgba(56,142,60,.18)' : 'rgba(255,152,0,.18)';
+    const tipFg  = isMob ? '#00bcd4'             : isFlex ? '#66bb6a'              : 'var(--amber)';
+    const tipLbl = isMob ? 'MOB'                 : isFlex ? 'FLEX'                 : 'LIB';
+    const refLabel = isMob ? (a.artic||'—') : (a.musculo||'—');
+    const videoBtn = a.url
+      ? `<button class="excv2-iconbtn excv2-video" title="Ver vídeo"
+          onclick="abrirVideoModal('${a.url.replace(/'/g,"\\'")}','${(a.nome||'').replace(/'/g,"\\'")}')">▶</button>`
+      : `<button class="excv2-iconbtn excv2-video" title="Sem vídeo" disabled style="opacity:.3">▶</button>`;
+    return `<div style="border-top:1px solid var(--border)">
+      <div class="aqv2-row">
+        <span class="aqv2-tipc" style="background:${tipBg};color:${tipFg}">${tipLbl}</span>
+        <span class="aqv2-artic" title="${refLabel}">${refLabel}</span>
+        <div style="flex:1;min-width:0;font-size:12px;color:var(--text);padding:0 4px">${a.nome}</div>
+        <div style="flex-shrink:0;font-family:var(--mono);font-size:11px;color:var(--text2);padding:0 8px;white-space:nowrap">${a.duracao}</div>
+        ${videoBtn}
+      </div>
+    </div>`;
+  }).join('');
+  return `<div style="margin-bottom:14px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+    <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border)">🔥 Aquecimento</div>
+    ${rows}
+  </div>`;
+}
+
+function _htmlParteReadOnly(treino){
+  const gruposInfo = _computarGruposExercicios(treino.exercicios);
+  const rows = treino.exercicios.map((ex, rowIdx) => {
+    const info    = gruposInfo[rowIdx];
+    const emGrupo = !!info;
+    const corChip = _corChipMusculo(ex.musculo);
+    const mLabel  = ex.musculo.replace('Isquiossurais','Isquio').replace('RetoAbdominal','Abd.').replace('Panturrilhas','Pant.');
+    const dbEx = DB_EXERCICIOS.find(e => e.n === ex.nome);
+    const url  = dbEx?.url || '';
+    const videoBtn = url
+      ? `<button class="excv2-iconbtn excv2-video" title="Ver vídeo"
+          onclick="abrirVideoModal('${url.replace(/'/g,"\\'")}','${ex.nome.replace(/'/g,"\\'")}')">▶</button>`
+      : `<button class="excv2-iconbtn excv2-video" title="Sem vídeo" disabled style="opacity:.3">▶</button>`;
+    const grupoTag = emGrupo
+      ? `<span style="flex-shrink:0;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;background:${_corGrupo(info.grupoIdx)}22;color:${_corGrupo(info.grupoIdx)};white-space:nowrap" title="Grupo combinado sem descanso entre os exercícios">🔗 ${_labelGrupo(info.total)} ${info.pos}/${info.total}</span>`
+      : '';
+    return `<div style="border-bottom:1px solid var(--border);${emGrupo?`border-left:3px solid ${_corGrupo(info.grupoIdx)};background:rgba(91,140,247,.025)`:'border-left:3px solid transparent'}">
+      <div class="excv2-row" style="flex-wrap:wrap;padding:8px 10px">
+        <span class="excv2-chip" style="background:${corChip.bg};color:${corChip.fg};flex-shrink:0">${mLabel}</span>
+        ${grupoTag}
+        <div style="flex:1 1 160px;min-width:0;font-size:12px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ex.nome}</div>
+        <div style="flex-shrink:0;display:flex;gap:12px;font-size:11px;color:var(--text2);white-space:nowrap;font-family:var(--mono)">
+          <span title="Séries × Repetições"><strong style="color:var(--text);font-weight:700">${ex.series}×${ex.reps}</strong></span>
+          <span title="Intervalo de descanso">⏱ ${ex.intervalo}</span>
+        </div>
+        ${videoBtn}
+      </div>
+    </div>`;
+  }).join('');
+  return `<div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px">
+    <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border)">💪 Parte Principal</div>
+    ${rows}
+  </div>`;
+}
+
+function renderFichaAprovadaVisual(ficha){
+  const el = $('ficha-aprovada'); if(!el) return;
+  if(!ficha){ el.innerHTML = ''; return; }
+  _injetarEstilosExcv2();
+  el.innerHTML = ficha.treinos.map(treino => {
+    const total = treino.exercicios.reduce((a,e)=>a+parseInt(e.series||0),0);
+    return `<div>
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border2)">
+        ${treino.label} <span style="font-weight:400;color:var(--text3);font-size:12px">(${total} séries)</span>
+      </div>
+      ${_htmlAquecimentoReadOnly(treino)}
+      ${_htmlParteReadOnly(treino)}
+    </div>`;
+  }).join('');
+  // Réguas de volume — mesma função/mesmo visual da tela de seleção de exercícios.
+  // Depende de _s3.fichaObj/selectedObj já estarem apontando pra esta ficha
+  // (garantido pelos dois chamadores: aprovarTreinoMotor e treinosAbrirAprovado).
+  renderPreviewVolSemanal('ficha-aprovada-vol');
+}
+
 function fichaObjParaTexto(ficha){
   const s     = getActive();
   const nome  = s?.perfil?.nome || 'Aluno';
@@ -5583,7 +5871,7 @@ function fichaObjParaTexto(ficha){
     treino.exercicios.forEach((ex,i) => {
       const info = gruposInfo[i];
       const grupoTxt = info
-        ? `🔗 ${info.total===2?'Bi-set':'Tri-set'} ${String.fromCharCode(65+info.grupoIdx)} (${info.pos}/${info.total})`
+        ? `🔗 ${_labelGrupo(info.total)} ${String.fromCharCode(65+info.grupoIdx)} (${info.pos}/${info.total})`
         : '—';
       txt += '| ' + (i+1) + ' | ' + grupoTxt + ' | ' + ex.musculo + ' | ' + ex.nome + ' | ' + ex.series + ' | ' + ex.reps + ' | ' + ex.intensidade + ' | ' + ex.intervalo + ' |' + nl;
     });
@@ -5644,7 +5932,7 @@ function aprovarTreinoMotor(){
   };
 
   saveStudent();
-  $('ficha-aprovada').textContent = treino;
+  renderFichaAprovadaVisual(_s3.fichaObj);
   $('aprovado-data').textContent  = data;
 
   // Renderizar comparação com ciclo anterior
@@ -5825,7 +6113,12 @@ const ORDEM_ARTIC_AQUECIMENTO = ['Quadril','Joelho','Tornozelo','Arco Plantar','
 // o que zerava o aquecimento em qualquer sessão cujos exercícios principais só batiam Joelho/Cotovelo
 // (ex: treino de perna focado em joelho, ou treino de braço isolado). "Arco Plantar" fica na lista
 // mas tem 0 exercícios de Mobilidade no banco hoje — inofensivo, só nunca vai gerar chip/item.
-const ARTIC_MOBILIDADE_VALIDAS = new Set(['Arco Plantar','Escápula','Ombro','Cotovelo','Punho','Quadril','Joelho','Tórax','Tornozelo']);
+// 2026-09-16: Cotovelo e Joelho removidos — são articulações-dobradiça
+// (flexão/extensão em plano único), sem mobilidade multiplanar real; não
+// fazem sentido como alvo de exercícios de "Mobilidade" (que trabalham
+// múltiplos planos/graus de liberdade). Backup do estado anterior em
+// _backup_20260916/js/prescricao-motor.js antes desta remoção.
+const ARTIC_MOBILIDADE_VALIDAS = new Set(['Arco Plantar','Escápula','Ombro','Punho','Quadril','Tórax','Tornozelo']);
 const _TETO_ITENS_AQUECIMENTO = 5; // teto propositalmente baixo — aquecimento não pode virar treino paralelo
 
 // Tipos de aquecimento disponíveis no banco (campo `tp` dos exercícios).
@@ -5851,7 +6144,7 @@ function gerarAquecimentoArticular(articsTreino, resistPermitida, nivel, contrai
     let pool = DB_EXERCICIOS.filter(e =>
       (e.tp||[]).some(t => tipos.includes(t.nome)) &&
       (e.artic||[]).some(x=>x.nome === artic) &&
-      e.r && resistPermitida.includes(e.r.id) &&
+      _exercicioEquipamentoOk(e, resistPermitida) &&
       e.nv && nivelOk(e.nv.chave, nivelChave(nivel)) &&
       !usados.has(e.n)
     );
@@ -5893,8 +6186,8 @@ function abrirListaAquecimento(ti, aquecIdx){
   const item = treino.aquecimento[aquecIdx];
   const s = getActive();
   const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
-  const local = s?.anamnese?.local || '';
-  const resist = getResistPermitida(local);
+  const local = val('pr-local') || s?.anamnese?.local || '';
+  const resist = getEquipamentosPermitidos(local);
   const tipoFiltro = item.tipo || 'Mobilidade';
   const isMobilidade = tipoFiltro === 'Mobilidade';
 
@@ -5904,7 +6197,7 @@ function abrirListaAquecimento(ti, aquecIdx){
     (isMobilidade
       ? (e.artic||[]).some(x => x.nome === item.artic)
       : (e.g||[]).some(g => g.nome === item.musculo)) &&
-    e.r && resist.includes(e.r.id) &&
+    _exercicioEquipamentoOk(e, resist) &&
     e.nv && nivelOk(e.nv.chave, nivelChave(nivel))
   );
   // fallback sem filtro de nível/resistência
@@ -6012,12 +6305,12 @@ function toggleAquecArtic(ti, artic){
   } else {
     const s = getActive();
     const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
-    const local = s?.anamnese?.local || '';
-    const resist = getResistPermitida(local);
+    const local = val('pr-local') || s?.anamnese?.local || '';
+    const resist = getEquipamentosPermitidos(local);
     let pool = DB_EXERCICIOS.filter(e =>
       (e.tp||[]).some(t=>t.chave==='Mobilidade') &&
       (e.artic||[]).some(a=>a.nome===artic) &&
-      e.r && resist.includes(e.r.id) &&
+      _exercicioEquipamentoOk(e, resist) &&
       e.nv && nivelOk(e.nv.chave, nivelChave(nivel))
     );
     if(!pool.length) pool = DB_EXERCICIOS.filter(e =>
@@ -6039,12 +6332,12 @@ function toggleAquecMusculo(ti, musculo, tipo){
   } else {
     const s = getActive();
     const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
-    const local = s?.anamnese?.local || '';
-    const resist = getResistPermitida(local);
+    const local = val('pr-local') || s?.anamnese?.local || '';
+    const resist = getEquipamentosPermitidos(local);
     let pool = DB_EXERCICIOS.filter(e =>
       (e.tp||[]).some(t=>t.nome===tipo) &&
       (e.g||[]).some(g=>g.nome===musculo) &&
-      e.r && resist.includes(e.r.id) &&
+      _exercicioEquipamentoOk(e, resist) &&
       e.nv && nivelOk(e.nv.chave, nivelChave(nivel))
     );
     if(!pool.length) pool = DB_EXERCICIOS.filter(e =>
@@ -6297,12 +6590,12 @@ function adicionarAquecMusculo(ti, musculo, tipo){
   if(!treino.aquecimento) treino.aquecimento = [];
   const s = getActive();
   const nivel = val('pr-nivel') || s?.anamnese?.nivel || 'Inic';
-  const local = s?.anamnese?.local || '';
-  const resist = getResistPermitida(local);
+  const local = val('pr-local') || s?.anamnese?.local || '';
+  const resist = getEquipamentosPermitidos(local);
   let pool = DB_EXERCICIOS.filter(e =>
     (e.tp||[]).some(t=>t.nome===tipo) &&
     (e.g||[]).some(g=>g.nome===musculo) &&
-    e.r && resist.includes(e.r.id) &&
+    _exercicioEquipamentoOk(e, resist) &&
     e.nv && nivelOk(e.nv.chave, nivelChave(nivel))
   );
   if(!pool.length) pool = DB_EXERCICIOS.filter(e =>
@@ -6332,7 +6625,7 @@ function gerarFichaMotorV2(params){
     ? DIVISOES_TEMPLATES[divisaoChave]
     : (DIVISOES[numDias] || DIVISOES[3]);
 
-  const resistPermitida = getResistPermitida(local);
+  const resistPermitida = getEquipamentosPermitidos(local);
 
   // Filtros clínicos do aluno — consolidados aqui para uso no motor
   const s = getActive();
